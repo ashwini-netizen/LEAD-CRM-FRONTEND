@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Loader, AlertCircle, Phone, Mail, Building, Save, Clock, Calendar, ArrowLeft, Edit, X } from 'lucide-react';
 import UserHeader from '../components/UserHeader';
+import { cleanPhoneNumber, validatePhoneNumber } from '../utils/stringUtils';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
@@ -83,19 +84,6 @@ const formatTime24 = (hour12, minute, ampm) => {
     }
     const hStr = String(h).padStart(2, '0');
     return `${hStr}:${minute || '00'}`;
-};
-
-const cleanPhoneNumber = (val) => {
-    if (!val) return '';
-    let cleaned = String(val).replace(/[\s\-\(\)]/g, '');
-    if (cleaned.startsWith('+91')) {
-        cleaned = cleaned.slice(3);
-    } else if (cleaned.startsWith('91') && cleaned.length === 12) {
-        cleaned = cleaned.slice(2);
-    } else if (cleaned.startsWith('0') && cleaned.length === 11) {
-        cleaned = cleaned.slice(1);
-    }
-    return cleaned;
 };
 
 const CallFollowupManage = ({ user }) => {
@@ -278,19 +266,19 @@ const CallFollowupManage = ({ user }) => {
             return alert('Please fill all required fields (Primary Phone, Email, Company Type).');
         }
 
-        const cleanedPhone = cleanPhoneNumber(editPhone);
-        const cleanedAltPhone = cleanPhoneNumber(editAlternatePhone);
-
-        // Phone: 10 digits, starts with 6-9
-        const phoneRegex = /^[6-9][0-9]{9}$/;
-        if (!phoneRegex.test(cleanedPhone)) {
-            return alert('Primary Phone number must be exactly 10 digits and start with 6, 7, 8, or 9.');
+        const primaryPhoneValidation = validatePhoneNumber(editPhone, 'Primary Phone');
+        if (!primaryPhoneValidation.isValid) {
+            return alert(primaryPhoneValidation.message);
         }
+        const cleanedPhone = primaryPhoneValidation.cleaned;
 
-        if (cleanedAltPhone) {
-            if (!phoneRegex.test(cleanedAltPhone)) {
-                return alert('Alternate Phone number must be exactly 10 digits and start with 6, 7, 8, or 9.');
+        let cleanedAltPhone = '';
+        if (editAlternatePhone && editAlternatePhone.trim()) {
+            const altPhoneValidation = validatePhoneNumber(editAlternatePhone, 'Alternate Phone');
+            if (!altPhoneValidation.isValid) {
+                return alert(altPhoneValidation.message);
             }
+            cleanedAltPhone = altPhoneValidation.cleaned;
             if (cleanedAltPhone === cleanedPhone) {
                 return alert('Alternate Phone number cannot be the same as Primary Phone number.');
             }

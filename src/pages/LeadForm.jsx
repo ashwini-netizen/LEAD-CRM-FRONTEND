@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Save, Loader, AlertCircle, Plus, Trash2, Calendar } from 'lucide-react';
 import UserHeader from '../components/UserHeader';
-import { stripEmojis } from '../utils/stringUtils';
+import { stripEmojis, validatePhoneNumber } from '../utils/stringUtils';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
@@ -94,10 +94,9 @@ const LeadForm = ({ user }) => {
         }
 
         // 2. Format checks for mandatory fields
-        // Phone: 10 digits, starts with 6-9
-        const phoneRegex = /^[6-9][0-9]{9}$/;
-        if (!phoneRegex.test(formData.phone)) {
-            setSubmitError('Phone number must be 10 digits and start with 6, 7, 8, or 9.');
+        const phoneValidation = validatePhoneNumber(formData.phone, 'Phone number');
+        if (!phoneValidation.isValid) {
+            setSubmitError(phoneValidation.message);
             return false;
         }
 

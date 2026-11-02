@@ -1,3 +1,4 @@
+import { validatePhoneNumber } from '../utils/stringUtils';
 import { useState, useEffect } from 'react';
 import { Mail, IdCard, X, LogOut, Loader, Phone, User, Edit2, Check, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -77,9 +78,9 @@ const Profile = ({ user }) => {
         }
         
         if (editPhone) {
-            const phoneRegex = /^[6-9][0-9]{9}$/;
-            if (!phoneRegex.test(editPhone)) {
-                setUpdateError('Phone number must be exactly 10 digits and start with 6, 7, 8, or 9.');
+            const phoneValidation = validatePhoneNumber(editPhone, 'Phone number');
+            if (!phoneValidation.isValid) {
+                setUpdateError(phoneValidation.message);
                 return;
             }
         }

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, ArrowLeft, Loader, AlertCircle, UserCheck, User, RefreshCw, Trash2, BarChart2, Activity, MessageSquare, Eye, EyeOff, AlertTriangle, Edit2, CheckCircle2 } from 'lucide-react';
 import UserHeader from '../components/UserHeader';
-import { stripEmojis } from '../utils/stringUtils';
+import { stripEmojis, validatePhoneNumber } from '../utils/stringUtils';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
@@ -280,10 +280,12 @@ const AdminPanel = ({ user }) => {
         e.preventDefault();
         setFormError('');
         // Validations
-        const phoneRegex = /^[6-9][0-9]{9}$/;
-        if (newEmployee.phone && !phoneRegex.test(newEmployee.phone)) {
-            setFormError('Phone number must be 10 digits and start with 6-9.');
-            return;
+        if (newEmployee.phone) {
+            const phoneValidation = validatePhoneNumber(newEmployee.phone, 'Phone number');
+            if (!phoneValidation.isValid) {
+                setFormError(phoneValidation.message);
+                return;
+            }
         }
 
         const cleanedEmail = newEmployee.email.trim().replace(/\s/g, '');

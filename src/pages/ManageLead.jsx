@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Loader, AlertCircle, Phone, Mail, Building, MapPin, Calendar, Clock, FileText, CheckCircle2, Upload, Send, XCircle, CreditCard, RefreshCw, Edit, AlertTriangle, Trash2 } from 'lucide-react';
 import UserHeader from '../components/UserHeader';
-import { stripEmojis } from '../utils/stringUtils';
+import { stripEmojis, validatePhoneNumber } from '../utils/stringUtils';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
@@ -709,10 +709,10 @@ const ManageLead = ({ user }) => {
             return alert('Please fill all mandatory fields (marked with *).');
         }
 
-        // Phone: 10 digits, starts with 6-9
-        const phoneRegex = /^[6-9][0-9]{9}$/;
-        if (!phoneRegex.test(editFormData.phone)) {
-            return alert('Phone number must be 10 digits and start with 6, 7, 8, or 9.');
+        // Phone: 10 digits, starts with 6-9, no repetitive digits
+        const phoneValidation = validatePhoneNumber(editFormData.phone, 'Phone number');
+        if (!phoneValidation.isValid) {
+            return alert(phoneValidation.message);
         }
 
         // Name: Letters and spaces only
