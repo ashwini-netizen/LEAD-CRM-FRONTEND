@@ -212,7 +212,7 @@ const ManageLead = ({ user }) => {
         const activeItems = billingItems.filter(i => i.included);
         if (activeItems.length === 0) return alert('Please select at least one service to collect payment for.');
 
-        const anyEmpty = activeItems.some(i => !i.service || !i.total || !i.paid || !i.tenure);
+        const anyEmpty = activeItems.some(i => !i.service || !i.total || (i.paid === '' || i.paid === null || i.paid === undefined) || !i.tenure);
         if (anyEmpty || !paymentDate) return alert('Please fill in all details for each selected service.');
 
         const totalSum = activeItems.reduce((acc, i) => acc + parseFloat(i.total || 0), 0);
