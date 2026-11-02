@@ -41,7 +41,7 @@ const EmployeeOperations = ({ user }) => {
 
     useEffect(() => {
         if (user?.role === 'Admin') {
-            window.history.pushState(null, null, window.location.pathname);
+            window.history.pushState(null, null, window.location.href);
             const handlePopState = (e) => {
                 if (employee?.Role === 'Field Executive') {
                     navigate('/admin/field-executives', { replace: true });

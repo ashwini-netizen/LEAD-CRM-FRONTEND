@@ -41,7 +41,7 @@ const TimeLogs = ({ user }) => {
     }, [id, startDate, endDate]);
 
     useEffect(() => {
-        window.history.pushState(null, null, window.location.pathname);
+        window.history.pushState(null, null, window.location.href);
         const handlePopState = () => {
             if (user?.role === 'Admin') {
                 navigate('/admin', { replace: true });

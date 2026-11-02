@@ -70,10 +70,10 @@ const AdminPanel = ({ user }) => {
         if (!window.history.state?.adminView) {
             const storedRole = localStorage.getItem('admin_panel_selected_role');
             if (storedRole) {
-                window.history.replaceState({ adminView: 'home' }, '', '/admin');
-                window.history.pushState({ adminView: 'list', role: storedRole }, '', '/admin');
+                window.history.replaceState({ adminView: 'home' }, '', window.location.href);
+                window.history.pushState({ adminView: 'list', role: storedRole }, '', window.location.href);
             } else {
-                window.history.replaceState({ adminView: 'home' }, '', '/admin');
+                window.history.replaceState({ adminView: 'home' }, '', window.location.href);
             }
         }
 
@@ -108,7 +108,7 @@ const AdminPanel = ({ user }) => {
         setSelectedRole(role);
         localStorage.setItem('admin_panel_selected_role', role);
         // Push a new history state so browser back returns to home
-        window.history.pushState({ adminView: 'list', role }, '', '/admin');
+        window.history.pushState({ adminView: 'list', role }, '', window.location.href);
         fetchUsersForRole(role);
     };
 
@@ -117,7 +117,7 @@ const AdminPanel = ({ user }) => {
         setIsEditing(false);
         setNewEmployee({ name: '', empId: '', email: '', phone: '', password: '', nickName: '' });
         setFormError('');
-        window.history.replaceState({ adminView: 'list', role: selectedRole }, '', '/admin');
+        window.history.replaceState({ adminView: 'list', role: selectedRole }, '', window.location.href);
     };
 
     const goBackToHome = () => {
@@ -126,7 +126,7 @@ const AdminPanel = ({ user }) => {
         setIsCreating(false);
         setIsEditing(false);
         localStorage.removeItem('admin_panel_selected_role');
-        window.history.replaceState({ adminView: 'home' }, '', '/admin');
+        window.history.replaceState({ adminView: 'home' }, '', window.location.href);
     };
 
     const handleEmployeeChange = (e) => {
@@ -173,7 +173,7 @@ const AdminPanel = ({ user }) => {
         setIsEditing(true);
         setIsCreating(true);
         // Push history so browser back returns to the list
-        window.history.pushState({ adminView: 'form', role: selectedRole }, '', '/admin');
+        window.history.pushState({ adminView: 'form', role: selectedRole }, '', window.location.href);
     };
 
     const handleDeleteUser = (userId) => {
@@ -484,7 +484,7 @@ const AdminPanel = ({ user }) => {
                             <button onClick={() => fetchUsersForRole(selectedRole)} style={{ background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.3)', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <RefreshCw size={14} /> Refresh
                             </button>
-                            <button onClick={() => { setIsCreating(true); window.history.pushState({ adminView: 'form', role: selectedRole }, '', '/admin'); }} style={{ background: '#6366f1', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: '800' }}>
+                            <button onClick={() => { setIsCreating(true); window.history.pushState({ adminView: 'form', role: selectedRole }, '', window.location.href); }} style={{ background: '#6366f1', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: '800' }}>
                                 + Add {selectedRole}
                             </button>
                         </div>
