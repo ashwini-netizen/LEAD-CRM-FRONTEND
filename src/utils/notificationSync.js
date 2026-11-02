@@ -1,0 +1,117 @@
+// Utilities for reliable, immediate, cross-component notification sync
+
+const READ_STORAGE_KEY = 'crm_read_notification_ids';
+const ALL_READ_TIMESTAMP_KEY = 'crm_all_notifications_read_at';
+
+export const getLocalReadIds = () => {
+    try {
+        const raw = sessionStorage.getItem(READ_STORAGE_KEY) || localStorage.getItem(READ_STORAGE_KEY);
+        if (!raw) return new Set();
+        const parsed = JSON.parse(raw);
+        return new Set(Array.isArray(parsed) ? parsed : []);
+    } catch {
+        return new Set();
+    }
+};
+
+const saveLocalReadIds = (set) => {
+    try {
+        const arr = Array.from(set);
+        const json = JSON.stringify(arr);
+        sessionStorage.setItem(READ_STORAGE_KEY, json);
+        localStorage.setItem(READ_STORAGE_KEY, json);
+    } catch (e) {
+        console.error('Failed to save read IDs:', e);
+    }
+};
+
+export const getAllReadTimestamp = () => {
+    try {
+        const val = sessionStorage.getItem(ALL_READ_TIMESTAMP_KEY) || localStorage.getItem(ALL_READ_TIMESTAMP_KEY);
+        return val ? parseInt(val, 10) : 0;
+    } catch {
+        return 0;
+    }
+};
+
+export const isNotificationUnread = (notif) => {
+    if (!notif) return false;
+    if (notif.IsRead) return false;
+
+    const readIds = getLocalReadIds();
+    if (readIds.has(notif.NotificationID)) return false;
+
+    const allReadAt = getAllReadTimestamp();
+    if (allReadAt && notif.CreatedAt) {
+        const notifTime = new Date(notif.CreatedAt).getTime();
+        if (notifTime <= allReadAt) return false;
+    }
+
+    return true;
+};
+
+export const markNotificationAsRead = async (id, apiUrl, token) => {
+    const nid = parseInt(id, 10);
+    // 1. Immediately store in local cache
+    const readIds = getLocalReadIds();
+    readIds.add(nid);
+    saveLocalReadIds(readIds);
+
+    // 2. Immediately notify all listening components
+    window.dispatchEvent(new CustomEvent('refresh_notifications', { detail: { markedId: nid } }));
+
+    // 3. Persist to backend server
+    if (apiUrl && token) {
+        try {
+            await fetch(`${apiUrl}/api/notifications/${nid}/read`, {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        } catch (err) {
+            console.error('Failed to persist notification read to server:', err);
+        }
+    }
+};
+
+export const markAllNotificationsAsRead = async (apiUrl, token) => {
+    // 1. Immediately record all-read timestamp
+    const now = Date.now();
+    sessionStorage.setItem(ALL_READ_TIMESTAMP_KEY, String(now));
+    localStorage.setItem(ALL_READ_TIMESTAMP_KEY, String(now));
+
+    // Clear individual IDs since timestamp covers them
+    saveLocalReadIds(new Set());
+
+    // 2. Immediately notify all components
+    window.dispatchEvent(new CustomEvent('refresh_notifications', { detail: { allRead: true } }));
+
+    // 3. Persist to backend server
+    if (apiUrl && token) {
+        try {
+            await fetch(`${apiUrl}/api/notifications/read-all`, {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        } catch (err) {
+            console.error('Failed to persist read-all to server:', err);
+        }
+    }
+};
+
+export const syncWithServerList = (serverList) => {
+    if (!Array.isArray(serverList)) return;
+    const readIds = getLocalReadIds();
+    let changed = false;
+
+    serverList.forEach(n => {
+        if (n.IsRead && readIds.has(n.NotificationID)) {
+            readIds.delete(n.NotificationID);
+            changed = true;
+        }
+    });
+
+    if (changed) {
+        saveLocalReadIds(readIds);
+    }
+};
+

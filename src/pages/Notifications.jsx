@@ -1,7 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, ArrowLeft, Loader, Calendar, Trash2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Bell, ArrowLeft, Loader, Calendar, Trash2, CheckCircle, AlertTriangle, Check } from 'lucide-react';
 import UserHeader from '../components/UserHeader';
+import {
+    isNotificationUnread,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    syncWithServerList
+} from '../utils/notificationSync';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
@@ -12,7 +18,7 @@ const Notifications = ({ user }) => {
     const [error, setError] = useState('');
     const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
-    const fetchNotifications = async (isSilent = false) => {
+    const fetchNotifications = useCallback(async (isSilent = false) => {
         if (!isSilent) setLoading(true);
         try {
             const res = await fetch(`${API_URL}/api/notifications`, {
@@ -20,7 +26,11 @@ const Notifications = ({ user }) => {
             });
             if (!res.ok) throw new Error('Failed to fetch notifications');
             const data = await res.json();
-            // Added explicit descending sort to ensure newest notifications are on top
+            
+            // Reconcile server response with local immediate cache
+            syncWithServerList(data);
+            
+            // Explicit descending sort to ensure newest notifications are on top
             const sorted = Array.isArray(data) ? data.sort((a, b) => new Date(b.CreatedAt) - new Date(a.CreatedAt)) : [];
             setNotifications(sorted);
         } catch (err) {
@@ -28,30 +38,29 @@ const Notifications = ({ user }) => {
         } finally {
             if (!isSilent) setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchNotifications(false);
         
-        const handleRefresh = () => fetchNotifications(true);
+        const handleRefresh = (e) => {
+            if (e?.detail?.allRead) {
+                setNotifications(prev => prev.map(n => ({ ...n, IsRead: true })));
+            } else if (e?.detail?.markedId) {
+                setNotifications(prev => prev.map(n => n.NotificationID === e.detail.markedId ? { ...n, IsRead: true } : n));
+            }
+            fetchNotifications(true);
+        };
         window.addEventListener('refresh_notifications', handleRefresh);
         
         return () => window.removeEventListener('refresh_notifications', handleRefresh);
-    }, []);
+    }, [fetchNotifications]);
 
     const markAllRead = async () => {
-        try {
-            const res = await fetch(`${API_URL}/api/notifications/read-all`, {
-                method: 'PUT',
-                headers: { Authorization: `Bearer ${localStorage.getItem('crm_token') || ''}` }
-            });
-            if (res.ok) {
-                setNotifications(prev => prev.map(n => ({ ...n, IsRead: true })));
-                window.dispatchEvent(new CustomEvent('refresh_notifications'));
-            }
-        } catch (err) {
-            console.error(err);
-        }
+        // Immediate optimistic update
+        setNotifications(prev => prev.map(n => ({ ...n, IsRead: true })));
+        const token = localStorage.getItem('crm_token') || '';
+        await markAllNotificationsAsRead(API_URL, token);
     };
 
     const requestDeleteNotification = (id) => {
@@ -64,21 +73,24 @@ const Notifications = ({ user }) => {
     };
 
     const executeDeleteNotification = async (id) => {
+        // Optimistic delete
+        setNotifications(prev => prev.filter(n => n.NotificationID !== id));
+        window.dispatchEvent(new CustomEvent('refresh_notifications'));
+
         try {
             const res = await fetch(`${API_URL}/api/notifications/${id}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${localStorage.getItem('crm_token') || ''}` }
             });
-            if (res.ok) {
-                setNotifications(prev => prev.filter(n => n.NotificationID !== id));
-                window.dispatchEvent(new CustomEvent('refresh_notifications'));
-            } else {
+            if (!res.ok) {
                 const msg = await res.text();
                 alert(`Error deleting notification: ${msg}`);
+                fetchNotifications(true);
             }
         } catch (err) {
             console.error('Delete error:', err);
             alert('Cannot connect to server to delete notification.');
+            fetchNotifications(true);
         }
     };
 
@@ -101,17 +113,10 @@ const Notifications = ({ user }) => {
     };
 
     const markAsReadOnly = async (n) => {
-        if (!n.IsRead) {
-            try {
-                await fetch(`${API_URL}/api/notifications/${n.NotificationID}/read`, {
-                    method: 'PUT',
-                    headers: { Authorization: `Bearer ${localStorage.getItem('crm_token') || ''}` }
-                });
-                setNotifications(prev => prev.map(item => item.NotificationID === n.NotificationID ? { ...item, IsRead: true } : item));
-                window.dispatchEvent(new CustomEvent('refresh_notifications'));
-            } catch (err) {
-                console.error(err);
-            }
+        if (isNotificationUnread(n)) {
+            setNotifications(prev => prev.map(item => item.NotificationID === n.NotificationID ? { ...item, IsRead: true } : item));
+            const token = localStorage.getItem('crm_token') || '';
+            await markNotificationAsRead(n.NotificationID, API_URL, token);
         }
     };
 
@@ -129,6 +134,16 @@ const Notifications = ({ user }) => {
         }
     };
 
+    const handleBack = () => {
+        if (user?.role === 'Admin') {
+            navigate('/admin', { replace: true });
+        } else {
+            navigate('/dashboard', { replace: true });
+        }
+    };
+
+    const unreadItemsCount = notifications.filter(n => isNotificationUnread(n)).length;
+
     return (
         <div style={{ background: '#f8fafc', minHeight: '100vh', width: '100vw', overflowX: 'hidden' }}>
             <UserHeader user={user} title="Notifications" />
@@ -136,7 +151,7 @@ const Notifications = ({ user }) => {
             <div className="page-main-container" style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
                     <button
-                        onClick={() => navigate('/dashboard', { replace: true })}
+                        onClick={handleBack}
                         className="btn-secondary"
                         style={{ display: 'flex', alignItems: 'center', gap: '8px', width: 'fit-content' }}
                     >
@@ -150,12 +165,12 @@ const Notifications = ({ user }) => {
                         >
                             <Loader size={16} className={loading ? 'spin' : ''} /> Refresh
                         </button>
-                        {notifications.length > 0 && (
+                        {unreadItemsCount > 0 && (
                             <button
                                 onClick={markAllRead}
-                                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontWeight: '700', fontSize: '0.9rem' }}
+                                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}
                             >
-                                Mark all as read
+                                <Check size={16} /> Mark all as read ({unreadItemsCount})
                             </button>
                         )}
                     </div>
@@ -175,74 +190,148 @@ const Notifications = ({ user }) => {
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            {notifications.map((n, index) => (
-                                <div
-                                    key={n.NotificationID}
-                                    onClick={() => {
-                                        if (n.LeadID) {
-                                            markAsReadOnly(n);
-                                        } else {
-                                            handleNotificationClick(n);
-                                        }
-                                    }}
-                                    style={{
-                                        padding: '24px 32px',
-                                        borderBottom: index === notifications.length - 1 ? 'none' : '1px solid #f1f5f9',
-                                        background: n.IsRead ? 'white' : 'rgba(99, 102, 241, 0.02)',
-                                        display: 'flex',
-                                        gap: '24px',
-                                        alignItems: 'center',
-                                        transition: '0.2s',
-                                        cursor: 'pointer'
-                                    }}
-                                    className="notif-row"
-                                >
-                                    <div style={{
-                                        width: '48px',
-                                        height: '48px',
-                                        borderRadius: '12px',
-                                        background: '#f8fafc',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: n.IsRead ? '#94a3b8' : '#6366f1',
-                                        flexShrink: 0
-                                    }}>
-                                        <Bell size={20} />
-                                    </div>
+                            {notifications.map((n, index) => {
+                                const unread = isNotificationUnread(n);
+                                return (
+                                    <div
+                                        key={n.NotificationID}
+                                        onClick={() => {
+                                            if (unread) {
+                                                markAsReadOnly(n);
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '20px 28px',
+                                            borderBottom: index === notifications.length - 1 ? 'none' : '1px solid #f1f5f9',
+                                            background: unread ? 'rgba(99, 102, 241, 0.03)' : 'white',
+                                            borderLeft: unread ? '4px solid #6366f1' : '4px solid transparent',
+                                            display: 'flex',
+                                            gap: '20px',
+                                            alignItems: 'center',
+                                            transition: '0.2s',
+                                            cursor: 'pointer'
+                                        }}
+                                        className="notif-row"
+                                    >
+                                        <div style={{
+                                            width: '44px',
+                                            height: '44px',
+                                            borderRadius: '12px',
+                                            background: unread ? 'rgba(99, 102, 241, 0.1)' : '#f8fafc',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: unread ? '#6366f1' : '#94a3b8',
+                                            flexShrink: 0
+                                        }}>
+                                            <Bell size={20} />
+                                        </div>
 
-                                    <div style={{ flex: 1 }}>
-                                        <h4 style={{ margin: '0 0 8px 0', fontSize: '1rem', fontWeight: '700', color: '#1e293b' }}>
-                                            {n.Message}
-                                        </h4>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '0.85rem' }}>
-                                                <Calendar size={14} />
-                                                {formatDate(n.CreatedAt)}
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                                                <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: unread ? '700' : '600', color: '#1e293b' }}>
+                                                    {n.Message}
+                                                </h4>
+                                                {unread ? (
+                                                    <span style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '5px',
+                                                        fontSize: '0.72rem',
+                                                        fontWeight: '700',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '12px',
+                                                        background: '#e0e7ff',
+                                                        color: '#4338ca'
+                                                    }}>
+                                                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#6366f1' }} />
+                                                        Unread
+                                                    </span>
+                                                ) : (
+                                                    <span style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        fontSize: '0.72rem',
+                                                        fontWeight: '600',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '12px',
+                                                        background: '#f1f5f9',
+                                                        color: '#64748b'
+                                                    }}>
+                                                        <Check size={11} strokeWidth={2.5} />
+                                                        Read
+                                                    </span>
+                                                )}
                                             </div>
-                                            {n.LeadID && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '0.82rem' }}>
+                                                    <Calendar size={13} />
+                                                    {formatDate(n.CreatedAt)}
+                                                </div>
+                                                {n.LeadID && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleNotificationClick(n);
+                                                        }}
+                                                        style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontWeight: '700', fontSize: '0.82rem', padding: 0 }}
+                                                    >
+                                                        View Lead Details →
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                            {unread && (
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        handleNotificationClick(n);
+                                                        markAsReadOnly(n);
                                                     }}
-                                                    style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontWeight: '700', fontSize: '0.85rem', padding: 0 }}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '5px',
+                                                        background: '#f8fafc',
+                                                        border: '1px solid #e2e8f0',
+                                                        color: '#475569',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: '600',
+                                                        padding: '6px 12px',
+                                                        borderRadius: '8px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s ease'
+                                                    }}
+                                                    onMouseEnter={e => {
+                                                        e.currentTarget.style.background = '#e0e7ff';
+                                                        e.currentTarget.style.borderColor = '#c7d2fe';
+                                                        e.currentTarget.style.color = '#4338ca';
+                                                    }}
+                                                    onMouseLeave={e => {
+                                                        e.currentTarget.style.background = '#f8fafc';
+                                                        e.currentTarget.style.borderColor = '#e2e8f0';
+                                                        e.currentTarget.style.color = '#475569';
+                                                    }}
                                                 >
-                                                    View Lead Details
+                                                    <Check size={13} strokeWidth={2.5} /> Mark as read
                                                 </button>
                                             )}
+
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); requestDeleteNotification(n.NotificationID); }}
+                                                title="Delete notification"
+                                                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '10px', borderRadius: '8px', transition: '0.2s' }}
+                                                onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                                                onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}
+                                            >
+                                                <Trash2 size={18} style={{ strokeWidth: 2 }} />
+                                            </button>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); requestDeleteNotification(n.NotificationID); }}
-                                        style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: '12px', borderRadius: '8px', transition: '0.2s', flexShrink: 0 }}
-                                        onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                                        onMouseLeave={e => e.currentTarget.style.color = '#475569'}
-                                    >
-                                        <Trash2 size={20} style={{ strokeWidth: 2 }} />
-                                    </button>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
