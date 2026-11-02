@@ -4,10 +4,11 @@ import App from './App'
 import './index.css'
 import { BrowserRouter, HashRouter } from 'react-router-dom'
 
-// Determine router type dynamically (HashRouter for Electron/Capacitor file:// protocols, BrowserRouter for standard Web)
+// Determine router type dynamically (HashRouter for Electron/Capacitor file:// protocols, GitHub Pages, or BrowserRouter for standard Web)
 const isElectron = window.navigator.userAgent.toLowerCase().includes('electron');
 const isCapacitor = !!window.Capacitor;
-const Router = (isElectron || isCapacitor) ? HashRouter : BrowserRouter;
+const isGitHubPages = window.location.hostname.includes('github.io');
+const Router = (isElectron || isCapacitor || isGitHubPages) ? HashRouter : BrowserRouter;
 
 // Global interceptors to bypass ngrok warning pages and avoid CORS errors
 const originalFetch = window.fetch;
