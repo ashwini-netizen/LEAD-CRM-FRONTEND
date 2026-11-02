@@ -87,55 +87,27 @@ const PaymentPendingLeads = ({ user }) => {
         fetchPaymentPending();
     }, []);
 
-    // Filter out permanently removed or rejected leads from payment operations
-    const activeLeads = useMemo(() => {
-        return leads.filter(l => !['Removed', 'Rejected', 'Canceled'].includes(l.Status));
-    }, [leads]);
-
-    // Precalculate counts for tabs
-    const tabCounts = useMemo(() => {
-        let due = 0;
-        let paid = 0;
-        let quoted = 0;
-        activeLeads.forEach(l => {
-            const pending = getLeadPendingAmount(l);
-            const total = getLeadTotalAmount(l);
-            const isDue = (l.Status === 'Due Payment' || l.PaymentStatus === 'Due Payment' || pending > 0) && pending > 0 && l.Status !== 'Paid';
-            const isPaid = (l.Status === 'Paid' || l.PaymentStatus === 'Paid' || (total > 0 && pending === 0)) && pending === 0;
-            const isQuoted = ['Quotation', 'Quotation Needed', 'Quotation Done'].includes(l.Status);
-
-            if (isDue) due++;
-            if (isPaid) paid++;
-            if (isQuoted) quoted++;
-        });
-        return { due, paid, quoted, all: activeLeads.length };
-    }, [activeLeads]);
-
     const filtered = useMemo(() => {
-        return activeLeads.filter(l => {
+        return leads.filter(l => {
             const matchesSearch = l.FullName?.toLowerCase().includes(search.toLowerCase()) ||
                 (l.Phone && String(l.Phone).toLowerCase().includes(search.toLowerCase())) ||
                 l.CompanyName?.toLowerCase().includes(search.toLowerCase()) ||
                 l.ServiceInterested?.toLowerCase().includes(search.toLowerCase());
 
-            const pending = getLeadPendingAmount(l);
-            const total = getLeadTotalAmount(l);
-
             let matchesTab = true;
-            if (activeTab === 'Due Payments') {
-                // Strictly leads with actual pending payment due
-                matchesTab = (l.Status === 'Due Payment' || l.PaymentStatus === 'Due Payment' || pending > 0) && pending > 0 && l.Status !== 'Paid';
-            } else if (activeTab === 'Paid') {
-                matchesTab = (l.Status === 'Paid' || l.PaymentStatus === 'Paid' || (total > 0 && pending === 0)) && pending === 0;
+            if (activeTab === 'Paid') {
+                matchesTab = l.Status === 'Paid';
             } else if (activeTab === 'Quoted') {
                 matchesTab = ['Quotation', 'Quotation Needed', 'Quotation Done'].includes(l.Status);
+            } else if (activeTab === 'Due Payments') {
+                matchesTab = l.Status !== 'Paid';
             } else if (activeTab === 'All') {
                 matchesTab = true;
             }
 
             return matchesSearch && matchesTab;
         });
-    }, [activeLeads, search, activeTab]);
+    }, [leads, search, activeTab]);
 
     return (
         <div style={{ background: '#f8fafc', minHeight: '100vh', width: '100vw', overflowX: 'hidden' }}>
@@ -156,7 +128,7 @@ const PaymentPendingLeads = ({ user }) => {
                     </div>
                     <div style={{ display: 'flex', gap: '12px' }}>
                         <span style={{ background: 'white', padding: '10px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', color: '#6366f1' }}>
-                            {filtered.length} Records
+                            {leads.length} Records
                         </span>
                         <button onClick={fetchPaymentPending} style={{ background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.3)', padding: '10px 14px', borderRadius: '8px', cursor: 'pointer' }}>
                             <RefreshCw size={16} />
@@ -192,25 +164,10 @@ const PaymentPendingLeads = ({ user }) => {
                             cursor: 'pointer',
                             boxShadow: activeTab === 'Due Payments' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
                             transition: '0.2s',
-                            fontSize: '0.9rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
+                            fontSize: '0.9rem'
                         }}
                     >
                         Due Payments
-                        {tabCounts.due > 0 && (
-                            <span style={{
-                                background: activeTab === 'Due Payments' ? '#ef4444' : '#fee2e2',
-                                color: activeTab === 'Due Payments' ? '#fff' : '#b91c1c',
-                                padding: '2px 8px',
-                                borderRadius: '10px',
-                                fontSize: '0.75rem',
-                                fontWeight: '800'
-                            }}>
-                                {tabCounts.due}
-                            </span>
-                        )}
                     </button>
                     <button
                         onClick={() => setActiveTab('Paid')}
@@ -219,30 +176,15 @@ const PaymentPendingLeads = ({ user }) => {
                             borderRadius: '10px',
                             border: 'none',
                             background: activeTab === 'Paid' ? '#fff' : 'transparent',
-                            color: activeTab === 'Paid' ? '#10b981' : '#64748b',
+                            color: activeTab === 'Paid' ? '#6366f1' : '#64748b',
                             fontWeight: '700',
                             cursor: 'pointer',
                             boxShadow: activeTab === 'Paid' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
                             transition: '0.2s',
-                            fontSize: '0.9rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
+                            fontSize: '0.9rem'
                         }}
                     >
                         Paid
-                        {tabCounts.paid > 0 && (
-                            <span style={{
-                                background: activeTab === 'Paid' ? '#10b981' : '#d1fae5',
-                                color: activeTab === 'Paid' ? '#fff' : '#047857',
-                                padding: '2px 8px',
-                                borderRadius: '10px',
-                                fontSize: '0.75rem',
-                                fontWeight: '800'
-                            }}>
-                                {tabCounts.paid}
-                            </span>
-                        )}
                     </button>
                     <button
                         onClick={() => setActiveTab('Quoted')}
@@ -256,25 +198,10 @@ const PaymentPendingLeads = ({ user }) => {
                             cursor: 'pointer',
                             boxShadow: activeTab === 'Quoted' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
                             transition: '0.2s',
-                            fontSize: '0.9rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
+                            fontSize: '0.9rem'
                         }}
                     >
                         Quoted
-                        {tabCounts.quoted > 0 && (
-                            <span style={{
-                                background: activeTab === 'Quoted' ? '#6366f1' : '#e0e7ff',
-                                color: activeTab === 'Quoted' ? '#fff' : '#4338ca',
-                                padding: '2px 8px',
-                                borderRadius: '10px',
-                                fontSize: '0.75rem',
-                                fontWeight: '800'
-                            }}>
-                                {tabCounts.quoted}
-                            </span>
-                        )}
                     </button>
                     <button
                         onClick={() => setActiveTab('All')}
@@ -288,13 +215,10 @@ const PaymentPendingLeads = ({ user }) => {
                             cursor: 'pointer',
                             boxShadow: activeTab === 'All' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
                             transition: '0.2s',
-                            fontSize: '0.9rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
+                            fontSize: '0.9rem'
                         }}
                     >
-                        All ({tabCounts.all})
+                        All
                     </button>
                 </div>
 
@@ -427,7 +351,7 @@ const PaymentPendingLeads = ({ user }) => {
                                                     </div>
                                                 ) : (
                                                     <span style={{ fontWeight: '500', color: pendingAmount > 0 && lead.DuePaymentDate ? '#ef4444' : '#64748b' }}>
-                                                        {pendingAmount <= 0 ? 'Paid' : (lead.DuePaymentDate ? new Date(lead.DuePaymentDate).toLocaleDateString('en-IN') : 'N/A')}
+                                                        {lead.Status === 'Paid' ? 'Paid' : (lead.DuePaymentDate ? new Date(lead.DuePaymentDate).toLocaleDateString('en-IN') : 'N/A')}
                                                     </span>
                                                 )}
                                             </td>
