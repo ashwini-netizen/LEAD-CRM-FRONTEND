@@ -93,8 +93,8 @@ const hasValidPhone = (phone) => {
     if (!phone) return false;
     const str = String(phone).trim();
     if (!str) return false;
-    const lower = str.toLowerCase();
-    if (['n/a', 'na', 'null', 'none', '-', '--', 'nil', 'undefined'].includes(lower)) {
+    const lower = str.toLowerCase().replace(/\s+/g, '');
+    if (['n/a', 'na', 'null', 'none', '-', '--', 'nil', 'undefined', 'notavailable', 'notprovided'].includes(lower)) {
         return false;
     }
     return /\d/.test(str);
@@ -576,16 +576,22 @@ const LeadList = ({ user, isMyCreated }) => {
             }
         }
 
-        const matchesStatus = statusFilter === 'All' || 
-            getCanonicalStatus(l.Status).toLowerCase() === statusFilter.toLowerCase() ||
-            (l.Status && l.Status.trim().toLowerCase() === statusFilter.trim().toLowerCase());
+        if (statusFilter === 'N/A Leads') {
+            if (hasValidPhone(l.Phone)) {
+                return false;
+            }
+        } else {
+            const matchesStatus = statusFilter === 'All' || 
+                getCanonicalStatus(l.Status).toLowerCase() === statusFilter.toLowerCase() ||
+                (l.Status && l.Status.trim().toLowerCase() === statusFilter.trim().toLowerCase());
 
-        if (!matchesStatus) return false;
+            if (!matchesStatus) return false;
 
-        // Apply phone number filtering only to Interested and Not Interested statuses
-        const normStatusFilter = (statusFilter || '').trim().toLowerCase();
-        if ((normStatusFilter === 'interested' || normStatusFilter === 'not interested') && !hasValidPhone(l.Phone)) {
-            return false;
+            // Apply phone number filtering only to Interested and Not Interested statuses
+            const normStatusFilter = (statusFilter || '').trim().toLowerCase();
+            if ((normStatusFilter === 'interested' || normStatusFilter === 'not interested') && !hasValidPhone(l.Phone)) {
+                return false;
+            }
         }
 
         return matchesSearch && matchesRole && matchesView && matchesDate;
@@ -805,6 +811,8 @@ const LeadList = ({ user, isMyCreated }) => {
                                 const rawStatuses = leads.map(l => l.Status).filter(Boolean);
                                 const normalizedSet = new Set(rawStatuses.map(getCanonicalStatus));
                                 normalizedSet.add('Hold');
+                                normalizedSet.delete('All');
+                                normalizedSet.delete('N/A Leads');
                                 const sorted = Array.from(normalizedSet).sort((a, b) => {
                                     const idxA = canonicalStatuses.indexOf(a);
                                     const idxB = canonicalStatuses.indexOf(b);
@@ -813,7 +821,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                     if (idxB !== -1) return 1;
                                     return a.localeCompare(b);
                                 });
-                                return ['All', ...sorted].map(s => (
+                                return ['All', 'N/A Leads', ...sorted].map(s => (
                                     <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s}</option>
                                 ));
                             })()}
