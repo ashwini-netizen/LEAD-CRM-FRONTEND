@@ -1,0 +1,9 @@
+{
+  "appId": "com.navabharath.crm",
+  "appName": "LM CRM",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "allowNavigation": ["*"]
+  }
+}

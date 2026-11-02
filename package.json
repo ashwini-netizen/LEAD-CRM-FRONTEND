@@ -1,0 +1,70 @@
+{
+  "name": "frontend-web",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron:dev": "node electron/start.js",
+    "electron:build": "npm run build && electron-builder",
+    "build-electron": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "@capacitor/browser": "^8.0.3",
+    "@capacitor/filesystem": "^8.1.2",
+    "xlsx": "^0.18.5"
+  },
+  "description": "",
+  "main": "electron/main.js",
+  "devDependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
+    "@vitejs/plugin-react": "^4.0.0",
+    "axios": "latest",
+    "electron": "^42.11.18",
+    "electron-builder": "^26.8.1",
+    "framer-motion": "latest",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
+    "leaflet": "^1.9.4",
+    "lodash": "latest",
+    "lucide-react": "latest",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-hot-toast": "^2.6.0",
+    "react-leaflet": "^4.2.1",
+    "react-router-dom": "^6.0.0",
+    "recharts": "^3.8.1",
+    "socket.io-client": "^4.8.3",
+    "vite": "latest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "build": {
+    "appId": "com.lm.crm",
+    "productName": "LM-CRM",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "icon": "src/assets/logo.png"
+  }
+}

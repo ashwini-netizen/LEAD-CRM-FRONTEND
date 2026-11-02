@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Production build outputs
+dist/
+dist-electron/
+build/
+
+# Local Environment files
+.env
+.env.local
+
+# Android build outputs & IDE
+android/.gradle/
+android/app/build/
+android/.idea/
+android/captures/
+android/app/build/outputs/
+
+# Android Keystores & Certificates (Sensitive)
+*.jks
+*.keystore
+*.pem
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS metadata
+.DS_Store
+Thumbs.db
