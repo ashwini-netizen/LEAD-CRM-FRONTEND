@@ -526,10 +526,10 @@ const LeadList = ({ user, isMyCreated }) => {
     }, [isTL, isFE, isAdmin, statusFilter]);
 
     useEffect(() => {
-        if (isAdmin && categoryFilter !== 'all') {
+        if ((isAdmin || isTL) && categoryFilter !== 'all') {
             setCategoryFilter('all');
         }
-    }, [isAdmin, categoryFilter]);
+    }, [isAdmin, isTL, categoryFilter]);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -762,8 +762,8 @@ const LeadList = ({ user, isMyCreated }) => {
                     </div>
                 )}
 
-                {/* Quick Category Filter Tabs (All / Conversions / Pending) - Hidden for Admin */}
-                {!isAdmin && (
+                {/* Quick Category Filter Tabs (All / Conversions / Pending) - Hidden for Admin & Team Lead */}
+                {!isAdmin && !isTL && (
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
                         <button
                             type="button"
