@@ -565,7 +565,7 @@ const LeadList = ({ user, isMyCreated }) => {
         }
 
         let matchesDate = true;
-        if (isTL) {
+        if (isTL || isFE) {
             if (singleDate) {
                 if (!l.CreatedAt) {
                     matchesDate = false;
@@ -702,7 +702,7 @@ const LeadList = ({ user, isMyCreated }) => {
                         {(isCE || isFE) && (
                             <button
                                 onClick={() => {
-                                    setExportScope((search || statusFilter !== 'All' || fromDate || toDate) ? 'filtered' : 'all');
+                                    setExportScope((search || statusFilter !== 'All' || fromDate || toDate || singleDate) ? 'filtered' : 'all');
                                     setShowExportModal(true);
                                 }}
                                 style={{
@@ -850,8 +850,8 @@ const LeadList = ({ user, isMyCreated }) => {
                             })()}
                         </select>
                     </div>
-                    {/* Team Lead Single Date Picker */}
-                    {isTL && (
+                    {/* Team Lead & Field Executive Single Date Picker */}
+                    {(isTL || isFE) && (
                         <div style={{ position: 'relative', minWidth: '160px', flex: '0 1 auto', display: 'flex', alignItems: 'center' }}>
                             <div style={{ position: 'relative', width: '100%' }}>
                                 <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
@@ -893,8 +893,8 @@ const LeadList = ({ user, isMyCreated }) => {
                         </div>
                     )}
 
-                    {/* Team Lead Standalone Select Button */}
-                    {isTL && (
+                    {/* Team Lead & Field Executive Standalone Select Button */}
+                    {(isTL || isFE) && (
                         <button
                             type="button"
                             onClick={handleToggleSelectMode}
@@ -920,8 +920,8 @@ const LeadList = ({ user, isMyCreated }) => {
                         </button>
                     )}
 
-                    {/* From Date – To Date Range Filter */}
-                    {!isTL && (
+                    {/* From Date – To Date Range Filter (Call Executive, Admin, etc.) */}
+                    {!isTL && !isFE && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 1 auto' }}>
                             <div style={{ position: 'relative', minWidth: '150px', flex: '1 1 auto' }}>
                                 <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
@@ -979,8 +979,8 @@ const LeadList = ({ user, isMyCreated }) => {
                         </div>
                     )}
 
-                    {/* Custom Record Range Selection */}
-                    {!isTL && !(isFE && isMyCreated) && (
+                    {/* Custom Record Range Selection (Call Executive, Admin, etc.) */}
+                    {!isTL && !isFE && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '240px', flex: '0 1 auto' }}>
                             <input
                                 type="text"
