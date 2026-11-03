@@ -112,6 +112,7 @@ const LeadList = ({ user, isMyCreated }) => {
     const [viewFilter, setViewFilter] = useState('All');
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
+    const [singleDate, setSingleDate] = useState('');
 
     const handleFromDateChange = (val) => {
         setFromDate(val);
@@ -519,7 +520,7 @@ const LeadList = ({ user, isMyCreated }) => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [search, statusFilter, fromDate, toDate, roleFilter, viewFilter, categoryFilter]);
+    }, [search, statusFilter, fromDate, toDate, singleDate, roleFilter, viewFilter, categoryFilter]);
 
     const filtered = leads.filter(l => {
         if (categoryFilter === 'conversions' && !isConvertedStatus(l.Status)) return false;
@@ -558,21 +559,35 @@ const LeadList = ({ user, isMyCreated }) => {
         }
 
         let matchesDate = true;
-        if (fromDate || toDate) {
-            if (!l.CreatedAt) {
-                matchesDate = false;
-            } else {
-                const leadDateObj = new Date(l.CreatedAt);
-                const offset = leadDateObj.getTimezoneOffset();
-                const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
-                const localDateStr = localDateObj.toISOString().split('T')[0];
+        if (isTL) {
+            if (singleDate) {
+                if (!l.CreatedAt) {
+                    matchesDate = false;
+                } else {
+                    const leadDateObj = new Date(l.CreatedAt);
+                    const offset = leadDateObj.getTimezoneOffset();
+                    const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
+                    const localDateStr = localDateObj.toISOString().split('T')[0];
+                    matchesDate = localDateStr === singleDate;
+                }
+            }
+        } else {
+            if (fromDate || toDate) {
+                if (!l.CreatedAt) {
+                    matchesDate = false;
+                } else {
+                    const leadDateObj = new Date(l.CreatedAt);
+                    const offset = leadDateObj.getTimezoneOffset();
+                    const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
+                    const localDateStr = localDateObj.toISOString().split('T')[0];
 
-                if (fromDate && toDate) {
-                    matchesDate = localDateStr >= fromDate && localDateStr <= toDate;
-                } else if (fromDate) {
-                    matchesDate = localDateStr >= fromDate;
-                } else if (toDate) {
-                    matchesDate = localDateStr <= toDate;
+                    if (fromDate && toDate) {
+                        matchesDate = localDateStr >= fromDate && localDateStr <= toDate;
+                    } else if (fromDate) {
+                        matchesDate = localDateStr >= fromDate;
+                    } else if (toDate) {
+                        matchesDate = localDateStr <= toDate;
+                    }
                 }
             }
         }
@@ -828,6 +843,76 @@ const LeadList = ({ user, isMyCreated }) => {
                             })()}
                         </select>
                     </div>
+                    {/* Team Lead Single Date Picker */}
+                    {isTL && (
+                        <div style={{ position: 'relative', minWidth: '160px', flex: '0 1 auto', display: 'flex', alignItems: 'center' }}>
+                            <div style={{ position: 'relative', width: '100%' }}>
+                                <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                <input
+                                    type="date"
+                                    className="input-field"
+                                    title="Filter by Date"
+                                    placeholder="Filter by Date"
+                                    style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '40px', paddingRight: singleDate ? '34px' : '14px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
+                                    value={singleDate}
+                                    onChange={e => setSingleDate(e.target.value)}
+                                />
+                                {singleDate && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSingleDate('')}
+                                        title="Clear date filter"
+                                        style={{
+                                            position: 'absolute',
+                                            right: '10px',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            color: '#64748b',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            padding: 0
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; }}
+                                    >
+                                        <X size={15} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Team Lead Standalone Select Button */}
+                    {isTL && (
+                        <button
+                            type="button"
+                            onClick={handleToggleSelectMode}
+                            style={{
+                                background: selectMode ? '#4338ca' : '#6366f1',
+                                color: 'white',
+                                border: 'none',
+                                padding: '10px 18px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontWeight: '700',
+                                fontSize: '0.85rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                whiteSpace: 'nowrap',
+                                boxShadow: selectMode ? '0 2px 8px rgba(67, 56, 202, 0.4)' : '0 2px 6px rgba(99,102,241,0.25)',
+                                transition: 'all 0.15s ease'
+                            }}
+                            title={selectMode ? 'Exit Selection Mode' : 'Enable Selection Mode'}
+                        >
+                            <CheckSquare size={16} /> {selectMode ? 'Deselect' : 'Select'}
+                        </button>
+                    )}
+
                     {/* From Date – To Date Range Filter */}
                     {!isTL && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 1 auto' }}>
