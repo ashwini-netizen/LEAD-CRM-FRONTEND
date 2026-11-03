@@ -980,7 +980,7 @@ const LeadList = ({ user, isMyCreated }) => {
                     )}
 
                     {/* Custom Record Range Selection */}
-                    {!isTL && (
+                    {!isTL && !(isFE && isMyCreated) && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '240px', flex: '0 1 auto' }}>
                             <input
                                 type="text"
