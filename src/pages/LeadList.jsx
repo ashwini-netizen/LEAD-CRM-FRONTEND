@@ -519,10 +519,10 @@ const LeadList = ({ user, isMyCreated }) => {
     }, [location.state?.categoryFilter]);
 
     useEffect(() => {
-        if (isTL && statusFilter === 'N/A Leads') {
+        if ((isTL || isFE) && statusFilter === 'N/A Leads') {
             setStatusFilter('All');
         }
-    }, [isTL, statusFilter]);
+    }, [isTL, isFE, statusFilter]);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -843,7 +843,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                     if (idxB !== -1) return 1;
                                     return a.localeCompare(b);
                                 });
-                                const statusOptions = isTL ? ['All', ...sorted] : ['All', 'N/A Leads', ...sorted];
+                                const statusOptions = (isTL || isFE) ? ['All', ...sorted] : ['All', 'N/A Leads', ...sorted];
                                 return statusOptions.map(s => (
                                     <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s}</option>
                                 ));
