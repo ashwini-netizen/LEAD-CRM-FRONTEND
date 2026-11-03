@@ -393,10 +393,21 @@ const LoginScreen = ({ role, onLogin }) => {
                     background: white;
                     border: 1px solid #e2e8f0;
                     border-radius: 16px;
-                    padding: 14px 14px 14px 46px;
+                    padding: 14px 44px 14px 46px;
                     color: #1e293b;
                     font-size: 1rem;
                     transition: 0.3s;
+                }
+
+                /* Hide default Microsoft Edge password reveal & clear buttons */
+                .premium-input::-ms-reveal,
+                .premium-input::-ms-clear,
+                input::-ms-reveal,
+                input::-ms-clear {
+                    display: none !important;
+                    width: 0 !important;
+                    height: 0 !important;
+                    pointer-events: none !important;
                 }
 
                 .premium-input:focus {
