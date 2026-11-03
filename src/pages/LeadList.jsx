@@ -151,6 +151,7 @@ const LeadList = ({ user, isMyCreated }) => {
 
     const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
     const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
+    const isTL = user?.role === 'Team Lead' || user?.Role === 'Team Lead';
     const feCallStatuses = ['Follow-up', 'Call Follow-up', 'Busy', 'Not Answered', 'Not Answering', 'Invalid', 'Speaking to Someone Else', 'Speaking with Someone Else', 'Out of Service', 'Incoming Call Not Available', 'Incoming Not Available', 'Switch Off', 'Hold', 'Processing'];
 
     const baseLeads = isMyCreated
@@ -828,110 +829,114 @@ const LeadList = ({ user, isMyCreated }) => {
                         </select>
                     </div>
                     {/* From Date – To Date Range Filter */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 1 auto' }}>
-                        <div style={{ position: 'relative', minWidth: '150px', flex: '1 1 auto' }}>
-                            <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
-                            <input
-                                type="date"
-                                className="input-field"
-                                title="From Date"
-                                placeholder="From Date"
-                                max={toDate || undefined}
-                                style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '40px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
-                                value={fromDate}
-                                onChange={e => handleFromDateChange(e.target.value)}
-                            />
+                    {!isTL && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 1 auto' }}>
+                            <div style={{ position: 'relative', minWidth: '150px', flex: '1 1 auto' }}>
+                                <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                <input
+                                    type="date"
+                                    className="input-field"
+                                    title="From Date"
+                                    placeholder="From Date"
+                                    max={toDate || undefined}
+                                    style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '40px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
+                                    value={fromDate}
+                                    onChange={e => handleFromDateChange(e.target.value)}
+                                />
+                            </div>
+                            <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: '700' }}>–</span>
+                            <div style={{ position: 'relative', minWidth: '150px', flex: '1 1 auto' }}>
+                                <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                <input
+                                    type="date"
+                                    className="input-field"
+                                    title="To Date"
+                                    placeholder="To Date"
+                                    min={fromDate || undefined}
+                                    style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '40px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
+                                    value={toDate}
+                                    onChange={e => handleToDateChange(e.target.value)}
+                                />
+                            </div>
+                            {(fromDate || toDate) && (
+                                <button
+                                    type="button"
+                                    onClick={() => { setFromDate(''); setToDate(''); }}
+                                    title="Clear date filter"
+                                    style={{
+                                        background: '#f1f5f9',
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '8px',
+                                        padding: '8px 10px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '4px',
+                                        color: '#64748b',
+                                        fontSize: '0.8rem',
+                                        fontWeight: '600',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#ef4444'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
+                                >
+                                    <X size={14} /> Clear
+                                </button>
+                            )}
                         </div>
-                        <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: '700' }}>–</span>
-                        <div style={{ position: 'relative', minWidth: '150px', flex: '1 1 auto' }}>
-                            <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
-                            <input
-                                type="date"
-                                className="input-field"
-                                title="To Date"
-                                placeholder="To Date"
-                                min={fromDate || undefined}
-                                style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '40px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
-                                value={toDate}
-                                onChange={e => handleToDateChange(e.target.value)}
-                            />
-                        </div>
-                        {(fromDate || toDate) && (
-                            <button
-                                type="button"
-                                onClick={() => { setFromDate(''); setToDate(''); }}
-                                title="Clear date filter"
-                                style={{
-                                    background: '#f1f5f9',
-                                    border: '1px solid #cbd5e1',
-                                    borderRadius: '8px',
-                                    padding: '8px 10px',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '4px',
-                                    color: '#64748b',
-                                    fontSize: '0.8rem',
-                                    fontWeight: '600',
-                                    transition: 'all 0.15s ease'
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#ef4444'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
-                            >
-                                <X size={14} /> Clear
-                            </button>
-                        )}
-                    </div>
+                    )}
 
                     {/* Custom Record Range Selection */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '240px', flex: '0 1 auto' }}>
-                        <input
-                            type="text"
-                            className="input-field"
-                            placeholder="Range (e.g. 1-30, 50-100)"
-                            value={rangeInput}
-                            onChange={e => {
-                                setRangeInput(e.target.value);
-                                if (rangeError) setRangeError('');
-                            }}
-                            onKeyDown={e => {
-                                if (e.key === 'Enter') handleSelectRange();
-                            }}
-                            style={{
-                                width: '100%',
-                                minWidth: '150px',
-                                boxSizing: 'border-box',
-                                background: 'white',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                                borderColor: rangeError ? '#ef4444' : undefined,
-                                fontSize: '0.85rem'
-                            }}
-                            title="Enter record range (e.g. 1-30, 50-100, 500-1000 or 2000-3000)"
-                        />
-                        <button
-                            type="button"
-                            onClick={handleSelectRange}
-                            style={{
-                                background: '#6366f1',
-                                color: 'white',
-                                border: 'none',
-                                padding: '10px 18px',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                fontWeight: '700',
-                                fontSize: '0.85rem',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                whiteSpace: 'nowrap',
-                                boxShadow: '0 2px 6px rgba(99,102,241,0.25)',
-                                transition: 'all 0.15s ease'
-                            }}
-                        >
-                            <CheckSquare size={16} /> Select
-                        </button>
-                    </div>
+                    {!isTL && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '240px', flex: '0 1 auto' }}>
+                            <input
+                                type="text"
+                                className="input-field"
+                                placeholder="Range (e.g. 1-30, 50-100)"
+                                value={rangeInput}
+                                onChange={e => {
+                                    setRangeInput(e.target.value);
+                                    if (rangeError) setRangeError('');
+                                }}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') handleSelectRange();
+                                }}
+                                style={{
+                                    width: '100%',
+                                    minWidth: '150px',
+                                    boxSizing: 'border-box',
+                                    background: 'white',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                    borderColor: rangeError ? '#ef4444' : undefined,
+                                    fontSize: '0.85rem'
+                                }}
+                                title="Enter record range (e.g. 1-30, 50-100, 500-1000 or 2000-3000)"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleSelectRange}
+                                style={{
+                                    background: '#6366f1',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '10px 18px',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontWeight: '700',
+                                    fontSize: '0.85rem',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    whiteSpace: 'nowrap',
+                                    boxShadow: '0 2px 6px rgba(99,102,241,0.25)',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                <CheckSquare size={16} /> Select
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Selected Records Status Banner */}
@@ -1117,7 +1122,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                     )}
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Status</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Created At</th>
-                                    <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Updated At</th>
+                                    {!isTL && <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Updated At</th>}
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', textAlign: 'center' }}>Action</th>
                                 </tr>
                             </thead>
@@ -1182,9 +1187,11 @@ const LeadList = ({ user, isMyCreated }) => {
                                             <td style={{ padding: '16px 20px', color: '#334155', fontWeight: '700', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
                                                 {lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB') : 'N/A'}
                                             </td>
-                                            <td style={{ padding: '16px 20px', color: '#334155', fontWeight: '700', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
-                                                {lead.UpdatedAt ? new Date(lead.UpdatedAt).toLocaleDateString('en-GB') : 'N/A'}
-                                            </td>
+                                            {!isTL && (
+                                                <td style={{ padding: '16px 20px', color: '#334155', fontWeight: '700', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+                                                    {lead.UpdatedAt ? new Date(lead.UpdatedAt).toLocaleDateString('en-GB') : 'N/A'}
+                                                </td>
+                                            )}
                                             <td style={{ padding: '16px 20px', whiteSpace: 'nowrap', textAlign: 'center' }}>
                                                 <div style={{ display: 'inline-flex', gap: '12px', alignItems: 'center', justifyContent: 'center' }}>
                                                     <Eye
