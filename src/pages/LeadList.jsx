@@ -153,6 +153,7 @@ const LeadList = ({ user, isMyCreated }) => {
     const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
     const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
     const isTL = user?.role === 'Team Lead' || user?.Role === 'Team Lead';
+    const isAdmin = user?.role === 'Admin' || user?.Role === 'Admin';
     const feCallStatuses = ['Follow-up', 'Call Follow-up', 'Busy', 'Not Answered', 'Not Answering', 'Invalid', 'Speaking to Someone Else', 'Speaking with Someone Else', 'Out of Service', 'Incoming Call Not Available', 'Incoming Not Available', 'Switch Off', 'Hold', 'Processing'];
 
     const baseLeads = isMyCreated
@@ -519,10 +520,10 @@ const LeadList = ({ user, isMyCreated }) => {
     }, [location.state?.categoryFilter]);
 
     useEffect(() => {
-        if ((isTL || isFE) && statusFilter === 'N/A Leads') {
+        if ((isTL || isFE || isAdmin) && statusFilter === 'N/A Leads') {
             setStatusFilter('All');
         }
-    }, [isTL, isFE, statusFilter]);
+    }, [isTL, isFE, isAdmin, statusFilter]);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -565,7 +566,7 @@ const LeadList = ({ user, isMyCreated }) => {
         }
 
         let matchesDate = true;
-        if (isTL || isFE) {
+        if (isTL || isFE || isAdmin) {
             if (singleDate) {
                 if (!l.CreatedAt) {
                     matchesDate = false;
@@ -843,15 +844,15 @@ const LeadList = ({ user, isMyCreated }) => {
                                     if (idxB !== -1) return 1;
                                     return a.localeCompare(b);
                                 });
-                                const statusOptions = (isTL || isFE) ? ['All', ...sorted] : ['All', 'N/A Leads', ...sorted];
+                                const statusOptions = (isTL || isFE || isAdmin) ? ['All', ...sorted] : ['All', 'N/A Leads', ...sorted];
                                 return statusOptions.map(s => (
                                     <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s}</option>
                                 ));
                             })()}
                         </select>
                     </div>
-                    {/* Team Lead & Field Executive Single Date Picker */}
-                    {(isTL || isFE) && (
+                    {/* Team Lead, Field Executive & Admin Single Date Picker */}
+                    {(isTL || isFE || isAdmin) && (
                         <div style={{ position: 'relative', minWidth: '160px', flex: '0 1 auto', display: 'flex', alignItems: 'center' }}>
                             <div style={{ position: 'relative', width: '100%' }}>
                                 <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
@@ -893,8 +894,8 @@ const LeadList = ({ user, isMyCreated }) => {
                         </div>
                     )}
 
-                    {/* Team Lead & Field Executive Standalone Select Button */}
-                    {(isTL || isFE) && (
+                    {/* Team Lead, Field Executive & Admin Standalone Select Button */}
+                    {(isTL || isFE || isAdmin) && (
                         <button
                             type="button"
                             onClick={handleToggleSelectMode}
@@ -920,8 +921,8 @@ const LeadList = ({ user, isMyCreated }) => {
                         </button>
                     )}
 
-                    {/* From Date – To Date Range Filter (Call Executive, Admin, etc.) */}
-                    {!isTL && !isFE && (
+                    {/* From Date – To Date Range Filter (Call Executive, etc.) */}
+                    {!isTL && !isFE && !isAdmin && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 1 auto' }}>
                             <div style={{ position: 'relative', minWidth: '150px', flex: '1 1 auto' }}>
                                 <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
@@ -979,8 +980,8 @@ const LeadList = ({ user, isMyCreated }) => {
                         </div>
                     )}
 
-                    {/* Custom Record Range Selection (Call Executive, Admin, etc.) */}
-                    {!isTL && !isFE && (
+                    {/* Custom Record Range Selection (Call Executive, etc.) */}
+                    {!isTL && !isFE && !isAdmin && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '240px', flex: '0 1 auto' }}>
                             <input
                                 type="text"
