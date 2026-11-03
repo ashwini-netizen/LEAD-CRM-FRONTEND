@@ -526,6 +526,12 @@ const LeadList = ({ user, isMyCreated }) => {
     }, [isTL, isFE, isAdmin, statusFilter]);
 
     useEffect(() => {
+        if (isAdmin && categoryFilter !== 'all') {
+            setCategoryFilter('all');
+        }
+    }, [isAdmin, categoryFilter]);
+
+    useEffect(() => {
         setCurrentPage(1);
     }, [search, statusFilter, fromDate, toDate, singleDate, roleFilter, viewFilter, categoryFilter]);
 
@@ -756,60 +762,62 @@ const LeadList = ({ user, isMyCreated }) => {
                     </div>
                 )}
 
-                {/* Quick Category Filter Tabs (All / Conversions / Pending) */}
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                    <button
-                        type="button"
-                        onClick={() => { setCategoryFilter('all'); setStatusFilter('All'); }}
-                        style={{
-                            padding: '8px 18px',
-                            borderRadius: '20px',
-                            border: `1.5px solid ${categoryFilter === 'all' ? '#6366f1' : '#e2e8f0'}`,
-                            background: categoryFilter === 'all' ? 'rgba(99, 102, 241, 0.1)' : 'white',
-                            color: categoryFilter === 'all' ? '#6366f1' : '#64748b',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            fontWeight: '700',
-                            transition: 'all 0.15s ease'
-                        }}
-                    >
-                        All Leads ({leads.length})
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => { setCategoryFilter('conversions'); setStatusFilter('All'); }}
-                        style={{
-                            padding: '8px 18px',
-                            borderRadius: '20px',
-                            border: `1.5px solid ${categoryFilter === 'conversions' ? '#10b981' : '#e2e8f0'}`,
-                            background: categoryFilter === 'conversions' ? 'rgba(16, 185, 129, 0.1)' : 'white',
-                            color: categoryFilter === 'conversions' ? '#059669' : '#64748b',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            fontWeight: '700',
-                            transition: 'all 0.15s ease'
-                        }}
-                    >
-                        Conversions ({leads.filter(l => isConvertedStatus(l.Status)).length})
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => { setCategoryFilter('pending'); setStatusFilter('All'); }}
-                        style={{
-                            padding: '8px 18px',
-                            borderRadius: '20px',
-                            border: `1.5px solid ${categoryFilter === 'pending' ? '#f59e0b' : '#e2e8f0'}`,
-                            background: categoryFilter === 'pending' ? 'rgba(245, 158, 11, 0.1)' : 'white',
-                            color: categoryFilter === 'pending' ? '#d97706' : '#64748b',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            fontWeight: '700',
-                            transition: 'all 0.15s ease'
-                        }}
-                    >
-                        Pending ({leads.filter(l => isPendingStatus(l.Status)).length})
-                    </button>
-                </div>
+                {/* Quick Category Filter Tabs (All / Conversions / Pending) - Hidden for Admin */}
+                {!isAdmin && (
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                        <button
+                            type="button"
+                            onClick={() => { setCategoryFilter('all'); setStatusFilter('All'); }}
+                            style={{
+                                padding: '8px 18px',
+                                borderRadius: '20px',
+                                border: `1.5px solid ${categoryFilter === 'all' ? '#6366f1' : '#e2e8f0'}`,
+                                background: categoryFilter === 'all' ? 'rgba(99, 102, 241, 0.1)' : 'white',
+                                color: categoryFilter === 'all' ? '#6366f1' : '#64748b',
+                                cursor: 'pointer',
+                                fontSize: '0.85rem',
+                                fontWeight: '700',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            All Leads ({leads.length})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setCategoryFilter('conversions'); setStatusFilter('All'); }}
+                            style={{
+                                padding: '8px 18px',
+                                borderRadius: '20px',
+                                border: `1.5px solid ${categoryFilter === 'conversions' ? '#10b981' : '#e2e8f0'}`,
+                                background: categoryFilter === 'conversions' ? 'rgba(16, 185, 129, 0.1)' : 'white',
+                                color: categoryFilter === 'conversions' ? '#059669' : '#64748b',
+                                cursor: 'pointer',
+                                fontSize: '0.85rem',
+                                fontWeight: '700',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            Conversions ({leads.filter(l => isConvertedStatus(l.Status)).length})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setCategoryFilter('pending'); setStatusFilter('All'); }}
+                            style={{
+                                padding: '8px 18px',
+                                borderRadius: '20px',
+                                border: `1.5px solid ${categoryFilter === 'pending' ? '#f59e0b' : '#e2e8f0'}`,
+                                background: categoryFilter === 'pending' ? 'rgba(245, 158, 11, 0.1)' : 'white',
+                                color: categoryFilter === 'pending' ? '#d97706' : '#64748b',
+                                cursor: 'pointer',
+                                fontSize: '0.85rem',
+                                fontWeight: '700',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            Pending ({leads.filter(l => isPendingStatus(l.Status)).length})
+                        </button>
+                    </div>
+                )}
 
                 {/* Search Bar, Date Filter, Status Filter, and Custom Record Range Selection */}
                 <div className="responsive-filter-bar" style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
