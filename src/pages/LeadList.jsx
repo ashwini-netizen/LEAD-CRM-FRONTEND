@@ -536,8 +536,10 @@ const LeadList = ({ user, isMyCreated }) => {
     }, [search, statusFilter, fromDate, toDate, singleDate, roleFilter, viewFilter, categoryFilter]);
 
     const filtered = leads.filter(l => {
-        if (categoryFilter === 'conversions' && !isConvertedStatus(l.Status)) return false;
-        if (categoryFilter === 'pending' && !isPendingStatus(l.Status)) return false;
+        if (statusFilter === 'All') {
+            if (categoryFilter === 'conversions' && !isConvertedStatus(l.Status)) return false;
+            if (categoryFilter === 'pending' && !isPendingStatus(l.Status)) return false;
+        }
 
         const matchesSearch = l.FullName?.toLowerCase().includes(search.toLowerCase()) ||
             (l.Phone && String(l.Phone).toLowerCase().includes(search.toLowerCase())) ||
@@ -616,9 +618,9 @@ const LeadList = ({ user, isMyCreated }) => {
 
             if (!matchesStatus) return false;
 
-            // Apply phone number filtering only to Interested and Not Interested statuses
+            // Apply phone number filtering only to Interested status
             const normStatusFilter = (statusFilter || '').trim().toLowerCase();
-            if ((normStatusFilter === 'interested' || normStatusFilter === 'not interested') && !hasValidPhone(l.Phone)) {
+            if (normStatusFilter === 'interested' && !hasValidPhone(l.Phone)) {
                 return false;
             }
         }
@@ -836,7 +838,12 @@ const LeadList = ({ user, isMyCreated }) => {
                             className="input-field"
                             style={{ width: '100%', boxSizing: 'border-box', cursor: 'pointer', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}
                             value={statusFilter}
-                            onChange={e => setStatusFilter(e.target.value)}
+                            onChange={e => {
+                                setStatusFilter(e.target.value);
+                                if (e.target.value !== 'All') {
+                                    setCategoryFilter('all');
+                                }
+                            }}
                         >
                             {(() => {
                                 const rawStatuses = leads.map(l => l.Status).filter(Boolean);
