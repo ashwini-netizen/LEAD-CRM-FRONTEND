@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, Edit, Search, Loader, RefreshCw, FileText, Upload, Download, ArrowLeft, Calendar, Trash2, AlertTriangle, CheckSquare, Square, X, FileSpreadsheet, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check } from 'lucide-react';
 import { jsPDF } from 'jspdf';
@@ -100,12 +100,29 @@ const hasValidPhone = (phone) => {
     return /\d/.test(str);
 };
 
+// In-memory module cache for instant perceived page loads
+let leadsCache = {
+    data: null,
+    userId: null,
+    role: null,
+    isMyCreated: null,
+    timestamp: 0
+};
+
 const LeadList = ({ user, isMyCreated }) => {
     const navigate = useNavigate();
     const location = useLocation();
+
+    const currentUserId = user?.id || user?.UserID;
+    const currentRole = user?.role || user?.Role;
+    const hasValidCache = leadsCache.data &&
+        leadsCache.userId === currentUserId &&
+        leadsCache.role === currentRole &&
+        leadsCache.isMyCreated === isMyCreated;
+
     const [categoryFilter, setCategoryFilter] = useState(location.state?.categoryFilter || 'all');
-    const [leads, setLeads] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [leads, setLeads] = useState(() => (hasValidCache ? leadsCache.data : []));
+    const [loading, setLoading] = useState(!hasValidCache);
     const [error, setError] = useState('');
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('All');
@@ -154,20 +171,33 @@ const LeadList = ({ user, isMyCreated }) => {
     const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
     const isTL = user?.role === 'Team Lead' || user?.Role === 'Team Lead';
     const isAdmin = user?.role === 'Admin' || user?.Role === 'Admin';
-    const feCallStatuses = ['Follow-up', 'Call Follow-up', 'Busy', 'Not Answered', 'Not Answering', 'Invalid', 'Speaking to Someone Else', 'Speaking with Someone Else', 'Out of Service', 'Incoming Call Not Available', 'Incoming Not Available', 'Switch Off', 'Hold', 'Processing'];
+    const feCallStatuses = useMemo(() => [
+        'Follow-up', 'Call Follow-up', 'Busy', 'Not Answered', 'Not Answering', 'Invalid',
+        'Speaking to Someone Else', 'Speaking with Someone Else', 'Out of Service',
+        'Incoming Call Not Available', 'Incoming Not Available', 'Switch Off', 'Hold', 'Processing'
+    ], []);
 
-    const baseLeads = isMyCreated
-        ? leads.filter(l => String(l.CreatedBy) === String(user?.id || user?.UserID))
-        : (isFE ? leads.filter(l => String(l.CreatedBy) !== String(user?.id || user?.UserID) && !feCallStatuses.includes(l.Status)) : leads);
+    const baseLeads = useMemo(() => {
+        const currentUserIdStr = String(currentUserId || '');
+        if (isMyCreated) {
+            return leads.filter(l => String(l.CreatedBy) === currentUserIdStr);
+        }
+        if (isFE) {
+            return leads.filter(l => String(l.CreatedBy) !== currentUserIdStr && !feCallStatuses.includes(l.Status));
+        }
+        return leads;
+    }, [leads, isMyCreated, isFE, currentUserId, feCallStatuses]);
 
-    const fetchLeads = async () => {
-        setLoading(true);
+    const fetchLeads = useCallback(async (forceSpinner = false) => {
+        if (forceSpinner || leads.length === 0) {
+            setLoading(true);
+        }
         setError('');
         try {
             const token = localStorage.getItem('crm_token');
             if (!token) {
-                const currentRole = localStorage.getItem('selected_role');
-                navigate(currentRole ? '/login' : '/', { replace: true });
+                const curRole = localStorage.getItem('selected_role');
+                navigate(curRole ? '/login' : '/', { replace: true });
                 return;
             }
             const res = await fetch(`${API_URL}/api/leads`, {
@@ -176,21 +206,29 @@ const LeadList = ({ user, isMyCreated }) => {
             if (res.status === 401) {
                 localStorage.removeItem('crm_token');
                 localStorage.removeItem('crm_user');
-                const currentRole = localStorage.getItem('selected_role');
-                navigate(currentRole ? '/login' : '/', { replace: true });
+                const curRole = localStorage.getItem('selected_role');
+                navigate(curRole ? '/login' : '/', { replace: true });
                 return;
             }
             if (!res.ok) {
                 const text = await res.text();
                 throw new Error(`Failed to fetch leads: ${res.status} ${text}`);
             }
-            setLeads(await res.json());
+            const data = await res.json();
+            leadsCache = {
+                data,
+                userId: currentUserId,
+                role: currentRole,
+                isMyCreated,
+                timestamp: Date.now()
+            };
+            setLeads(data);
         } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentUserId, currentRole, isMyCreated, leads.length, navigate]);
 
     const handleImport = async (e) => {
         const file = e.target.files[0];
@@ -242,7 +280,8 @@ const LeadList = ({ user, isMyCreated }) => {
             if (!res.ok) throw new Error(data.message || 'Import failed');
 
             alert(data.message);
-            fetchLeads();
+            leadsCache.data = null;
+            fetchLeads(true);
         } catch (err) {
             alert(err.message);
         } finally {
@@ -498,7 +537,8 @@ const LeadList = ({ user, isMyCreated }) => {
             setRangeInput('');
             setRangeError('');
             setSelectMode(false);
-            fetchLeads();
+            leadsCache.data = null;
+            fetchLeads(true);
         } catch (err) {
             alert(err.message);
         } finally {
@@ -508,10 +548,13 @@ const LeadList = ({ user, isMyCreated }) => {
 
     useEffect(() => { 
         fetchLeads(); 
-        const handleLeadUpdate = () => fetchLeads();
+        const handleLeadUpdate = () => {
+            leadsCache.data = null;
+            fetchLeads(true);
+        };
         window.addEventListener('lead_updated', handleLeadUpdate);
         return () => window.removeEventListener('lead_updated', handleLeadUpdate);
-    }, []);
+    }, [fetchLeads]);
 
     useEffect(() => {
         if (location.state?.categoryFilter) {
@@ -535,108 +578,111 @@ const LeadList = ({ user, isMyCreated }) => {
         setCurrentPage(1);
     }, [search, statusFilter, fromDate, toDate, singleDate, roleFilter, viewFilter, categoryFilter]);
 
-    const filtered = leads.filter(l => {
-        if (statusFilter === 'All') {
-            if (categoryFilter === 'conversions' && !isConvertedStatus(l.Status)) return false;
-            if (categoryFilter === 'pending' && !isPendingStatus(l.Status)) return false;
+    const { conversionsCount, pendingCount } = useMemo(() => {
+        let conv = 0;
+        let pend = 0;
+        for (let i = 0; i < leads.length; i++) {
+            const s = leads[i].Status;
+            if (isConvertedStatus(s)) conv++;
+            if (isPendingStatus(s)) pend++;
         }
+        return { conversionsCount: conv, pendingCount: pend };
+    }, [leads]);
 
-        const matchesSearch = l.FullName?.toLowerCase().includes(search.toLowerCase()) ||
-            (l.Phone && String(l.Phone).toLowerCase().includes(search.toLowerCase())) ||
-            l.CompanyName?.toLowerCase().includes(search.toLowerCase()) ||
-            l.ServiceInterested?.toLowerCase().includes(search.toLowerCase());
+    const filtered = useMemo(() => {
+        const searchLower = search.trim().toLowerCase();
+        const hasSearch = searchLower.length > 0;
+        const hasStatus = statusFilter !== 'All';
+        const statusLower = statusFilter.trim().toLowerCase();
+        const isNAFilter = statusFilter === 'N/A Leads';
+        const isInterestedFilter = statusLower === 'interested';
+        const currentUserIdStr = String(currentUserId || '');
 
-        const matchesRole = roleFilter === 'All' || l.CreatorRole === roleFilter;
-
-        let matchesView = true;
-        if (viewFilter === 'Attained Meeting') {
-            matchesView = l.Status === 'Meeting Attended' || l.Status === 'Quotation' || l.MeetingFollowupDate;
-        } else if (viewFilter === 'Created Leads') {
-            matchesView = l.CreatorRole === 'Team Lead';
-        } else if (viewFilter === "Executive's Leads") {
-            matchesView = l.CreatorRole === 'Call Executive' || l.CreatorRole === 'Field Executive';
-        }
-
-        // Field Executives: Only show meeting-related leads in this view, unless viewing their created leads
-        if (!isMyCreated && isFE) {
-            // Exclude leads created by this user from the Assigned Meetings view
-            if (String(l.CreatedBy) === String(user?.id || user?.UserID)) {
-                return false;
+        return leads.filter(l => {
+            if (!hasStatus) {
+                if (categoryFilter === 'conversions' && !isConvertedStatus(l.Status)) return false;
+                if (categoryFilter === 'pending' && !isPendingStatus(l.Status)) return false;
             }
 
-            if (feCallStatuses.includes(l.Status)) {
-                return false;
+            if (hasSearch) {
+                const matchesSearch = (l.FullName && l.FullName.toLowerCase().includes(searchLower)) ||
+                    (l.Phone && String(l.Phone).toLowerCase().includes(searchLower)) ||
+                    (l.CompanyName && l.CompanyName.toLowerCase().includes(searchLower)) ||
+                    (l.ServiceInterested && l.ServiceInterested.toLowerCase().includes(searchLower));
+                if (!matchesSearch) return false;
             }
-        }
 
-        if (isMyCreated && String(l.CreatedBy) !== String(user?.id || user?.UserID)) {
-            return false;
-        }
+            if (roleFilter !== 'All' && l.CreatorRole !== roleFilter) return false;
 
-        let matchesDate = true;
-        if (isTL || isFE || isAdmin) {
-            if (singleDate) {
-                if (!l.CreatedAt) {
-                    matchesDate = false;
-                } else {
+            if (viewFilter === 'Attained Meeting') {
+                if (!(l.Status === 'Meeting Attended' || l.Status === 'Quotation' || l.MeetingFollowupDate)) return false;
+            } else if (viewFilter === 'Created Leads') {
+                if (l.CreatorRole !== 'Team Lead') return false;
+            } else if (viewFilter === "Executive's Leads") {
+                if (!(l.CreatorRole === 'Call Executive' || l.CreatorRole === 'Field Executive')) return false;
+            }
+
+            // Field Executives: Only show meeting-related leads in this view, unless viewing their created leads
+            if (!isMyCreated && isFE) {
+                if (String(l.CreatedBy) === currentUserIdStr) return false;
+                if (feCallStatuses.includes(l.Status)) return false;
+            }
+
+            if (isMyCreated && String(l.CreatedBy) !== currentUserIdStr) return false;
+
+            if (isTL || isFE || isAdmin) {
+                if (singleDate) {
+                    if (!l.CreatedAt) return false;
                     const leadDateObj = new Date(l.CreatedAt);
                     const offset = leadDateObj.getTimezoneOffset();
                     const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
                     const localDateStr = localDateObj.toISOString().split('T')[0];
-                    matchesDate = localDateStr === singleDate;
+                    if (localDateStr !== singleDate) return false;
                 }
-            }
-        } else {
-            if (fromDate || toDate) {
-                if (!l.CreatedAt) {
-                    matchesDate = false;
-                } else {
+            } else {
+                if (fromDate || toDate) {
+                    if (!l.CreatedAt) return false;
                     const leadDateObj = new Date(l.CreatedAt);
                     const offset = leadDateObj.getTimezoneOffset();
                     const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
                     const localDateStr = localDateObj.toISOString().split('T')[0];
 
                     if (fromDate && toDate) {
-                        matchesDate = localDateStr >= fromDate && localDateStr <= toDate;
+                        if (localDateStr < fromDate || localDateStr > toDate) return false;
                     } else if (fromDate) {
-                        matchesDate = localDateStr >= fromDate;
+                        if (localDateStr < fromDate) return false;
                     } else if (toDate) {
-                        matchesDate = localDateStr <= toDate;
+                        if (localDateStr > toDate) return false;
                     }
                 }
             }
-        }
 
-        if (statusFilter === 'N/A Leads') {
-            if (hasValidPhone(l.Phone)) {
-                return false;
+            if (isNAFilter) {
+                if (hasValidPhone(l.Phone)) return false;
+            } else if (hasStatus) {
+                const matchesStatus = getCanonicalStatus(l.Status).toLowerCase() === statusLower ||
+                    (l.Status && l.Status.trim().toLowerCase() === statusLower);
+                if (!matchesStatus) return false;
+
+                if (isInterestedFilter && !hasValidPhone(l.Phone)) return false;
             }
-        } else {
-            const matchesStatus = statusFilter === 'All' || 
-                getCanonicalStatus(l.Status).toLowerCase() === statusFilter.toLowerCase() ||
-                (l.Status && l.Status.trim().toLowerCase() === statusFilter.trim().toLowerCase());
 
-            if (!matchesStatus) return false;
-
-            // Apply phone number filtering only to Interested status
-            const normStatusFilter = (statusFilter || '').trim().toLowerCase();
-            if (normStatusFilter === 'interested' && !hasValidPhone(l.Phone)) {
-                return false;
-            }
-        }
-
-        return matchesSearch && matchesRole && matchesView && matchesDate;
-    });
+            return true;
+        });
+    }, [leads, statusFilter, categoryFilter, search, roleFilter, viewFilter, isMyCreated, isFE, currentUserId, singleDate, fromDate, toDate, isTL, isAdmin, feCallStatuses]);
 
     const effectivePageSize = pageSize === 'all' ? (filtered.length || 1) : Number(pageSize);
     const totalPages = Math.max(1, Math.ceil(filtered.length / effectivePageSize));
     const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
     const startIndex = (safeCurrentPage - 1) * effectivePageSize;
     const endIndex = Math.min(startIndex + effectivePageSize, filtered.length);
-    const paginatedLeads = pageSize === 'all' ? filtered : filtered.slice(startIndex, endIndex);
+    const paginatedLeads = useMemo(() => {
+        return pageSize === 'all' ? filtered : filtered.slice(startIndex, endIndex);
+    }, [filtered, pageSize, startIndex, endIndex]);
 
-    const isAllCurrentPageSelected = paginatedLeads.length > 0 && paginatedLeads.every(l => selectedLeads.includes(l.LeadID));
-    const isSomeCurrentPageSelected = paginatedLeads.some(l => selectedLeads.includes(l.LeadID));
+    const selectedLeadsSet = useMemo(() => new Set(selectedLeads), [selectedLeads]);
+    const isAllCurrentPageSelected = paginatedLeads.length > 0 && paginatedLeads.every(l => selectedLeadsSet.has(l.LeadID));
+    const isSomeCurrentPageSelected = paginatedLeads.some(l => selectedLeadsSet.has(l.LeadID));
 
     const toggleSelectAllCurrentPage = () => {
         if (isAllCurrentPageSelected) {
@@ -799,7 +845,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                 transition: 'all 0.15s ease'
                             }}
                         >
-                            Conversions ({leads.filter(l => isConvertedStatus(l.Status)).length})
+                            Conversions ({conversionsCount})
                         </button>
                         <button
                             type="button"
@@ -816,7 +862,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                 transition: 'all 0.15s ease'
                             }}
                         >
-                            Pending ({leads.filter(l => isPendingStatus(l.Status)).length})
+                            Pending ({pendingCount})
                         </button>
                     </div>
                 )}
@@ -1237,16 +1283,17 @@ const LeadList = ({ user, isMyCreated }) => {
                             <tbody>
                                 {paginatedLeads.map((lead, i) => {
                                     const sc = statusColors[getCanonicalStatus(lead.Status)] || { bg: 'rgba(99,102,241,0.12)', color: '#6366f1' };
+                                    const isLeadSelected = selectedLeadsSet.has(lead.LeadID);
                                     return (
-                                        <tr key={lead.LeadID} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: '0.15s', background: selectedLeads.includes(lead.LeadID) ? 'rgba(99,102,241,0.06)' : 'transparent' }}
-                                            onMouseEnter={e => { if (!selectedLeads.includes(lead.LeadID)) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
-                                            onMouseLeave={e => { if (!selectedLeads.includes(lead.LeadID)) e.currentTarget.style.background = 'transparent'; }}
+                                        <tr key={lead.LeadID} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: '0.15s', background: isLeadSelected ? 'rgba(99,102,241,0.06)' : 'transparent' }}
+                                            onMouseEnter={e => { if (!isLeadSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+                                            onMouseLeave={e => { if (!isLeadSelected) e.currentTarget.style.background = 'transparent'; }}
                                         >
                                             {selectMode && (
                                                 <td style={{ padding: '16px 12px', textAlign: 'center', width: '40px' }}>
                                                     <input
                                                         type="checkbox"
-                                                        checked={selectedLeads.includes(lead.LeadID)}
+                                                        checked={isLeadSelected}
                                                         onChange={() => toggleSelectLead(lead.LeadID)}
                                                         style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#6366f1' }}
                                                     />
