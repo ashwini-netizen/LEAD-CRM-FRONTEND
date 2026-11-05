@@ -9,7 +9,7 @@ import UserHeader from '../components/UserHeader';
 import { stripEmojis } from '../utils/stringUtils';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
 const statusColors = {
     'Converted': { bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
@@ -73,7 +73,7 @@ const getCanonicalStatus = (status) => {
     return status;
 };
 
-const CONVERTED_STATUSES = ['converted', 'conversion', 'completed', 'paid', 'quotation', 'quotation done'];
+const CONVERTED_STATUSES = ['converted', 'conversion', 'completed', 'paid', 'quotation', 'quotation done', 'quotation needed', 'due payment'];
 const isConvertedStatus = (status) => {
     if (!status) return false;
     return CONVERTED_STATUSES.includes(status.trim().toLowerCase());
@@ -81,7 +81,7 @@ const isConvertedStatus = (status) => {
 
 const NON_PENDING_STATUSES = [
     'not interested', 'invalid', 'rejected', 'canceled', 'removed',
-    'converted', 'conversion', 'completed', 'paid', 'quotation', 'quotation done'
+    'converted', 'conversion', 'completed', 'paid', 'quotation', 'quotation done', 'quotation needed', 'due payment'
 ];
 const isPendingStatus = (status) => {
     if (!status) return false;
