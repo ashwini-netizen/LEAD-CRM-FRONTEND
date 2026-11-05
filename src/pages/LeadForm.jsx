@@ -46,14 +46,15 @@ const formatTime24 = (hour12, minute, ampm) => {
 };
 
 const LeadForm = ({ user }) => {
+    const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
     const navigate = useNavigate();
     const location = useLocation();
     const getRedirectPath = () => {
         const params = new URLSearchParams(location.search);
         const fromParam = params.get('from');
         if (fromParam === 'dashboard') return '/dashboard';
-        if (fromParam === 'leads') return '/leads';
-        return location.state?.from || '/leads';
+        if (fromParam === 'leads') return isFE ? '/leads/my-created' : '/leads';
+        return location.state?.from || (isFE ? '/leads/my-created' : '/leads');
     };
     const [formData, setFormData] = useState({
         fullName: '',
@@ -88,7 +89,11 @@ const LeadForm = ({ user }) => {
 
     const validateForm = () => {
         // 1. Check mandatory fields first
-        if (!formData.fullName || !formData.phone || !formData.email || !formData.address || !formData.company || !formData.callDate) {
+        const isMandatoryMissing = isFE
+            ? (!formData.fullName || !formData.phone || !formData.address || !formData.company || !formData.callDate)
+            : (!formData.fullName || !formData.phone || !formData.email || !formData.address || !formData.company || !formData.callDate);
+
+        if (isMandatoryMissing) {
             setSubmitError('Please fill all mandatory fields (marked with *).');
             return false;
         }
@@ -107,12 +112,14 @@ const LeadForm = ({ user }) => {
             return false;
         }
 
-        // Email: Mandatory basic validation (lowercase, must contain exactly one @ and end with .com)
-        const cleanedEmail = formData.email.trim().replace(/\s/g, '');
-        const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.com$/;
-        if (!emailRegex.test(cleanedEmail)) {
-            setSubmitError('Please enter a valid email address (lowercase ending in .com).');
-            return false;
+        // Email: Mandatory basic validation (lowercase, must contain exactly one @ and end with .com) - Only for non-FE
+        if (!isFE) {
+            const cleanedEmail = formData.email.trim().replace(/\s/g, '');
+            const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.com$/;
+            if (!emailRegex.test(cleanedEmail)) {
+                setSubmitError('Please enter a valid email address (lowercase ending in .com).');
+                return false;
+            }
         }
 
         if (formData.company.trim().length < 3) {
@@ -136,7 +143,7 @@ const LeadForm = ({ user }) => {
 
         // 3. Status-specific validation
         const shouldHideExtra = ['Busy', 'Not Answering', 'Switch Off', 'Speaking with Someone Else', 'Incoming Not Available', 'Out of Service', 'Hold', 'Processing', 'Invalid', 'other'].includes(formData.status);
-        if (!shouldHideExtra && !formData.callNote) {
+        if (!isFE && !shouldHideExtra && !formData.callNote) {
             setSubmitError('Call Note is required.');
             return false;
         }
@@ -257,18 +264,20 @@ const LeadForm = ({ user }) => {
 
             const isFollowupStatus = ['Follow-up', 'Busy', 'Not Answering', 'Speaking with Someone Else', 'Out of Service', 'Incoming Not Available', 'Switch Off', 'Hold', 'Processing', 'Invalid', 'other'].includes(formData.status);
 
-            const cleanedEmail = formData.email.trim().replace(/\s/g, '');
-            setFormData(prev => ({ ...prev, email: cleanedEmail }));
+            const cleanedEmail = isFE ? '' : formData.email.trim().replace(/\s/g, '');
+            if (!isFE) {
+                setFormData(prev => ({ ...prev, email: cleanedEmail }));
+            }
 
             const payload = {
                 fullName: formData.fullName,
                 phone: formData.phone,
-                email: cleanedEmail,
+                email: isFE ? null : (cleanedEmail || null),
                 companyName: formData.company,
                 serviceInterested: serviceSummary,
                 address: formData.address,
                 callDate: formData.callDate || null,
-                callNote: isFollowupStatus && formData.status !== 'Follow-up' ? (formData.status === 'other' ? formData.customStatus : formData.status) : formData.callNote,
+                callNote: isFE ? null : (isFollowupStatus && formData.status !== 'Follow-up' ? (formData.status === 'other' ? formData.customStatus : formData.status) : formData.callNote),
                 followupDate: formData.status === 'Follow-up' ? formData.followupDate : null,
                 followupTime: formData.status === 'Follow-up' ? formatTo12Hr(formData.followupTime) : null,
                 meetingDate: formData.meetingDate || null,
@@ -326,21 +335,23 @@ const LeadForm = ({ user }) => {
                         <label style={labelStyle}>Phone Number *</label>
                         <input name="phone" className="input-field" placeholder="10 Digit Number (starts with 6-9)" value={formData.phone} onChange={handleChange} required />
                     </div>
-                    <div>
-                        <label style={labelStyle}>Email *</label>
-                        <input
-                            name="email"
-                            type="text"
-                            className="input-field"
-                            placeholder="email@example.com"
-                            value={formData.email}
-                            onChange={handleChange}
-                            onKeyDown={e => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); }}
-                            onBlur={() => setFormData(prev => ({ ...prev, email: prev.email.trim().replace(/\s/g, '') }))}
-                            required
-                        />
-                    </div>
-                    <div>
+                    {!isFE && (
+                        <div>
+                            <label style={labelStyle}>Email *</label>
+                            <input
+                                name="email"
+                                type="text"
+                                className="input-field"
+                                placeholder="email@example.com"
+                                value={formData.email}
+                                onChange={handleChange}
+                                onKeyDown={e => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); }}
+                                onBlur={() => setFormData(prev => ({ ...prev, email: prev.email.trim().replace(/\s/g, '') }))}
+                                required
+                            />
+                        </div>
+                    )}
+                    <div style={isFE ? { gridColumn: 'span 2' } : {}}>
                         <label style={labelStyle}>Company *</label>
                         <input name="company" className="input-field" placeholder="Company Name" value={formData.company} onChange={handleChange} required />
                     </div>
@@ -350,7 +361,7 @@ const LeadForm = ({ user }) => {
                         <textarea name="address" className="input-field" rows="3" placeholder="Enter Full Address" value={formData.address} onChange={handleChange} required></textarea>
                     </div>
 
-                    <div>
+                    <div style={isFE ? { gridColumn: 'span 2' } : {}}>
                         <label style={labelStyle}>Call Date *</label>
                         <div style={{ position: 'relative' }}>
                             <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
@@ -362,20 +373,31 @@ const LeadForm = ({ user }) => {
                         <label style={labelStyle}>Lead Status *</label>
                         <select name="status" className="input-field" value={formData.status} onChange={handleChange} required>
                             <option value="" disabled hidden>Select Status</option>
-                            <option value="Interested">Interested</option>
-                            <option value="Follow-up">Follow-up</option>
-                            <option value="Converted">Converted</option>
-                            <option value="Not Interested">Not Interested</option>
-                            <option value="Busy">Busy</option>
-                            <option value="Hold">Hold</option>
-                            <option value="Switch Off">Switch Off</option>
-                            <option value="Speaking with Someone Else">Speaking with Someone Else</option>
-                            <option value="Incoming Not Available">Incoming Not Available</option>
-                            <option value="Not Answering">Not Answering</option>
-                            <option value="Processing">Processing</option>
-                            <option value="Out of Service">Out of Service</option>
-                            <option value="other">Other</option>
-                            <option value="Invalid">Invalid</option>
+                            {isFE ? (
+                                <>
+                                    <option value="Interested">Interested</option>
+                                    <option value="Follow-up">Follow-up</option>
+                                    <option value="Busy">Busy</option>
+                                    <option value="other">Other</option>
+                                </>
+                            ) : (
+                                <>
+                                    <option value="Interested">Interested</option>
+                                    <option value="Follow-up">Follow-up</option>
+                                    <option value="Converted">Converted</option>
+                                    <option value="Not Interested">Not Interested</option>
+                                    <option value="Busy">Busy</option>
+                                    <option value="Hold">Hold</option>
+                                    <option value="Switch Off">Switch Off</option>
+                                    <option value="Speaking with Someone Else">Speaking with Someone Else</option>
+                                    <option value="Incoming Not Available">Incoming Not Available</option>
+                                    <option value="Not Answering">Not Answering</option>
+                                    <option value="Processing">Processing</option>
+                                    <option value="Out of Service">Out of Service</option>
+                                    <option value="other">Other</option>
+                                    <option value="Invalid">Invalid</option>
+                                </>
+                            )}
                         </select>
                     </div>
 
@@ -459,7 +481,7 @@ const LeadForm = ({ user }) => {
                         </div>
                     )}
 
-                    {!['Busy', 'Not Answering', 'Switch Off', 'Speaking with Someone Else', 'Incoming Not Available', 'Out of Service', 'Hold', 'Processing', 'Invalid', 'other'].includes(formData.status) && (
+                    {!isFE && !['Busy', 'Not Answering', 'Switch Off', 'Speaking with Someone Else', 'Incoming Not Available', 'Out of Service', 'Hold', 'Processing', 'Invalid', 'other'].includes(formData.status) && (
                         <div style={{ gridColumn: 'span 2' }}>
                             <label style={labelStyle}>Call Note *</label>
                             <textarea name="callNote" className="input-field" rows="2" placeholder="Tell us more about the lead..." value={formData.callNote} onChange={handleChange} required></textarea>
