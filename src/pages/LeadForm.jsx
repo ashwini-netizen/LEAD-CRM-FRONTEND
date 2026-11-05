@@ -365,7 +365,7 @@ const LeadForm = ({ user }) => {
                         <label style={labelStyle}>Call Date *</label>
                         <div style={{ position: 'relative' }}>
                             <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
-                            <input type="date" name="callDate" className="input-field" style={{ paddingLeft: '36px' }} value={formData.callDate} onChange={handleChange} min={new Date().toISOString().split('T')[0]} required />
+                            <input type="date" name="callDate" className="input-field" style={{ paddingLeft: '36px' }} value={formData.callDate} onChange={handleChange} min={isFE ? undefined : new Date().toISOString().split('T')[0]} required />
                         </div>
                     </div>
 
