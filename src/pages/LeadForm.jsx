@@ -47,6 +47,8 @@ const formatTime24 = (hour12, minute, ampm) => {
 
 const LeadForm = ({ user }) => {
     const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
+    const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
+    const hideEmail = isFE || isCE;
     const navigate = useNavigate();
     const location = useLocation();
     const getRedirectPath = () => {
@@ -89,7 +91,7 @@ const LeadForm = ({ user }) => {
 
     const validateForm = () => {
         // 1. Check mandatory fields first
-        const isMandatoryMissing = isFE
+        const isMandatoryMissing = hideEmail
             ? (!formData.fullName || !formData.phone || !formData.address || !formData.company || !formData.callDate)
             : (!formData.fullName || !formData.phone || !formData.email || !formData.address || !formData.company || !formData.callDate);
 
@@ -112,8 +114,8 @@ const LeadForm = ({ user }) => {
             return false;
         }
 
-        // Email: Mandatory basic validation (lowercase, must contain exactly one @ and end with .com) - Only for non-FE
-        if (!isFE) {
+        // Email: Mandatory basic validation (lowercase, must contain exactly one @ and end with .com) - Only if email field is present
+        if (!hideEmail) {
             const cleanedEmail = formData.email.trim().replace(/\s/g, '');
             const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.com$/;
             if (!emailRegex.test(cleanedEmail)) {
@@ -264,15 +266,15 @@ const LeadForm = ({ user }) => {
 
             const isFollowupStatus = ['Follow-up', 'Busy', 'Not Answering', 'Speaking with Someone Else', 'Out of Service', 'Incoming Not Available', 'Switch Off', 'Hold', 'Processing', 'Invalid', 'other'].includes(formData.status);
 
-            const cleanedEmail = isFE ? '' : formData.email.trim().replace(/\s/g, '');
-            if (!isFE) {
+            const cleanedEmail = hideEmail ? '' : formData.email.trim().replace(/\s/g, '');
+            if (!hideEmail) {
                 setFormData(prev => ({ ...prev, email: cleanedEmail }));
             }
 
             const payload = {
                 fullName: formData.fullName,
                 phone: formData.phone,
-                email: isFE ? null : (cleanedEmail || null),
+                email: hideEmail ? null : (cleanedEmail || null),
                 companyName: formData.company,
                 serviceInterested: serviceSummary,
                 address: formData.address,
@@ -335,7 +337,7 @@ const LeadForm = ({ user }) => {
                         <label style={labelStyle}>Phone Number *</label>
                         <input name="phone" className="input-field" placeholder="10 Digit Number (starts with 6-9)" value={formData.phone} onChange={handleChange} required />
                     </div>
-                    {!isFE && (
+                    {!hideEmail && (
                         <div>
                             <label style={labelStyle}>Email *</label>
                             <input
@@ -351,7 +353,7 @@ const LeadForm = ({ user }) => {
                             />
                         </div>
                     )}
-                    <div style={isFE ? { gridColumn: 'span 2' } : {}}>
+                    <div style={hideEmail ? { gridColumn: 'span 2' } : {}}>
                         <label style={labelStyle}>Company *</label>
                         <input name="company" className="input-field" placeholder="Company Name" value={formData.company} onChange={handleChange} required />
                     </div>
@@ -385,7 +387,7 @@ const LeadForm = ({ user }) => {
                                 <>
                                     <option value="Interested">Interested</option>
                                     <option value="Follow-up">Follow-up</option>
-                                    <option value="Converted">Converted</option>
+                                    {!isCE && <option value="Converted">Converted</option>}
                                     <option value="Not Interested">Not Interested</option>
                                     <option value="Busy">Busy</option>
                                     <option value="Hold">Hold</option>
