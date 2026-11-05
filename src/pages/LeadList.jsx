@@ -105,7 +105,6 @@ let leadsCache = {
     data: null,
     userId: null,
     role: null,
-    isMyCreated: null,
     timestamp: 0
 };
 
@@ -117,8 +116,7 @@ const LeadList = ({ user, isMyCreated }) => {
     const currentRole = user?.role || user?.Role;
     const hasValidCache = leadsCache.data &&
         leadsCache.userId === currentUserId &&
-        leadsCache.role === currentRole &&
-        leadsCache.isMyCreated === isMyCreated;
+        leadsCache.role === currentRole;
 
     const [categoryFilter, setCategoryFilter] = useState(location.state?.categoryFilter || 'all');
     const [leads, setLeads] = useState(() => (hasValidCache ? leadsCache.data : []));
@@ -219,7 +217,6 @@ const LeadList = ({ user, isMyCreated }) => {
                 data,
                 userId: currentUserId,
                 role: currentRole,
-                isMyCreated,
                 timestamp: Date.now()
             };
             setLeads(data);
@@ -569,10 +566,10 @@ const LeadList = ({ user, isMyCreated }) => {
     }, [isTL, isFE, isAdmin, statusFilter]);
 
     useEffect(() => {
-        if ((isAdmin || isTL || (isFE && !isMyCreated)) && categoryFilter !== 'all') {
+        if ((isAdmin || isTL) && categoryFilter !== 'all') {
             setCategoryFilter('all');
         }
-    }, [isAdmin, isTL, isFE, isMyCreated, categoryFilter]);
+    }, [isAdmin, isTL, categoryFilter]);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -581,13 +578,14 @@ const LeadList = ({ user, isMyCreated }) => {
     const { conversionsCount, pendingCount } = useMemo(() => {
         let conv = 0;
         let pend = 0;
-        for (let i = 0; i < leads.length; i++) {
-            const s = leads[i].Status;
+        const targetList = isMyCreated ? baseLeads : leads;
+        for (let i = 0; i < targetList.length; i++) {
+            const s = targetList[i].Status;
             if (isConvertedStatus(s)) conv++;
             if (isPendingStatus(s)) pend++;
         }
         return { conversionsCount: conv, pendingCount: pend };
-    }, [leads]);
+    }, [leads, baseLeads, isMyCreated]);
 
     const filtered = useMemo(() => {
         const searchLower = search.trim().toLowerCase();
@@ -828,7 +826,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                 transition: 'all 0.15s ease'
                             }}
                         >
-                            All Leads ({leads.length})
+                            All Leads ({isMyCreated ? baseLeads.length : leads.length})
                         </button>
                         <button
                             type="button"
@@ -1230,7 +1228,15 @@ const LeadList = ({ user, isMyCreated }) => {
                         </div>
                     ) : filtered.length === 0 ? (
                         <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
-                            {search ? `No leads matching "${search}"` : 'No leads yet. Create your first lead!'}
+                            {search ? `No leads matching "${search}"` : (
+                                isFE && !isMyCreated 
+                                    ? 'No assigned meeting leads yet.' 
+                                    : (categoryFilter === 'conversions'
+                                        ? 'No converted leads yet.'
+                                        : (categoryFilter === 'pending'
+                                            ? 'No pending leads yet.'
+                                            : 'No leads yet. Create your first lead!'))
+                            )}
                         </div>
                     ) : (
                         <table style={{ width: '100%', minWidth: user?.role === 'Admin' ? '1750px' : '1250px', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto' }}>

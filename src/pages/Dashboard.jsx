@@ -524,7 +524,9 @@ const Dashboard = ({ user, onLogout }) => {
                                 className="glass-card" 
                                 onClick={() => {
                                     if (stat.filter) {
-                                        navigate('/leads', { state: { categoryFilter: stat.filter } });
+                                        const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
+                                        const targetPath = isFE ? '/leads/my-created' : '/leads';
+                                        navigate(targetPath, { state: { categoryFilter: stat.filter } });
                                     }
                                 }}
                                 style={{ 
