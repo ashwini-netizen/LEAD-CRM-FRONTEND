@@ -377,6 +377,7 @@ const LeadForm = ({ user }) => {
                                 <>
                                     <option value="Interested">Interested</option>
                                     <option value="Follow-up">Follow-up</option>
+                                    <option value="Converted">Converted</option>
                                     <option value="Busy">Busy</option>
                                     <option value="other">Other</option>
                                 </>
