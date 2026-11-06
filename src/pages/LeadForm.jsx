@@ -48,7 +48,7 @@ const formatTime24 = (hour12, minute, ampm) => {
 const LeadForm = ({ user }) => {
     const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
     const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
-    const hideEmail = isFE || isCE;
+    const isFEorCE = isFE || isCE;
     const navigate = useNavigate();
     const location = useLocation();
     const getRedirectPath = () => {
@@ -91,8 +91,8 @@ const LeadForm = ({ user }) => {
 
     const validateForm = () => {
         // 1. Check mandatory fields first
-        const isMandatoryMissing = hideEmail
-            ? (!formData.fullName || !formData.phone || !formData.address || !formData.company || !formData.callDate)
+        const isMandatoryMissing = isFEorCE
+            ? (!formData.fullName || !formData.address || !formData.company || !formData.callDate)
             : (!formData.fullName || !formData.phone || !formData.email || !formData.address || !formData.company || !formData.callDate);
 
         if (isMandatoryMissing) {
@@ -100,10 +100,15 @@ const LeadForm = ({ user }) => {
             return false;
         }
 
-        // 2. Format checks for mandatory fields
-        const phoneValidation = validatePhoneNumber(formData.phone, 'Phone number');
-        if (!phoneValidation.isValid) {
-            setSubmitError(phoneValidation.message);
+        // 2. Format checks for fields
+        if (formData.phone) {
+            const phoneValidation = validatePhoneNumber(formData.phone, 'Phone number');
+            if (!phoneValidation.isValid) {
+                setSubmitError(phoneValidation.message);
+                return false;
+            }
+        } else if (!isFEorCE) {
+            setSubmitError('Phone number is required.');
             return false;
         }
 
@@ -114,14 +119,17 @@ const LeadForm = ({ user }) => {
             return false;
         }
 
-        // Email: Mandatory basic validation (lowercase, must contain exactly one @ and end with .com) - Only if email field is present
-        if (!hideEmail) {
+        // Email: Mandatory for other roles; optional for FE/CE
+        if (formData.email) {
             const cleanedEmail = formData.email.trim().replace(/\s/g, '');
             const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.com$/;
             if (!emailRegex.test(cleanedEmail)) {
                 setSubmitError('Please enter a valid email address (lowercase ending in .com).');
                 return false;
             }
+        } else if (!isFEorCE) {
+            setSubmitError('Email is required.');
+            return false;
         }
 
         if (formData.company.trim().length < 3) {
@@ -266,15 +274,15 @@ const LeadForm = ({ user }) => {
 
             const isFollowupStatus = ['Follow-up', 'Busy', 'Not Answering', 'Speaking with Someone Else', 'Out of Service', 'Incoming Not Available', 'Switch Off', 'Hold', 'Processing', 'Invalid', 'other'].includes(formData.status);
 
-            const cleanedEmail = hideEmail ? '' : formData.email.trim().replace(/\s/g, '');
-            if (!hideEmail) {
+            const cleanedEmail = formData.email ? formData.email.trim().replace(/\s/g, '') : '';
+            if (cleanedEmail) {
                 setFormData(prev => ({ ...prev, email: cleanedEmail }));
             }
 
             const payload = {
                 fullName: formData.fullName,
-                phone: formData.phone,
-                email: hideEmail ? null : (cleanedEmail || null),
+                phone: formData.phone || null,
+                email: cleanedEmail || null,
                 companyName: formData.company,
                 serviceInterested: serviceSummary,
                 address: formData.address,
@@ -334,26 +342,31 @@ const LeadForm = ({ user }) => {
                         <input name="fullName" className="input-field" placeholder="Client Name" value={formData.fullName} onChange={handleChange} required />
                     </div>
                     <div>
-                        <label style={labelStyle}>Phone Number *</label>
-                        <input name="phone" className="input-field" placeholder="10 Digit Number (starts with 6-9)" value={formData.phone} onChange={handleChange} required />
+                        <label style={labelStyle}>Phone Number {isFEorCE ? '' : '*'}</label>
+                        <input 
+                            name="phone" 
+                            className="input-field" 
+                            placeholder="10 Digit Number (starts with 6-9)" 
+                            value={formData.phone} 
+                            onChange={handleChange} 
+                            required={!isFEorCE} 
+                        />
                     </div>
-                    {!hideEmail && (
-                        <div>
-                            <label style={labelStyle}>Email *</label>
-                            <input
-                                name="email"
-                                type="text"
-                                className="input-field"
-                                placeholder="email@example.com"
-                                value={formData.email}
-                                onChange={handleChange}
-                                onKeyDown={e => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); }}
-                                onBlur={() => setFormData(prev => ({ ...prev, email: prev.email.trim().replace(/\s/g, '') }))}
-                                required
-                            />
-                        </div>
-                    )}
-                    <div style={hideEmail ? { gridColumn: 'span 2' } : {}}>
+                    <div>
+                        <label style={labelStyle}>Email {isFEorCE ? '' : '*'}</label>
+                        <input
+                            name="email"
+                            type="text"
+                            className="input-field"
+                            placeholder="email@example.com"
+                            value={formData.email}
+                            onChange={handleChange}
+                            onKeyDown={e => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); }}
+                            onBlur={() => setFormData(prev => ({ ...prev, email: prev.email.trim().replace(/\s/g, '') }))}
+                            required={!isFEorCE}
+                        />
+                    </div>
+                    <div>
                         <label style={labelStyle}>Company *</label>
                         <input name="company" className="input-field" placeholder="Company Name" value={formData.company} onChange={handleChange} required />
                     </div>
