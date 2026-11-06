@@ -714,7 +714,7 @@ const LeadList = ({ user, isMyCreated }) => {
                             <RefreshCw size={16} />
                         </button>
                         <button className="btn-primary" onClick={() => navigate('/leads/new?from=leads', { state: { from: '/leads' } })}>+ New Lead</button>
-                        {isCE && (
+                        {(isCE || (isFE && isMyCreated)) && (
                             <div style={{ position: 'relative', overflow: 'hidden', display: 'inline-block' }}>
                                 <input
                                     type="file"
