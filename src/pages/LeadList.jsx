@@ -125,8 +125,8 @@ const LeadList = ({ user, isMyCreated }) => {
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('All');
     const [viewFilter, setViewFilter] = useState('All');
-    const [fromDate, setFromDate] = useState('');
-    const [toDate, setToDate] = useState('');
+    const [fromDate, setFromDate] = useState(location.state?.fromDate || '');
+    const [toDate, setToDate] = useState(location.state?.toDate || '');
     const [singleDate, setSingleDate] = useState('');
 
     const handleFromDateChange = (val) => {
@@ -557,7 +557,13 @@ const LeadList = ({ user, isMyCreated }) => {
         if (location.state?.categoryFilter) {
             setCategoryFilter(location.state.categoryFilter);
         }
-    }, [location.state?.categoryFilter]);
+        if (location.state?.fromDate !== undefined) {
+            setFromDate(location.state.fromDate);
+        }
+        if (location.state?.toDate !== undefined) {
+            setToDate(location.state.toDate);
+        }
+    }, [location.state?.categoryFilter, location.state?.fromDate, location.state?.toDate]);
 
     useEffect(() => {
         if ((isTL || isFE || isAdmin) && statusFilter === 'N/A Leads') {
@@ -575,17 +581,57 @@ const LeadList = ({ user, isMyCreated }) => {
         setCurrentPage(1);
     }, [search, statusFilter, fromDate, toDate, singleDate, roleFilter, viewFilter, categoryFilter]);
 
-    const { conversionsCount, pendingCount } = useMemo(() => {
+    const checkDateInRange = useCallback((dateStr, start, end) => {
+        if (!dateStr) return false;
+        const leadDateObj = new Date(dateStr);
+        const offset = leadDateObj.getTimezoneOffset();
+        const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
+        const localDateStr = localDateObj.toISOString().split('T')[0];
+        if (start && end) return localDateStr >= start && localDateStr <= end;
+        if (start) return localDateStr >= start;
+        if (end) return localDateStr <= end;
+        return true;
+    }, []);
+
+    const { conversionsCount, pendingCount, allLeadsCount } = useMemo(() => {
         let conv = 0;
         let pend = 0;
+        let total = 0;
         const targetList = isMyCreated ? baseLeads : leads;
         for (let i = 0; i < targetList.length; i++) {
-            const s = targetList[i].Status;
-            if (isConvertedStatus(s)) conv++;
-            if (isPendingStatus(s)) pend++;
+            const l = targetList[i];
+            const s = l.Status;
+
+            let inDate = true;
+            let inDateConv = true;
+
+            if (isTL && singleDate) {
+                const leadDateObj = l.CreatedAt ? new Date(l.CreatedAt) : null;
+                if (!leadDateObj) {
+                    inDate = false;
+                    inDateConv = false;
+                } else {
+                    const offset = leadDateObj.getTimezoneOffset();
+                    const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
+                    const localDateStr = localDateObj.toISOString().split('T')[0];
+                    inDate = (localDateStr === singleDate);
+                    inDateConv = inDate;
+                }
+            } else if (isTL && (fromDate || toDate)) {
+                inDate = checkDateInRange(l.CreatedAt, fromDate, toDate);
+                inDateConv = inDate || checkDateInRange(l.UpdatedAt, fromDate, toDate);
+            }
+
+            if (inDate) {
+                total++;
+                if (isPendingStatus(s)) pend++;
+            }
+            if (isConvertedStatus(s) && inDateConv) {
+                conv++;
+            }
         }
-        return { conversionsCount: conv, pendingCount: pend };
-    }, [leads, baseLeads, isMyCreated]);
+        return { conversionsCount: conv, pendingCount: pend, allLeadsCount: total };
+    }, [leads, baseLeads, isMyCreated, isTL, singleDate, fromDate, toDate, checkDateInRange]);
 
     const filtered = useMemo(() => {
         const searchLower = search.trim().toLowerCase();
@@ -628,7 +674,24 @@ const LeadList = ({ user, isMyCreated }) => {
 
             if (isMyCreated && String(l.CreatedBy) !== currentUserIdStr) return false;
 
-            if (isTL || isFE || isAdmin) {
+            if (isTL) {
+                if (singleDate) {
+                    if (!l.CreatedAt) return false;
+                    const leadDateObj = new Date(l.CreatedAt);
+                    const offset = leadDateObj.getTimezoneOffset();
+                    const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
+                    const localDateStr = localDateObj.toISOString().split('T')[0];
+                    if (localDateStr !== singleDate) return false;
+                } else if (fromDate || toDate) {
+                    if (categoryFilter === 'conversions') {
+                        const inCreated = checkDateInRange(l.CreatedAt, fromDate, toDate);
+                        const inUpdated = checkDateInRange(l.UpdatedAt, fromDate, toDate);
+                        if (!inCreated && !inUpdated) return false;
+                    } else {
+                        if (!checkDateInRange(l.CreatedAt, fromDate, toDate)) return false;
+                    }
+                }
+            } else if (isFE || isAdmin) {
                 if (singleDate) {
                     if (!l.CreatedAt) return false;
                     const leadDateObj = new Date(l.CreatedAt);
@@ -639,19 +702,7 @@ const LeadList = ({ user, isMyCreated }) => {
                 }
             } else {
                 if (fromDate || toDate) {
-                    if (!l.CreatedAt) return false;
-                    const leadDateObj = new Date(l.CreatedAt);
-                    const offset = leadDateObj.getTimezoneOffset();
-                    const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
-                    const localDateStr = localDateObj.toISOString().split('T')[0];
-
-                    if (fromDate && toDate) {
-                        if (localDateStr < fromDate || localDateStr > toDate) return false;
-                    } else if (fromDate) {
-                        if (localDateStr < fromDate) return false;
-                    } else if (toDate) {
-                        if (localDateStr > toDate) return false;
-                    }
+                    if (!checkDateInRange(l.CreatedAt, fromDate, toDate)) return false;
                 }
             }
 
@@ -667,7 +718,7 @@ const LeadList = ({ user, isMyCreated }) => {
 
             return true;
         });
-    }, [leads, statusFilter, categoryFilter, search, roleFilter, viewFilter, isMyCreated, isFE, currentUserId, singleDate, fromDate, toDate, isTL, isAdmin, feCallStatuses]);
+    }, [leads, statusFilter, categoryFilter, search, roleFilter, viewFilter, isMyCreated, isFE, currentUserId, singleDate, fromDate, toDate, isTL, isAdmin, feCallStatuses, checkDateInRange]);
 
     const effectivePageSize = pageSize === 'all' ? (filtered.length || 1) : Number(pageSize);
     const totalPages = Math.max(1, Math.ceil(filtered.length / effectivePageSize));
@@ -826,7 +877,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                 transition: 'all 0.15s ease'
                             }}
                         >
-                            All Leads ({isMyCreated ? baseLeads.length : leads.length})
+                            All Leads ({isMyCreated ? baseLeads.length : (isTL ? allLeadsCount : leads.length)})
                         </button>
                         <button
                             type="button"
@@ -922,7 +973,13 @@ const LeadList = ({ user, isMyCreated }) => {
                                     placeholder="Filter by Date"
                                     style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '40px', paddingRight: singleDate ? '34px' : '14px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
                                     value={singleDate}
-                                    onChange={e => setSingleDate(e.target.value)}
+                                    onChange={e => {
+                                        setSingleDate(e.target.value);
+                                        if (e.target.value) {
+                                            setFromDate('');
+                                            setToDate('');
+                                        }
+                                    }}
                                 />
                                 {singleDate && (
                                     <button
@@ -950,6 +1007,40 @@ const LeadList = ({ user, isMyCreated }) => {
                                     </button>
                                 )}
                             </div>
+                        </div>
+                    )}
+                    {isTL && !singleDate && (fromDate || toDate) && (
+                        <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 14px',
+                            background: '#e0e7ff',
+                            color: '#4338ca',
+                            borderRadius: '20px',
+                            fontSize: '0.82rem',
+                            fontWeight: '600',
+                            border: '1px solid #c7d2fe'
+                        }}>
+                            <span>Period: {fromDate ? fromDate.split('-').reverse().join('-') : 'Start'} to {toDate ? toDate.split('-').reverse().join('-') : 'End'}</span>
+                            <button
+                                type="button"
+                                onClick={() => { setFromDate(''); setToDate(''); }}
+                                title="Clear date range"
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#4338ca',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: 0
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
+                                onMouseLeave={e => { e.currentTarget.style.color = '#4338ca'; }}
+                            >
+                                <X size={14} />
+                            </button>
                         </div>
                     )}
 

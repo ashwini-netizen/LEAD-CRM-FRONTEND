@@ -525,8 +525,14 @@ const Dashboard = ({ user, onLogout }) => {
                                 onClick={() => {
                                     if (stat.filter) {
                                         const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
+                                        const isTL = user?.role === 'Team Lead' || user?.Role === 'Team Lead';
                                         const targetPath = isFE ? '/leads/my-created' : '/leads';
-                                        navigate(targetPath, { state: { categoryFilter: stat.filter } });
+                                        navigate(targetPath, { 
+                                            state: { 
+                                                categoryFilter: stat.filter,
+                                                ...(isTL ? { fromDate: startDate, toDate: endDate } : {})
+                                            } 
+                                        });
                                     }
                                 }}
                                 style={{ 
