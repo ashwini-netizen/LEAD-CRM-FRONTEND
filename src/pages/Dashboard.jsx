@@ -319,6 +319,8 @@ const Dashboard = ({ user, onLogout }) => {
         }
     };
 
+    const isTL = user?.role === 'Team Lead' || user?.Role === 'Team Lead';
+
     const statsConfig = [
         { label: 'Total Leads', key: 'totalLeads', color: '#6366f1', filter: 'all' },
         { label: 'Conversions', key: 'conversions', color: '#10b981', filter: 'conversions' },
@@ -518,57 +520,57 @@ const Dashboard = ({ user, onLogout }) => {
                     )}
 
                     <div className="dashboard-stats-grid">
-                        {statsConfig.map((stat, i) => (
-                            <div 
-                                key={i} 
-                                className="glass-card" 
-                                onClick={() => {
-                                    if (stat.filter) {
-                                        const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
-                                        const isTL = user?.role === 'Team Lead' || user?.Role === 'Team Lead';
-                                        const targetPath = isFE ? '/leads/my-created' : '/leads';
-                                        navigate(targetPath, { 
-                                            state: { 
-                                                categoryFilter: stat.filter,
-                                                ...(isTL ? { fromDate: startDate, toDate: endDate } : {})
-                                            } 
-                                        });
-                                    }
-                                }}
-                                style={{ 
-                                    background: 'white', 
-                                    padding: '24px', 
-                                    borderRadius: '16px', 
-                                    border: '1px solid #e2e8f0', 
-                                    display: 'flex', 
-                                    flexDirection: 'column', 
-                                    justifyContent: 'space-between', 
-                                    position: 'relative',
-                                    cursor: stat.filter ? 'pointer' : 'default',
-                                    transition: 'all 0.2s ease',
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                                }}
-                                onMouseEnter={e => {
-                                    if (stat.filter) {
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                        e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.08)';
-                                    }
-                                }}
-                                onMouseLeave={e => {
-                                    if (stat.filter) {
-                                        e.currentTarget.style.transform = 'none';
-                                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
-                                    }
-                                }}
-                            >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                                    <p style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: '600', margin: 0 }}>{stat.label}</p>
-                                    {stat.filter && (
-                                        <span style={{ fontSize: '0.75rem', color: stat.color, fontWeight: '700' }}>
-                                            View list →
-                                        </span>
-                                    )}
-                                </div>
+                        {statsConfig.map((stat, i) => {
+                            const isClickable = Boolean(stat.filter && !isTL);
+                            return (
+                                <div 
+                                    key={i} 
+                                    className="glass-card" 
+                                    onClick={() => {
+                                        if (isClickable) {
+                                            const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
+                                            const targetPath = isFE ? '/leads/my-created' : '/leads';
+                                            navigate(targetPath, { 
+                                                state: { 
+                                                    categoryFilter: stat.filter
+                                                } 
+                                            });
+                                        }
+                                    }}
+                                    style={{ 
+                                        background: 'white', 
+                                        padding: '24px', 
+                                        borderRadius: '16px', 
+                                        border: '1px solid #e2e8f0', 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        justifyContent: 'space-between', 
+                                        position: 'relative',
+                                        cursor: isClickable ? 'pointer' : 'default',
+                                        transition: 'all 0.2s ease',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                                    }}
+                                    onMouseEnter={e => {
+                                        if (isClickable) {
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                            e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.08)';
+                                        }
+                                    }}
+                                    onMouseLeave={e => {
+                                        if (isClickable) {
+                                            e.currentTarget.style.transform = 'none';
+                                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                                        }
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                        <p style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: '600', margin: 0 }}>{stat.label}</p>
+                                        {isClickable && (
+                                            <span style={{ fontSize: '0.75rem', color: stat.color, fontWeight: '700' }}>
+                                                View list →
+                                            </span>
+                                        )}
+                                    </div>
                                 <h2 style={{ fontSize: '2.2rem', marginTop: '12px', color: stat.color, marginBottom: 0 }}>
                                     {loading ? '...' : (stat.isCurrency ? `₹${(overview?.stats?.[stat.key] || 0).toLocaleString()}` : (overview?.stats?.[stat.key] || 0))}
                                 </h2>
@@ -584,8 +586,9 @@ const Dashboard = ({ user, onLogout }) => {
                                         </div>
                                     </div>
                                 )}
-                            </div>
-                        ))}
+                                </div>
+                            );
+                        })}
                     </div>
 
                     {(user?.role === 'Admin' || user?.role === 'Team Lead') && (
