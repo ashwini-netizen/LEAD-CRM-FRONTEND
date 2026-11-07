@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, UserPlus, List, Settings, LogOut, Loader, AlertCircle, BarChart, Calendar, Clock, FileText, CreditCard, Navigation, Activity, Users, TrendingUp, IndianRupee, Download, FileDown, MessageSquare, CheckCircle } from 'lucide-react';
+import { LayoutDashboard, UserPlus, List, Settings, LogOut, Loader, AlertCircle, BarChart, Calendar, Clock, FileText, CreditCard, Navigation, Activity, Users, TrendingUp, IndianRupee, Download, FileDown, MessageSquare, CheckCircle, PhoneCall, RotateCcw, Filter, Award, CheckCircle2, XCircle } from 'lucide-react';
 import {
     BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, Legend, ResponsiveContainer,
     AreaChart, Area
@@ -21,6 +21,9 @@ const Dashboard = ({ user, onLogout }) => {
     const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
     const [callDate, setCallDate] = useState(new Date().toISOString().split('T')[0]);
+    const [showAllStatuses, setShowAllStatuses] = useState(false);
+    const [callPage, setCallPage] = useState(1);
+    const CALLS_PER_PAGE = 15;
 
     const handleStartDateChange = (val) => {
         setStartDate(val);
@@ -106,7 +109,7 @@ const Dashboard = ({ user, onLogout }) => {
         fetchOverview(callDate, startDate, endDate);
     }, [fetchOverview, callDate, startDate, endDate]);
 
-    // Auto-refresh dashboard stats when window regains focus, tab becomes visible, or lead status updates
+    // Auto-refresh dashboard stats when window regains focus, tab becomes visible, or call/lead status updates
     useEffect(() => {
         const handleAutoRefresh = () => {
             fetchOverview(callDate, startDate, endDate);
@@ -119,15 +122,29 @@ const Dashboard = ({ user, onLogout }) => {
         };
 
         window.addEventListener('lead_updated', handleAutoRefresh);
+        window.addEventListener('call_logged', handleAutoRefresh);
         window.addEventListener('focus', handleAutoRefresh);
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
             window.removeEventListener('lead_updated', handleAutoRefresh);
+            window.removeEventListener('call_logged', handleAutoRefresh);
             window.removeEventListener('focus', handleAutoRefresh);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, [fetchOverview, callDate, startDate, endDate]);
+
+    // Real-time periodic auto-sync for Call Executive (every 15s)
+    useEffect(() => {
+        const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
+        if (!isCE) return;
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                fetchOverview(callDate, startDate, endDate);
+            }
+        }, 15000);
+        return () => clearInterval(interval);
+    }, [user?.role, user?.Role, fetchOverview, callDate, startDate, endDate]);
 
     const fetchTimeSeries = useCallback(async () => {
         if (user?.role !== 'Admin' && user?.role !== 'Team Lead') return;
@@ -320,6 +337,105 @@ const Dashboard = ({ user, onLogout }) => {
     };
 
     const isTL = user?.role === 'Team Lead' || user?.Role === 'Team Lead';
+    const isCallExecutive = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
+
+    const standardStatusDefs = [
+        { label: 'Interested', color: '#10b981', bg: '#ecfdf5', border: '#a7f3d0' },
+        { label: 'Not Interested', color: '#ef4444', bg: '#fef2f2', border: '#fecaca' },
+        { label: 'Follow-up', color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+        { label: 'Not Answering', color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe' },
+        { label: 'Direct Visit', color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' },
+        { label: 'Switch Off', color: '#64748b', bg: '#f8fafc', border: '#cbd5e1' },
+        { label: 'Busy', color: '#d97706', bg: '#fffbeb', border: '#fed7aa' },
+        { label: 'Invalid', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+        { label: 'Speaking with Someone Else', color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' },
+        { label: 'Hold', color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
+        { label: 'Incoming Not Available', color: '#475569', bg: '#f8fafc', border: '#cbd5e1' },
+        { label: 'Processing', color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
+        { label: 'Out of Service', color: '#94a3b8', bg: '#f8fafc', border: '#e2e8f0' },
+        { label: 'Wrong Number', color: '#be123c', bg: '#fff1f2', border: '#fecdd3' }
+    ];
+
+    const callStatusCards = useMemo(() => {
+        if (!isCallExecutive) return [];
+
+        const breakdown = overview?.callBreakdown || [];
+        const breakdownMap = new Map();
+        breakdown.forEach(item => {
+            if (item.status) {
+                breakdownMap.set(item.status.trim().toLowerCase(), item.count);
+            }
+        });
+
+        const cards = [];
+
+        // 1. Standard statuses
+        standardStatusDefs.forEach(def => {
+            const count = breakdownMap.get(def.label.toLowerCase()) || 0;
+            cards.push({
+                label: def.label,
+                count,
+                color: def.color,
+                bg: def.bg,
+                border: def.border,
+                isStandard: true
+            });
+            breakdownMap.delete(def.label.toLowerCase());
+        });
+
+        // 2. Any additional dynamic statuses recorded on this date
+        breakdownMap.forEach((count, key) => {
+            const original = breakdown.find(b => b.status?.trim().toLowerCase() === key);
+            const label = original?.status?.trim() || (key.charAt(0).toUpperCase() + key.slice(1));
+            cards.push({
+                label,
+                count,
+                color: '#6366f1',
+                bg: '#f5f3ff',
+                border: '#e0e7ff',
+                isStandard: false
+            });
+        });
+
+        return cards;
+    }, [isCallExecutive, overview?.callBreakdown]);
+
+    const visibleCallCards = useMemo(() => {
+        if (showAllStatuses) return callStatusCards;
+        // Default: cards with count > 0, plus standard Interested, Not Interested, Follow-up
+        return callStatusCards.filter(c => c.count > 0 || ['Interested', 'Not Interested', 'Follow-up'].includes(c.label));
+    }, [callStatusCards, showAllStatuses]);
+
+    const callRecords = overview?.callRecords || [];
+    const totalPages = Math.ceil(callRecords.length / CALLS_PER_PAGE) || 1;
+    const paginatedRecords = useMemo(() => {
+        const start = (callPage - 1) * CALLS_PER_PAGE;
+        return callRecords.slice(start, start + CALLS_PER_PAGE);
+    }, [callRecords, callPage]);
+
+    const getBadgeColor = (status) => {
+        const s = String(status || '').trim().toLowerCase();
+        if (s === 'interested') return { bg: '#dcfce7', text: '#15803d' };
+        if (s === 'not interested' || s === 'invalid') return { bg: '#fee2e2', text: '#b91c1c' };
+        if (s === 'follow-up' || s === 'call follow-up') return { bg: '#fef3c7', text: '#b45309' };
+        if (s.includes('busy')) return { bg: '#ffedd5', text: '#c2410c' };
+        if (s.includes('answering') || s.includes('answered')) return { bg: '#f3e8ff', text: '#7e22ce' };
+        if (s.includes('direct visit')) return { bg: '#e0f2fe', text: '#0369a1' };
+        if (s.includes('switch off')) return { bg: '#f1f5f9', text: '#475569' };
+        return { bg: '#e0e7ff', text: '#4338ca' };
+    };
+
+    const convCardStyle = (color, bg, border) => ({
+        background: 'white',
+        padding: '18px 20px',
+        borderRadius: '16px',
+        border: `1px solid ${border}`,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        transition: 'all 0.2s ease'
+    });
 
     const statsConfig = [
         { label: 'Total Leads', key: 'totalLeads', color: '#6366f1', filter: 'all' },
@@ -519,77 +635,460 @@ const Dashboard = ({ user, onLogout }) => {
                         </div>
                     )}
 
-                    <div className="dashboard-stats-grid">
-                        {statsConfig.map((stat, i) => {
-                            const isClickable = Boolean(stat.filter && !isTL);
-                            return (
-                                <div 
-                                    key={i} 
-                                    className="glass-card" 
-                                    onClick={() => {
-                                        if (isClickable) {
-                                            const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
-                                            const targetPath = isFE ? '/leads/my-created' : '/leads';
-                                            navigate(targetPath, { 
-                                                state: { 
-                                                    categoryFilter: stat.filter
-                                                } 
-                                            });
-                                        }
-                                    }}
-                                    style={{ 
-                                        background: 'white', 
-                                        padding: '24px', 
-                                        borderRadius: '16px', 
-                                        border: '1px solid #e2e8f0', 
-                                        display: 'flex', 
-                                        flexDirection: 'column', 
-                                        justifyContent: 'space-between', 
-                                        position: 'relative',
-                                        cursor: isClickable ? 'pointer' : 'default',
-                                        transition: 'all 0.2s ease',
-                                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                                    }}
-                                    onMouseEnter={e => {
-                                        if (isClickable) {
-                                            e.currentTarget.style.transform = 'translateY(-2px)';
-                                            e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.08)';
-                                        }
-                                    }}
-                                    onMouseLeave={e => {
-                                        if (isClickable) {
-                                            e.currentTarget.style.transform = 'none';
-                                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
-                                        }
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                                        <p style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: '600', margin: 0 }}>{stat.label}</p>
-                                        {isClickable && (
-                                            <span style={{ fontSize: '0.75rem', color: stat.color, fontWeight: '700' }}>
-                                                View list →
+                    {isCallExecutive ? (
+                        <div className="call-executive-dashboard fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                            {/* Section 1: Conversion Tracking & Overview */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Award size={20} color="#6366f1" />
+                                        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: '#1e293b' }}>
+                                            Conversion & Lead Tracking
+                                        </h3>
+                                    </div>
+                                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                                        Real-time verified conversion & lead records
+                                    </span>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
+                                    {/* Monthly Conversions */}
+                                    <div className="glass-card" style={convCardStyle('#10b981', '#ecfdf5', '#a7f3d0')}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: '600', color: '#065f46' }}>Monthly Conversions</p>
+                                                <span style={{ fontSize: '0.7rem', color: '#059669', background: '#d1fae5', padding: '2px 8px', borderRadius: '12px', fontWeight: '600', display: 'inline-block', marginTop: '4px' }}>
+                                                    {new Date().toLocaleString('en-US', { month: 'short', year: 'numeric' })}
+                                                </span>
+                                            </div>
+                                            <div style={{ padding: '8px', background: '#d1fae5', borderRadius: '10px', color: '#10b981' }}>
+                                                <TrendingUp size={20} />
+                                            </div>
+                                        </div>
+                                        <h2 style={{ fontSize: '2rem', margin: '14px 0 0 0', color: '#047857', fontWeight: '800' }}>
+                                            {loading ? '...' : (overview?.stats?.monthlyConversions ?? 0)}
+                                        </h2>
+                                    </div>
+
+                                    {/* Lifetime Conversions */}
+                                    <div className="glass-card" style={convCardStyle('#6366f1', '#eef2ff', '#c7d2fe')}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: '600', color: '#3730a3' }}>Lifetime Conversions</p>
+                                                <span style={{ fontSize: '0.7rem', color: '#4f46e5', background: '#e0e7ff', padding: '2px 8px', borderRadius: '12px', fontWeight: '600', display: 'inline-block', marginTop: '4px' }}>
+                                                    All-Time
+                                                </span>
+                                            </div>
+                                            <div style={{ padding: '8px', background: '#e0e7ff', borderRadius: '10px', color: '#6366f1' }}>
+                                                <Award size={20} />
+                                            </div>
+                                        </div>
+                                        <h2 style={{ fontSize: '2rem', margin: '14px 0 0 0', color: '#4338ca', fontWeight: '800' }}>
+                                            {loading ? '...' : (overview?.stats?.lifetimeConversions ?? overview?.stats?.conversions ?? 0)}
+                                        </h2>
+                                    </div>
+
+                                    {/* Total Leads */}
+                                    <div 
+                                        className="glass-card" 
+                                        onClick={() => navigate('/leads', { state: { categoryFilter: 'all' } })}
+                                        style={{ ...convCardStyle('#3b82f6', '#eff6ff', '#bfdbfe'), cursor: 'pointer' }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: '600', color: '#1e40af' }}>Total Leads</p>
+                                                <span style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: '700', display: 'inline-block', marginTop: '4px' }}>
+                                                    View list →
+                                                </span>
+                                            </div>
+                                            <div style={{ padding: '8px', background: '#dbeafe', borderRadius: '10px', color: '#3b82f6' }}>
+                                                <Users size={20} />
+                                            </div>
+                                        </div>
+                                        <h2 style={{ fontSize: '2rem', margin: '14px 0 0 0', color: '#1d4ed8', fontWeight: '800' }}>
+                                            {loading ? '...' : (overview?.stats?.totalLeads ?? 0)}
+                                        </h2>
+                                    </div>
+
+                                    {/* Pending Leads */}
+                                    <div 
+                                        className="glass-card" 
+                                        onClick={() => navigate('/leads', { state: { categoryFilter: 'pending' } })}
+                                        style={{ ...convCardStyle('#f59e0b', '#fffbeb', '#fde68a'), cursor: 'pointer' }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: '600', color: '#92400e' }}>Pending Leads</p>
+                                                <span style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: '700', display: 'inline-block', marginTop: '4px' }}>
+                                                    View list →
+                                                </span>
+                                            </div>
+                                            <div style={{ padding: '8px', background: '#fef3c7', borderRadius: '10px', color: '#f59e0b' }}>
+                                                <Clock size={20} />
+                                            </div>
+                                        </div>
+                                        <h2 style={{ fontSize: '2rem', margin: '14px 0 0 0', color: '#b45309', fontWeight: '800' }}>
+                                            {loading ? '...' : (overview?.stats?.pending ?? 0)}
+                                        </h2>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Section 2: Daily Call Tracking */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                <div className="glass-card" style={{
+                                    padding: '14px 20px',
+                                    background: 'white',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    flexWrap: 'wrap',
+                                    gap: '14px',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div style={{ padding: '8px', background: '#e0e7ff', borderRadius: '10px', color: '#6366f1' }}>
+                                            <PhoneCall size={20} />
+                                        </div>
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: '#1e293b' }}>
+                                                    Daily Call Tracking
+                                                </h4>
+                                                <span style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: '700',
+                                                    color: '#059669',
+                                                    background: '#d1fae5',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '10px'
+                                                }}>
+                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+                                                    Real-Time
+                                                </span>
+                                            </div>
+                                            <p style={{ margin: 0, fontSize: '0.76rem', color: '#64748b' }}>
+                                                {callDate === new Date().toISOString().split('T')[0] 
+                                                    ? "Showing today's call records and status counts" 
+                                                    : `Showing records for ${callDate.split('-').reverse().join('-')}`}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <label style={{ fontSize: '0.84rem', fontWeight: '600', color: '#475569' }}>Date:</label>
+                                            <div style={{ position: 'relative', width: '160px' }}>
+                                                <Calendar size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                                <input
+                                                    type="date"
+                                                    className="input-field"
+                                                    style={{ padding: '8px 8px 8px 30px', width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.85rem' }}
+                                                    value={callDate}
+                                                    onChange={e => {
+                                                        setCallDate(e.target.value);
+                                                        setCallPage(1);
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {callDate !== new Date().toISOString().split('T')[0] && (
+                                            <button
+                                                onClick={() => {
+                                                    setCallDate(new Date().toISOString().split('T')[0]);
+                                                    setCallPage(1);
+                                                }}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    padding: '8px 12px',
+                                                    background: '#e0e7ff',
+                                                    color: '#4f46e5',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: '700',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <RotateCcw size={14} /> Today
+                                            </button>
+                                        )}
+
+                                        <button
+                                            onClick={() => setShowAllStatuses(!showAllStatuses)}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                padding: '8px 12px',
+                                                background: showAllStatuses ? '#f1f5f9' : '#ffffff',
+                                                color: '#475569',
+                                                border: '1px solid #cbd5e1',
+                                                borderRadius: '8px',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '600',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <Filter size={14} /> {showAllStatuses ? 'Show Active Only' : 'Show All Statuses'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Call Stats Cards Grid (Reduced Size / Good UI) */}
+                                <div className="call-stats-grid">
+                                    {/* Primary Highlighted Card: Total Calls Made */}
+                                    <div
+                                        className="glass-card"
+                                        style={{
+                                            background: 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)',
+                                            border: '2px solid #818cf8',
+                                            borderRadius: '14px',
+                                            padding: '16px 18px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            justifyContent: 'space-between',
+                                            boxShadow: '0 2px 6px rgba(99, 102, 241, 0.12)'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#4338ca' }}>
+                                                Total Calls Made
                                             </span>
+                                            <PhoneCall size={16} color="#6366f1" />
+                                        </div>
+                                        <h2 style={{ fontSize: '2rem', margin: '10px 0 4px 0', color: '#3730a3', fontWeight: '900' }}>
+                                            {loading ? '...' : (overview?.stats?.totalCallsMade ?? overview?.stats?.totalCalls ?? 0)}
+                                        </h2>
+                                        <span style={{ fontSize: '0.7rem', color: '#6366f1', fontWeight: '600' }}>
+                                            Actual calls logged
+                                        </span>
+                                    </div>
+
+                                    {/* Dynamic and Standard Status Cards */}
+                                    {visibleCallCards.map((card, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="glass-card"
+                                            style={{
+                                                background: 'white',
+                                                border: `1px solid ${card.count > 0 ? card.border : '#e2e8f0'}`,
+                                                borderLeft: `4px solid ${card.color}`,
+                                                borderRadius: '14px',
+                                                padding: '16px 18px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                justifyContent: 'space-between',
+                                                transition: 'all 0.2s ease',
+                                                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                                                opacity: card.count === 0 ? 0.75 : 1
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+                                                <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#475569', lineHeight: '1.2' }}>
+                                                    {card.label}
+                                                </span>
+                                                {card.count > 0 && (
+                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: card.color, flexShrink: 0, marginTop: '4px' }} />
+                                                )}
+                                            </div>
+                                            <h2 style={{ fontSize: '1.8rem', margin: '8px 0 0 0', color: card.count > 0 ? card.color : '#94a3b8', fontWeight: '800' }}>
+                                                {loading ? '...' : card.count}
+                                            </h2>
+                                            <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: '500', marginTop: '4px' }}>
+                                                {card.count === 1 ? '1 call' : `${card.count} calls`}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Section 3: Call Records for Selected Date */}
+                            <div className="glass-card" style={{
+                                background: 'white',
+                                borderRadius: '16px',
+                                border: '1px solid #e2e8f0',
+                                padding: '20px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '14px',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <List size={18} color="#6366f1" />
+                                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: '#1e293b' }}>
+                                            Call History on {callDate.split('-').reverse().join('-')}
+                                        </h4>
+                                        <span style={{ fontSize: '0.75rem', color: '#64748b', background: '#f1f5f9', padding: '2px 8px', borderRadius: '10px', fontWeight: '600' }}>
+                                            {callRecords.length} records
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {callRecords.length === 0 ? (
+                                    <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '0.88rem' }}>
+                                        No calls recorded on {callDate.split('-').reverse().join('-')}.
+                                    </div>
+                                ) : (
+                                    <div style={{ overflowX: 'auto' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                                            <thead>
+                                                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                                                    <th style={{ padding: '10px 12px' }}>#</th>
+                                                    <th style={{ padding: '10px 12px' }}>Time</th>
+                                                    <th style={{ padding: '10px 12px' }}>Lead Name</th>
+                                                    <th style={{ padding: '10px 12px' }}>Company</th>
+                                                    <th style={{ padding: '10px 12px' }}>Phone</th>
+                                                    <th style={{ padding: '10px 12px' }}>Call Status</th>
+                                                    <th style={{ padding: '10px 12px' }}>Call Notes</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedRecords.map((r, i) => (
+                                                    <tr key={r.HistoryID || i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                        <td style={{ padding: '10px 12px', color: '#94a3b8' }}>{(callPage - 1) * CALLS_PER_PAGE + i + 1}</td>
+                                                        <td style={{ padding: '10px 12px', color: '#64748b', whiteSpace: 'nowrap' }}>
+                                                            {r.CreatedAt ? new Date(r.CreatedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '-'}
+                                                        </td>
+                                                        <td style={{ padding: '10px 12px', fontWeight: '600', color: '#1e293b' }}>
+                                                            <Link to={`/leads?search=${encodeURIComponent(r.FullName || '')}`} style={{ color: '#6366f1', textDecoration: 'none' }}>
+                                                                {r.FullName || 'Unknown'}
+                                                            </Link>
+                                                        </td>
+                                                        <td style={{ padding: '10px 12px', color: '#64748b' }}>{r.CompanyName || '-'}</td>
+                                                        <td style={{ padding: '10px 12px', color: '#475569', whiteSpace: 'nowrap' }}>{r.Phone || '-'}</td>
+                                                        <td style={{ padding: '10px 12px' }}>
+                                                            <span style={{
+                                                                display: 'inline-block',
+                                                                padding: '3px 8px',
+                                                                borderRadius: '6px',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: '700',
+                                                                background: getBadgeColor(r.Status).bg,
+                                                                color: getBadgeColor(r.Status).text
+                                                            }}>
+                                                                {r.Status || 'N/A'}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ padding: '10px 12px', color: '#64748b', maxWidth: '300px' }}>
+                                                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.CallNote}>
+                                                                {r.CallNote || 'No notes'}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+
+                                        {totalPages > 1 && (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+                                                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                                    Showing {(callPage - 1) * CALLS_PER_PAGE + 1} to {Math.min(callPage * CALLS_PER_PAGE, callRecords.length)} of {callRecords.length}
+                                                </span>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button
+                                                        disabled={callPage === 1}
+                                                        onClick={() => setCallPage(p => Math.max(1, p - 1))}
+                                                        style={{ padding: '4px 12px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', cursor: callPage === 1 ? 'not-allowed' : 'pointer', opacity: callPage === 1 ? 0.5 : 1 }}
+                                                    >
+                                                        Previous
+                                                    </button>
+                                                    <button
+                                                        disabled={callPage >= totalPages}
+                                                        onClick={() => setCallPage(p => Math.min(totalPages, p + 1))}
+                                                        style={{ padding: '4px 12px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', cursor: callPage >= totalPages ? 'not-allowed' : 'pointer', opacity: callPage >= totalPages ? 0.5 : 1 }}
+                                                    >
+                                                        Next
+                                                    </button>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
-                                <h2 style={{ fontSize: '2.2rem', marginTop: '12px', color: stat.color, marginBottom: 0 }}>
-                                    {loading ? '...' : (stat.isCurrency ? `₹${(overview?.stats?.[stat.key] || 0).toLocaleString()}` : (overview?.stats?.[stat.key] || 0))}
-                                </h2>
-                                {stat.isCallCard && !loading && (
-                                    <div style={{ display: 'flex', gap: '12px', marginTop: '10px', flexWrap: 'wrap' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', borderRadius: '8px', padding: '4px 10px' }}>
-                                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', flexShrink: 0 }}></span>
-                                            <span style={{ fontSize: '0.75rem', color: '#065f46', fontWeight: '600' }}>CE: {overview?.stats?.ceCallsToday ?? 0}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#eff6ff', borderRadius: '8px', padding: '4px 10px' }}>
-                                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366f1', display: 'inline-block', flexShrink: 0 }}></span>
-                                            <span style={{ fontSize: '0.75rem', color: '#3730a3', fontWeight: '600' }}>TL: {overview?.stats?.tlCallsToday ?? 0}</span>
-                                        </div>
-                                    </div>
                                 )}
-                                </div>
-                            );
-                        })}
-                    </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="dashboard-stats-grid">
+                            {statsConfig.map((stat, i) => {
+                                const isClickable = Boolean(stat.filter && !isTL);
+                                return (
+                                    <div 
+                                        key={i} 
+                                        className="glass-card" 
+                                        onClick={() => {
+                                            if (isClickable) {
+                                                const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
+                                                const targetPath = isFE ? '/leads/my-created' : '/leads';
+                                                navigate(targetPath, { 
+                                                    state: { 
+                                                        categoryFilter: stat.filter
+                                                    } 
+                                                });
+                                            }
+                                        }}
+                                        style={{ 
+                                            background: 'white', 
+                                            padding: '24px', 
+                                            borderRadius: '16px', 
+                                            border: '1px solid #e2e8f0', 
+                                            display: 'flex', 
+                                            flexDirection: 'column', 
+                                            justifyContent: 'space-between', 
+                                            position: 'relative',
+                                            cursor: isClickable ? 'pointer' : 'default',
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                                        }}
+                                        onMouseEnter={e => {
+                                            if (isClickable) {
+                                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                                e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.08)';
+                                            }
+                                        }}
+                                        onMouseLeave={e => {
+                                            if (isClickable) {
+                                                e.currentTarget.style.transform = 'none';
+                                                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                                            }
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                            <p style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: '600', margin: 0 }}>{stat.label}</p>
+                                            {isClickable && (
+                                                <span style={{ fontSize: '0.75rem', color: stat.color, fontWeight: '700' }}>
+                                                    View list →
+                                                </span>
+                                            )}
+                                        </div>
+                                    <h2 style={{ fontSize: '2.2rem', marginTop: '12px', color: stat.color, marginBottom: 0 }}>
+                                        {loading ? '...' : (stat.isCurrency ? `₹${(overview?.stats?.[stat.key] || 0).toLocaleString()}` : (overview?.stats?.[stat.key] || 0))}
+                                    </h2>
+                                    {stat.isCallCard && !loading && (
+                                        <div style={{ display: 'flex', gap: '12px', marginTop: '10px', flexWrap: 'wrap' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', borderRadius: '8px', padding: '4px 10px' }}>
+                                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', flexShrink: 0 }}></span>
+                                                <span style={{ fontSize: '0.75rem', color: '#065f46', fontWeight: '600' }}>CE: {overview?.stats?.ceCallsToday ?? 0}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#eff6ff', borderRadius: '8px', padding: '4px 10px' }}>
+                                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366f1', display: 'inline-block', flexShrink: 0 }}></span>
+                                                <span style={{ fontSize: '0.75rem', color: '#3730a3', fontWeight: '600' }}>TL: {overview?.stats?.tlCallsToday ?? 0}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     {(user?.role === 'Admin' || user?.role === 'Team Lead') && (
                         <div style={{ marginTop: '0px', flex: 1, display: 'flex', flexDirection: 'column' }} className="fade-in">                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '25px' }}>
