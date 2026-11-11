@@ -100,28 +100,59 @@ const hasValidPhone = (phone) => {
     return /\d/.test(str);
 };
 
-const getLast7DaysRange = () => {
+const getTodayDateStr = () => {
     const pad = (n) => String(n).padStart(2, '0');
-    const to = new Date();
-    const from = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
-    return {
-        from: `${from.getFullYear()}-${pad(from.getMonth() + 1)}-${pad(from.getDate())}`,
-        to: `${to.getFullYear()}-${pad(to.getMonth() + 1)}-${pad(to.getDate())}`
-    };
+    const d = new Date();
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
 const getLocalDateStr = (dateVal) => {
     if (!dateVal) return '';
+    if (typeof dateVal === 'string') {
+        const trimmed = dateVal.trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+            if (trimmed.length === 10 || trimmed.includes('T00:00:00')) {
+                return trimmed.substring(0, 10);
+            }
+        }
+    }
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return '';
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-const isDateInRange = (dateStr, from, to) => {
-    if (!dateStr) return false;
-    if (from && dateStr < from) return false;
-    if (to && dateStr > to) return false;
+const addDaysToDate = (dateStr, days) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    d.setDate(d.getDate() + days);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const getDaysDifference = (fromStr, toStr) => {
+    if (!fromStr || !toStr) return 0;
+    const fromTime = new Date(fromStr + 'T00:00:00').getTime();
+    const toTime = new Date(toStr + 'T00:00:00').getTime();
+    return Math.round((toTime - fromTime) / (1000 * 60 * 60 * 24));
+};
+
+const isRecordInDateRange = (recordDateStr, customFrom, customTo, todayStr) => {
+    if (!recordDateStr) return false;
+    // Default view: if both From and To are empty, show today's records only
+    if (!customFrom && !customTo) {
+        return recordDateStr === todayStr;
+    }
+    // Manual date selection overrides default today's filtering (up to 1 month)
+    if (customFrom && customTo) {
+        return recordDateStr >= customFrom && recordDateStr <= customTo;
+    }
+    if (customFrom) {
+        return recordDateStr >= customFrom;
+    }
+    if (customTo) {
+        return recordDateStr <= customTo;
+    }
     return true;
 };
 
@@ -159,19 +190,22 @@ const LeadList = ({ user, isMyCreated }) => {
     const isTL = user?.role === 'Team Lead' || user?.Role === 'Team Lead';
     const isAdmin = user?.role === 'Admin' || user?.Role === 'Admin';
 
-    // Independent date ranges for Call Executive categories (default: most recent 7 days)
+    // Independent date ranges for Call Executive categories (default: empty, displaying today's records only)
     const [ceNewDateRange, setCeNewDateRange] = useState(() => {
         if (location.state?.categoryFilter === 'new' && (location.state?.fromDate || location.state?.toDate)) {
             return { from: location.state.fromDate || '', to: location.state.toDate || '' };
         }
-        return getLast7DaysRange();
+        return { from: '', to: '' };
     });
     const [ceFollowupDateRange, setCeFollowupDateRange] = useState(() => {
         if (location.state?.categoryFilter === 'followup' && (location.state?.fromDate || location.state?.toDate)) {
             return { from: location.state.fromDate || '', to: location.state.toDate || '' };
         }
-        return getLast7DaysRange();
+        return { from: '', to: '' };
     });
+    const [ceDateRangeError, setCeDateRangeError] = useState('');
+
+    const todayStr = useMemo(() => getTodayDateStr(), []);
 
     const currentCeRange = categoryFilter === 'new'
         ? ceNewDateRange
@@ -179,52 +213,58 @@ const LeadList = ({ user, isMyCreated }) => {
         ? ceFollowupDateRange
         : { from: fromDate, to: toDate };
 
-    const isCurrentCeRange7Days = useMemo(() => {
-        const d7 = getLast7DaysRange();
-        return currentCeRange.from === d7.from && currentCeRange.to === d7.to;
-    }, [currentCeRange]);
-
     const handleCeFromChange = (val) => {
+        setCeDateRangeError('');
+        const updateRange = (prev) => {
+            let to = prev.to;
+            if (val && to) {
+                if (val > to) {
+                    to = val;
+                } else if (getDaysDifference(val, to) > 31) {
+                    to = addDaysToDate(val, 31);
+                    setCeDateRangeError('Date range adjusted to 1 month maximum (31 days)');
+                }
+            }
+            return { from: val, to };
+        };
+
         if (categoryFilter === 'new') {
-            setCeNewDateRange(prev => ({
-                from: val,
-                to: (val && prev.to && val > prev.to) ? val : prev.to
-            }));
+            setCeNewDateRange(updateRange);
         } else if (categoryFilter === 'followup') {
-            setCeFollowupDateRange(prev => ({
-                from: val,
-                to: (val && prev.to && val > prev.to) ? val : prev.to
-            }));
+            setCeFollowupDateRange(updateRange);
         } else {
             handleFromDateChange(val);
         }
     };
 
     const handleCeToChange = (val) => {
+        setCeDateRangeError('');
+        const updateRange = (prev) => {
+            let from = prev.from;
+            if (val && from) {
+                if (val < from) {
+                    setCeDateRangeError('To Date cannot be earlier than From Date');
+                    return prev;
+                }
+                if (getDaysDifference(from, val) > 31) {
+                    setCeDateRangeError('Date range cannot exceed 1 month (maximum 31 days)');
+                    val = addDaysToDate(from, 31);
+                }
+            }
+            return { from, to: val };
+        };
+
         if (categoryFilter === 'new') {
-            if (val && ceNewDateRange.from && val < ceNewDateRange.from) return;
-            setCeNewDateRange(prev => ({ ...prev, to: val }));
+            setCeNewDateRange(updateRange);
         } else if (categoryFilter === 'followup') {
-            if (val && ceFollowupDateRange.from && val < ceFollowupDateRange.from) return;
-            setCeFollowupDateRange(prev => ({ ...prev, to: val }));
+            setCeFollowupDateRange(updateRange);
         } else {
             handleToDateChange(val);
         }
     };
 
-    const handleResetTo7Days = () => {
-        const range = getLast7DaysRange();
-        if (categoryFilter === 'new') {
-            setCeNewDateRange(range);
-        } else if (categoryFilter === 'followup') {
-            setCeFollowupDateRange(range);
-        } else {
-            setFromDate(range.from);
-            setToDate(range.to);
-        }
-    };
-
     const handleClearCeDates = () => {
+        setCeDateRangeError('');
         if (categoryFilter === 'new') {
             setCeNewDateRange({ from: '', to: '' });
         } else if (categoryFilter === 'followup') {
@@ -743,6 +783,7 @@ const LeadList = ({ user, isMyCreated }) => {
     }, [leads, baseLeads, isMyCreated, isTL, singleDate, fromDate, toDate, checkDateInRange]);
 
     // Call Executive New Leads and Follow-up Leads count based on independent date ranges
+    // Default view: today's records only. Custom range: up to 1 month.
     const { ceNewCount, ceFollowupCount } = useMemo(() => {
         if (!isCE) return { ceNewCount: 0, ceFollowupCount: 0 };
         let n = 0, f = 0;
@@ -752,18 +793,18 @@ const LeadList = ({ user, isMyCreated }) => {
             const isFollowup = s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'meetingfollowup' || s === 'meeting follow-up' || Boolean(l.FollowupDate && String(l.FollowupDate).trim() !== '');
             if (isFollowup) {
                 const fDate = getLocalDateStr(l.FollowupDate) || getLocalDateStr(l.UpdatedAt);
-                if (isDateInRange(fDate, ceFollowupDateRange.from, ceFollowupDateRange.to)) {
+                if (isRecordInDateRange(fDate, ceFollowupDateRange.from, ceFollowupDateRange.to, todayStr)) {
                     f++;
                 }
             } else {
                 const cDate = getLocalDateStr(l.CreatedAt);
-                if (isDateInRange(cDate, ceNewDateRange.from, ceNewDateRange.to)) {
+                if (isRecordInDateRange(cDate, ceNewDateRange.from, ceNewDateRange.to, todayStr)) {
                     n++;
                 }
             }
         }
         return { ceNewCount: n, ceFollowupCount: f };
-    }, [isCE, leads, ceNewDateRange, ceFollowupDateRange]);
+    }, [isCE, leads, ceNewDateRange, ceFollowupDateRange, todayStr]);
 
     const filtered = useMemo(() => {
         const searchLower = search.trim().toLowerCase();
@@ -782,15 +823,15 @@ const LeadList = ({ user, isMyCreated }) => {
                 if (categoryFilter === 'new') {
                     if (isFollowup) return false;
                     const cDate = getLocalDateStr(l.CreatedAt);
-                    if (!isDateInRange(cDate, ceNewDateRange.from, ceNewDateRange.to)) return false;
+                    if (!isRecordInDateRange(cDate, ceNewDateRange.from, ceNewDateRange.to, todayStr)) return false;
                 } else if (categoryFilter === 'followup') {
                     if (!isFollowup) return false;
                     const fDate = getLocalDateStr(l.FollowupDate) || getLocalDateStr(l.UpdatedAt);
-                    if (!isDateInRange(fDate, ceFollowupDateRange.from, ceFollowupDateRange.to)) return false;
+                    if (!isRecordInDateRange(fDate, ceFollowupDateRange.from, ceFollowupDateRange.to, todayStr)) return false;
                 } else if (categoryFilter === 'all') {
                     if (fromDate || toDate) {
                         const cDate = getLocalDateStr(l.CreatedAt);
-                        if (!isDateInRange(cDate, fromDate, toDate)) return false;
+                        if (!isRecordInDateRange(cDate, fromDate, toDate, todayStr)) return false;
                     }
                 }
             } else {
@@ -1280,7 +1321,7 @@ const LeadList = ({ user, isMyCreated }) => {
                         </button>
                     )}
 
-                    {/* From Date – To Date Range Filter (Call Executive independent date filtering) */}
+                    {/* From Date – To Date Range Filter (Call Executive independent date filtering: default today, up to 1 month custom range) */}
                     {isCE && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 1 auto' }}>
                             <div style={{ position: 'relative', minWidth: '140px', flex: '1 1 auto' }}>
@@ -1305,54 +1346,39 @@ const LeadList = ({ user, isMyCreated }) => {
                                     title={`To Date (${categoryFilter === 'new' ? 'New Leads' : categoryFilter === 'followup' ? 'Follow-up Leads' : 'All Leads'})`}
                                     placeholder="To Date"
                                     min={currentCeRange.from || undefined}
+                                    max={currentCeRange.from ? addDaysToDate(currentCeRange.from, 31) : undefined}
                                     style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '36px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
                                     value={currentCeRange.to}
                                     onChange={e => handleCeToChange(e.target.value)}
                                 />
                             </div>
-                            <button
-                                type="button"
-                                onClick={handleResetTo7Days}
-                                title="Reset date range to most recent 7 days"
-                                style={{
-                                    padding: '8px 12px',
-                                    borderRadius: '8px',
-                                    border: `1.5px solid ${isCurrentCeRange7Days ? '#6366f1' : '#cbd5e1'}`,
-                                    background: isCurrentCeRange7Days ? '#eef2ff' : 'white',
-                                    color: isCurrentCeRange7Days ? '#4f46e5' : '#475569',
-                                    fontSize: '0.78rem',
-                                    fontWeight: '700',
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '5px',
-                                    whiteSpace: 'nowrap'
-                                }}
-                            >
-                                <RotateCcw size={13} /> 7 Days
-                            </button>
                             {(currentCeRange.from || currentCeRange.to) && (
                                 <button
                                     type="button"
                                     onClick={handleClearCeDates}
-                                    title="View all dates"
+                                    title="Remove custom date range and return to today's records"
                                     style={{
-                                        padding: '8px 10px',
+                                        padding: '8px 12px',
                                         borderRadius: '8px',
-                                        border: '1px solid #e2e8f0',
+                                        border: '1px solid #cbd5e1',
                                         background: 'white',
-                                        color: '#64748b',
+                                        color: '#dc2626',
                                         fontSize: '0.78rem',
-                                        fontWeight: '600',
+                                        fontWeight: '700',
                                         cursor: 'pointer',
                                         display: 'inline-flex',
                                         alignItems: 'center',
-                                        gap: '3px',
+                                        gap: '4px',
                                         whiteSpace: 'nowrap'
                                     }}
                                 >
                                     <X size={13} /> Clear
                                 </button>
+                            )}
+                            {ceDateRangeError && (
+                                <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: '600' }}>
+                                    {ceDateRangeError}
+                                </span>
                             )}
                         </div>
                     )}
