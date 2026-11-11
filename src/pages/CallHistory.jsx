@@ -29,29 +29,52 @@ const statusColors = {
 
 const CallHistory = ({ user }) => {
     const navigate = useNavigate();
+    const isAdminOrTL = user?.role === 'Admin' || user?.role === 'Team Lead';
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [dateFilter, setDateFilter] = useState('');
+    const [executiveFilter, setExecutiveFilter] = useState('all');
+    const [executivesList, setExecutivesList] = useState([]);
+
+    useEffect(() => {
+        if (!isAdminOrTL) return;
+        const fetchExecutives = async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/users?role=Call%20Executive`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('crm_token') || ''}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setExecutivesList(data || []);
+                }
+            } catch (err) {
+                console.error('Error fetching executives:', err);
+            }
+        };
+        fetchExecutives();
+    }, [isAdminOrTL]);
 
     const { ref: tableContainerRef, isDragging, handleMouseDown, handleMouseLeave, handleMouseUp, handleMouseMove } = useDraggableScroll();
 
     const fetchLogs = async () => {
         setLoading(true);
-        console.log('[DEBUG] Fetching call logs...');
         try {
-            const url = dateFilter ? `${API_URL}/api/leads/call-history?date=${dateFilter}` : `${API_URL}/api/leads/call-history`;
-            console.log('[DEBUG] Calling URL:', url);
+            const params = new URLSearchParams();
+            if (dateFilter) params.append('date', dateFilter);
+            if (isAdminOrTL && executiveFilter) {
+                params.append('executiveId', executiveFilter);
+            }
+            const queryStr = params.toString() ? `?${params.toString()}` : '';
+            const url = `${API_URL}/api/leads/call-history${queryStr}`;
             const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('crm_token') || ''}` }
             });
             if (res.ok) {
                 const data = await res.json();
-                console.log('[DEBUG] Call logs received:', data.length);
-                if (data.length > 0) console.log('[DEBUG] First record time:', data[0].CreatedAt);
                 setLogs(data);
             } else {
-                console.error('[DEBUG] Failed to fetch logs:', await res.text());
+                console.error('Failed to fetch logs:', await res.text());
             }
         } catch (err) {
             console.error('Fetch error:', err);
@@ -62,13 +85,15 @@ const CallHistory = ({ user }) => {
 
     useEffect(() => {
         fetchLogs();
-    }, [dateFilter]);
+    }, [dateFilter, executiveFilter]);
 
     const filtered = logs.filter(log => 
         log.FullName?.toLowerCase().includes(search.toLowerCase()) ||
         (log.Phone && String(log.Phone).toLowerCase().includes(search.toLowerCase())) ||
         log.CompanyName?.toLowerCase().includes(search.toLowerCase()) ||
-        log.CallNote?.toLowerCase().includes(search.toLowerCase())
+        log.CallNote?.toLowerCase().includes(search.toLowerCase()) ||
+        (log.ExecutiveName && log.ExecutiveName.toLowerCase().includes(search.toLowerCase())) ||
+        (log.ExecutiveEmpID && log.ExecutiveEmpID.toLowerCase().includes(search.toLowerCase()))
     );
 
     return (
@@ -112,6 +137,23 @@ const CallHistory = ({ user }) => {
                             autoComplete="off"
                         />
                     </div>
+                    {isAdminOrTL && (
+                        <div style={{ position: 'relative', minWidth: '240px' }}>
+                            <select
+                                className="input-field"
+                                style={{ width: '100%', cursor: 'pointer', background: 'white' }}
+                                value={executiveFilter}
+                                onChange={e => setExecutiveFilter(e.target.value)}
+                            >
+                                <option value="all">👥 All Call Executives (Team)</option>
+                                {executivesList.map(exec => (
+                                    <option key={exec.UserID} value={exec.UserID}>
+                                        👤 {exec.EmployeeName || exec.FullName} ({exec.EmployeeID || 'CE'})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                     <div style={{ position: 'relative', minWidth: '220px' }}>
                         <Calendar size={16} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
                         <input
@@ -147,6 +189,7 @@ const CallHistory = ({ user }) => {
                             <thead>
                                 <tr style={{ background: '#f1f5f9', color: '#1e293b', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: '800', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
                                     <th style={{ padding: '20px', width: '200px' }}>Date & Time</th>
+                                    {isAdminOrTL && <th style={{ padding: '20px', width: '200px' }}>Executive</th>}
                                     <th style={{ padding: '20px', width: '250px' }}>Lead Details</th>
                                     <th style={{ padding: '20px', width: '180px' }}>Contact</th>
                                     <th style={{ padding: '20px', width: '150px' }}>Status</th>
@@ -175,6 +218,16 @@ const CallHistory = ({ user }) => {
                                                     );
                                                 })()}
                                             </td>
+                                            {isAdminOrTL && (
+                                                <td style={{ padding: '20px', width: '200px' }}>
+                                                    <div style={{ fontWeight: '700', color: '#4f46e5' }}>{log.ExecutiveName || 'Executive'}</div>
+                                                    {log.ExecutiveEmpID && (
+                                                        <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '2px' }}>
+                                                            {log.ExecutiveEmpID}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            )}
                                             <td style={{ padding: '20px', width: '250px' }}>
                                                 <div style={{ fontWeight: '700', color: '#1e293b' }}>{log.FullName}</div>
                                                 <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{log.CompanyName}</div>

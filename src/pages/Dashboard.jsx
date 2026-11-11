@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, UserPlus, List, Settings, LogOut, Loader, AlertCircle, BarChart, Calendar, Clock, FileText, CreditCard, Navigation, Activity, Users, TrendingUp, IndianRupee, Download, FileDown, MessageSquare, CheckCircle, PhoneCall, RotateCcw, Filter, Award, CheckCircle2, XCircle } from 'lucide-react';
+import { LayoutDashboard, UserPlus, List, Settings, LogOut, Loader, AlertCircle, BarChart, Calendar, Clock, FileText, CreditCard, Navigation, Activity, Users, TrendingUp, IndianRupee, Download, FileDown, MessageSquare, CheckCircle, PhoneCall, RotateCcw, Filter, Award, CheckCircle2, XCircle, Search, UserCheck, Eye, BarChart3 } from 'lucide-react';
 import {
     BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, Legend, ResponsiveContainer,
     AreaChart, Area
@@ -24,6 +24,14 @@ const Dashboard = ({ user, onLogout }) => {
     const [showAllStatuses, setShowAllStatuses] = useState(false);
     const [callPage, setCallPage] = useState(1);
     const CALLS_PER_PAGE = 15;
+
+    // Team Lead & Admin Real-Time Call Activity Tracking State
+    const [adminCeFilter, setAdminCeFilter] = useState('all');
+    const [adminCallDate, setAdminCallDate] = useState(new Date().toISOString().split('T')[0]);
+    const [showAllTeamStatuses, setShowAllTeamStatuses] = useState(false);
+    const [teamCallSearch, setTeamCallSearch] = useState('');
+    const [teamCallPage, setTeamCallPage] = useState(1);
+    const [callTrackingTab, setCallTrackingTab] = useState('overview'); // 'overview' | 'comparison' | 'activity'
 
     const handleStartDateChange = (val) => {
         setStartDate(val);
@@ -81,15 +89,24 @@ const Dashboard = ({ user, onLogout }) => {
         );
     };
 
-    const fetchOverview = useCallback(async (selectedCallDate, startD, endD) => {
+    const isTLOrAdmin = user?.role === 'Admin' || user?.role === 'Team Lead';
+
+    const fetchOverview = useCallback(async (ceDate, adminDate, ceFilter, startD, endD) => {
         setLoading(true);
         setError('');
         try {
-            const dateParam = selectedCallDate || new Date().toISOString().split('T')[0];
+            const isAdminOrTL = user?.role === 'Admin' || user?.role === 'Team Lead';
+            const dateParam = isAdminOrTL
+                ? (adminDate || new Date().toISOString().split('T')[0])
+                : (ceDate || new Date().toISOString().split('T')[0]);
+
             let url = `${API_URL}/api/stats/overview?date=${dateParam}`;
-            if (user?.role === 'Admin' || user?.role === 'Team Lead') {
+            if (isAdminOrTL) {
                 if (startD && endD) {
                     url += `&startDate=${startD}&endDate=${endD}`;
+                }
+                if (ceFilter) {
+                    url += `&executiveId=${ceFilter}`;
                 }
             }
             const res = await fetch(url, {
@@ -106,13 +123,13 @@ const Dashboard = ({ user, onLogout }) => {
     }, [user?.role]);
 
     useEffect(() => {
-        fetchOverview(callDate, startDate, endDate);
-    }, [fetchOverview, callDate, startDate, endDate]);
+        fetchOverview(callDate, adminCallDate, adminCeFilter, startDate, endDate);
+    }, [fetchOverview, callDate, adminCallDate, adminCeFilter, startDate, endDate]);
 
     // Auto-refresh dashboard stats when window regains focus, tab becomes visible, or call/lead status updates
     useEffect(() => {
         const handleAutoRefresh = () => {
-            fetchOverview(callDate, startDate, endDate);
+            fetchOverview(callDate, adminCallDate, adminCeFilter, startDate, endDate);
         };
 
         const handleVisibilityChange = () => {
@@ -132,19 +149,17 @@ const Dashboard = ({ user, onLogout }) => {
             window.removeEventListener('focus', handleAutoRefresh);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, [fetchOverview, callDate, startDate, endDate]);
+    }, [fetchOverview, callDate, adminCallDate, adminCeFilter, startDate, endDate]);
 
-    // Real-time periodic auto-sync for Call Executive (every 15s)
+    // Real-time periodic auto-sync for Call Executive, Team Lead, and Admin (every 15s)
     useEffect(() => {
-        const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
-        if (!isCE) return;
         const interval = setInterval(() => {
             if (document.visibilityState === 'visible') {
-                fetchOverview(callDate, startDate, endDate);
+                fetchOverview(callDate, adminCallDate, adminCeFilter, startDate, endDate);
             }
         }, 15000);
         return () => clearInterval(interval);
-    }, [user?.role, user?.Role, fetchOverview, callDate, startDate, endDate]);
+    }, [fetchOverview, callDate, adminCallDate, adminCeFilter, startDate, endDate]);
 
     const fetchTimeSeries = useCallback(async () => {
         if (user?.role !== 'Admin' && user?.role !== 'Team Lead') return;
@@ -412,6 +427,78 @@ const Dashboard = ({ user, onLogout }) => {
         const start = (callPage - 1) * CALLS_PER_PAGE;
         return callRecords.slice(start, start + CALLS_PER_PAGE);
     }, [callRecords, callPage]);
+
+    // Team Lead & Admin Real-Time Call Status Cards
+    const teamCallStatusCards = useMemo(() => {
+        if (!isTL && user?.role !== 'Admin') return [];
+
+        const breakdown = overview?.callBreakdown || [];
+        const breakdownMap = new Map();
+        breakdown.forEach(item => {
+            if (item.status) {
+                breakdownMap.set(item.status.trim().toLowerCase(), item.count);
+            }
+        });
+
+        const cards = [];
+
+        // 1. Standard statuses
+        standardStatusDefs.forEach(def => {
+            const count = breakdownMap.get(def.label.toLowerCase()) || 0;
+            cards.push({
+                label: def.label,
+                count,
+                color: def.color,
+                bg: def.bg,
+                border: def.border,
+                isStandard: true
+            });
+            breakdownMap.delete(def.label.toLowerCase());
+        });
+
+        // 2. Dynamic statuses
+        breakdownMap.forEach((count, key) => {
+            const original = breakdown.find(b => b.status?.trim().toLowerCase() === key);
+            const label = original?.status?.trim() || (key.charAt(0).toUpperCase() + key.slice(1));
+            cards.push({
+                label,
+                count,
+                color: '#6366f1',
+                bg: '#f5f3ff',
+                border: '#e0e7ff',
+                isStandard: false
+            });
+        });
+
+        return cards;
+    }, [isTL, user?.role, overview?.callBreakdown]);
+
+    const visibleTeamCallCards = useMemo(() => {
+        if (showAllTeamStatuses) return teamCallStatusCards;
+        return teamCallStatusCards.filter(c => c.count > 0 || ['Interested', 'Not Interested', 'Follow-up'].includes(c.label));
+    }, [teamCallStatusCards, showAllTeamStatuses]);
+
+    const TEAM_CALLS_PER_PAGE = 15;
+    const teamCallRecords = overview?.callRecords || [];
+    const filteredTeamCallRecords = useMemo(() => {
+        if (!teamCallSearch.trim()) return teamCallRecords;
+        const q = teamCallSearch.toLowerCase();
+        return teamCallRecords.filter(r => 
+            (r.FullName && r.FullName.toLowerCase().includes(q)) ||
+            (r.CompanyName && r.CompanyName.toLowerCase().includes(q)) ||
+            (r.Phone && String(r.Phone).toLowerCase().includes(q)) ||
+            (r.Status && r.Status.toLowerCase().includes(q)) ||
+            (r.ExecutiveName && r.ExecutiveName.toLowerCase().includes(q)) ||
+            (r.ExecutiveEmpID && r.ExecutiveEmpID.toLowerCase().includes(q)) ||
+            (r.CallNote && r.CallNote.toLowerCase().includes(q))
+        );
+    }, [teamCallRecords, teamCallSearch]);
+
+    const totalTeamCallPages = Math.ceil(filteredTeamCallRecords.length / TEAM_CALLS_PER_PAGE) || 1;
+    const paginatedTeamCallRecords = useMemo(() => {
+        const start = (teamCallPage - 1) * TEAM_CALLS_PER_PAGE;
+        return filteredTeamCallRecords.slice(start, start + TEAM_CALLS_PER_PAGE);
+    }, [filteredTeamCallRecords, teamCallPage]);
 
     const getBadgeColor = (status) => {
         const s = String(status || '').trim().toLowerCase();
@@ -1020,6 +1107,7 @@ const Dashboard = ({ user, onLogout }) => {
                         <div className="dashboard-stats-grid">
                             {statsConfig.map((stat, i) => {
                                 const isClickable = Boolean(stat.filter && !isTL);
+                                const isCallTrackingClickable = stat.isCallCard && (user?.role === 'Admin' || user?.role === 'Team Lead');
                                 return (
                                     <div 
                                         key={i} 
@@ -1033,6 +1121,9 @@ const Dashboard = ({ user, onLogout }) => {
                                                         categoryFilter: stat.filter
                                                     } 
                                                 });
+                                            } else if (isCallTrackingClickable) {
+                                                const el = document.getElementById('team-call-tracking-section');
+                                                if (el) el.scrollIntoView({ behavior: 'smooth' });
                                             }
                                         }}
                                         style={{ 
@@ -1044,7 +1135,7 @@ const Dashboard = ({ user, onLogout }) => {
                                             flexDirection: 'column', 
                                             justifyContent: 'space-between', 
                                             position: 'relative',
-                                            cursor: isClickable ? 'pointer' : 'default',
+                                            cursor: (isClickable || isCallTrackingClickable) ? 'pointer' : 'default',
                                             transition: 'all 0.2s ease',
                                             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                                         }}
@@ -1068,6 +1159,11 @@ const Dashboard = ({ user, onLogout }) => {
                                                     View list →
                                                 </span>
                                             )}
+                                            {isCallTrackingClickable && (
+                                                <span style={{ fontSize: '0.75rem', color: stat.color, fontWeight: '700' }}>
+                                                    Track calls ↓
+                                                </span>
+                                            )}
                                         </div>
                                     <h2 style={{ fontSize: '2.2rem', marginTop: '12px', color: stat.color, marginBottom: 0 }}>
                                         {loading ? '...' : (stat.isCurrency ? `₹${(overview?.stats?.[stat.key] || 0).toLocaleString()}` : (overview?.stats?.[stat.key] || 0))}
@@ -1087,6 +1183,549 @@ const Dashboard = ({ user, onLogout }) => {
                                     </div>
                                 );
                             })}
+                        </div>
+                    )}
+
+                    {/* Section C: Real-Time Call Tracking & Performance for Team Lead and Admin */}
+                    {(user?.role === 'Admin' || user?.role === 'Team Lead') && (
+                        <div id="team-call-tracking-section" className="team-call-tracking-section fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px', marginBottom: '30px' }}>
+                            {/* Section Header & Filter Controls */}
+                            <div className="glass-card" style={{
+                                padding: '18px 24px',
+                                background: 'white',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                flexWrap: 'wrap',
+                                gap: '16px',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                    <div style={{ padding: '10px', background: '#e0e7ff', borderRadius: '12px', color: '#6366f1' }}>
+                                        <PhoneCall size={22} />
+                                    </div>
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: '#1e293b' }}>
+                                                Real-Time Call Activity & Performance Tracking
+                                            </h3>
+                                            <span style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                fontSize: '0.72rem',
+                                                fontWeight: '700',
+                                                color: '#059669',
+                                                background: '#d1fae5',
+                                                padding: '3px 10px',
+                                                borderRadius: '12px'
+                                            }}>
+                                                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+                                                Live Real-Time
+                                            </span>
+                                        </div>
+                                        <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                                            {adminCeFilter === 'all'
+                                                ? `Monitoring combined team call activity for ${adminCallDate.split('-').reverse().join('-')}`
+                                                : `Monitoring call performance for ${overview?.executivesList?.find(e => String(e.UserID) === String(adminCeFilter))?.FullName || 'selected executive'} on ${adminCallDate.split('-').reverse().join('-')}`
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Filter Controls */}
+                                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                                    {/* Executive Selector */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Executive:</label>
+                                        <select
+                                            className="input-field"
+                                            value={adminCeFilter}
+                                            onChange={e => {
+                                                setAdminCeFilter(e.target.value);
+                                                setTeamCallPage(1);
+                                            }}
+                                            style={{
+                                                padding: '8px 12px',
+                                                borderRadius: '8px',
+                                                border: '1px solid #cbd5e1',
+                                                fontSize: '0.84rem',
+                                                fontWeight: '600',
+                                                color: '#1e293b',
+                                                background: '#f8fafc',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <option value="all">👥 All Call Executives (Team)</option>
+                                            {(overview?.executivesList || []).map(exec => (
+                                                <option key={exec.UserID} value={exec.UserID}>
+                                                    👤 {exec.FullName} ({exec.EmployeeID || 'CE'})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Date Picker */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Date:</label>
+                                        <div style={{ position: 'relative', width: '150px' }}>
+                                            <Calendar size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                            <input
+                                                type="date"
+                                                className="input-field"
+                                                style={{ padding: '8px 8px 8px 30px', width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.84rem' }}
+                                                value={adminCallDate}
+                                                onChange={e => {
+                                                    setAdminCallDate(e.target.value);
+                                                    setTeamCallPage(1);
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Quick Today Button */}
+                                    {adminCallDate !== new Date().toISOString().split('T')[0] && (
+                                        <button
+                                            onClick={() => {
+                                                setAdminCallDate(new Date().toISOString().split('T')[0]);
+                                                setTeamCallPage(1);
+                                            }}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                padding: '8px 12px',
+                                                background: '#e0e7ff',
+                                                color: '#4f46e5',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '700',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <RotateCcw size={14} /> Today
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* View Tabs & Status Filter */}
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                flexWrap: 'wrap',
+                                gap: '12px'
+                            }}>
+                                <div style={{
+                                    display: 'flex',
+                                    background: '#f1f5f9',
+                                    padding: '4px',
+                                    borderRadius: '10px',
+                                    gap: '4px',
+                                    width: 'fit-content'
+                                }}>
+                                    <button
+                                        onClick={() => setCallTrackingTab('overview')}
+                                        style={{
+                                            padding: '6px 14px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            background: callTrackingTab === 'overview' ? 'white' : 'transparent',
+                                            color: callTrackingTab === 'overview' ? '#4f46e5' : '#64748b',
+                                            fontWeight: '700',
+                                            fontSize: '0.82rem',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            boxShadow: callTrackingTab === 'overview' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        <BarChart3 size={15} /> Call Status Breakdown
+                                    </button>
+                                    <button
+                                        onClick={() => setCallTrackingTab('comparison')}
+                                        style={{
+                                            padding: '6px 14px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            background: callTrackingTab === 'comparison' ? 'white' : 'transparent',
+                                            color: callTrackingTab === 'comparison' ? '#4f46e5' : '#64748b',
+                                            fontWeight: '700',
+                                            fontSize: '0.82rem',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            boxShadow: callTrackingTab === 'comparison' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        <Users size={15} /> Executive Comparison
+                                    </button>
+                                    <button
+                                        onClick={() => setCallTrackingTab('activity')}
+                                        style={{
+                                            padding: '6px 14px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            background: callTrackingTab === 'activity' ? 'white' : 'transparent',
+                                            color: callTrackingTab === 'activity' ? '#4f46e5' : '#64748b',
+                                            fontWeight: '700',
+                                            fontSize: '0.82rem',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            boxShadow: callTrackingTab === 'activity' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        <List size={15} /> Live Call Activity Log ({filteredTeamCallRecords.length})
+                                    </button>
+                                </div>
+
+                                {callTrackingTab === 'overview' && (
+                                    <button
+                                        onClick={() => setShowAllTeamStatuses(!showAllTeamStatuses)}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            padding: '7px 12px',
+                                            background: showAllTeamStatuses ? '#e2e8f0' : '#ffffff',
+                                            color: '#475569',
+                                            border: '1px solid #cbd5e1',
+                                            borderRadius: '8px',
+                                            fontSize: '0.8rem',
+                                            fontWeight: '600',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <Filter size={14} /> {showAllTeamStatuses ? 'Show Active Only' : 'Show All Statuses'}
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Tab 1: Call Status Breakdown Cards */}
+                            {callTrackingTab === 'overview' && (
+                                <div className="call-stats-grid">
+                                    {/* Total Calls Made Card */}
+                                    <div
+                                        className="glass-card"
+                                        style={{
+                                            background: 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)',
+                                            border: '2px solid #818cf8',
+                                            borderRadius: '14px',
+                                            padding: '16px 18px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            justifyContent: 'space-between',
+                                            boxShadow: '0 2px 6px rgba(99, 102, 241, 0.12)'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#4338ca' }}>
+                                                {adminCeFilter === 'all' ? 'Team Total Calls Made' : 'Total Calls Made'}
+                                            </span>
+                                            <PhoneCall size={16} color="#6366f1" />
+                                        </div>
+                                        <h2 style={{ fontSize: '2rem', margin: '10px 0 4px 0', color: '#3730a3', fontWeight: '900' }}>
+                                            {loading ? '...' : (overview?.stats?.totalCallsMade ?? 0)}
+                                        </h2>
+                                        <span style={{ fontSize: '0.7rem', color: '#6366f1', fontWeight: '600' }}>
+                                            {adminCeFilter === 'all' ? 'Across all Call Executives' : 'By selected executive'}
+                                        </span>
+                                    </div>
+
+                                    {/* Dynamic and Standard Status Cards */}
+                                    {visibleTeamCallCards.map((card, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="glass-card"
+                                            style={{
+                                                background: 'white',
+                                                border: `1px solid ${card.count > 0 ? card.border : '#e2e8f0'}`,
+                                                borderLeft: `4px solid ${card.color}`,
+                                                borderRadius: '14px',
+                                                padding: '16px 18px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                justifyContent: 'space-between',
+                                                transition: 'all 0.2s ease',
+                                                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                                                opacity: card.count === 0 ? 0.75 : 1
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+                                                <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#475569', lineHeight: '1.2' }}>
+                                                    {card.label}
+                                                </span>
+                                                {card.count > 0 && (
+                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: card.color, flexShrink: 0, marginTop: '4px' }} />
+                                                )}
+                                            </div>
+                                            <h2 style={{ fontSize: '1.8rem', margin: '8px 0 0 0', color: card.count > 0 ? card.color : '#94a3b8', fontWeight: '800' }}>
+                                                {loading ? '...' : card.count}
+                                            </h2>
+                                            <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: '500', marginTop: '4px' }}>
+                                                {card.count === 1 ? '1 call' : `${card.count} calls`}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Tab 2: Individual Executive Performance Comparison Matrix */}
+                            {callTrackingTab === 'comparison' && (
+                                <div className="glass-card" style={{
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    border: '1px solid #e2e8f0',
+                                    padding: '20px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '14px',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <Users size={18} color="#6366f1" />
+                                            <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: '700', color: '#1e293b' }}>
+                                                Call Executive Performance Comparison Matrix
+                                            </h4>
+                                        </div>
+                                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                            Date: {adminCallDate.split('-').reverse().join('-')}
+                                        </span>
+                                    </div>
+
+                                    {(overview?.teamExecutivePerformance || []).length === 0 ? (
+                                        <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '0.88rem' }}>
+                                            No Call Executive records found.
+                                        </div>
+                                    ) : (
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                                                <thead>
+                                                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                                                        <th style={{ padding: '10px 14px' }}>Executive</th>
+                                                        <th style={{ padding: '10px 14px' }}>Status</th>
+                                                        <th style={{ padding: '10px 14px', textAlign: 'center' }}>Total Calls</th>
+                                                        <th style={{ padding: '10px 14px', textAlign: 'center' }}>Interested</th>
+                                                        <th style={{ padding: '10px 14px', textAlign: 'center' }}>Follow-ups</th>
+                                                        <th style={{ padding: '10px 14px', textAlign: 'center' }}>Not Interested</th>
+                                                        <th style={{ padding: '10px 14px', textAlign: 'center' }}>Other Statuses</th>
+                                                        <th style={{ padding: '10px 14px', textAlign: 'center' }}>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {(overview?.teamExecutivePerformance || []).map((exec) => (
+                                                        <tr key={exec.UserID} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                            <td style={{ padding: '12px 14px' }}>
+                                                                <div style={{ fontWeight: '700', color: '#1e293b' }}>{exec.EmployeeName}</div>
+                                                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{exec.EmployeeID || 'ID: ' + exec.UserID}</div>
+                                                            </td>
+                                                            <td style={{ padding: '12px 14px' }}>
+                                                                <span style={{
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '5px',
+                                                                    fontSize: '0.72rem',
+                                                                    fontWeight: '700',
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: '10px',
+                                                                    background: exec.IsOnline ? '#dcfce7' : '#f1f5f9',
+                                                                    color: exec.IsOnline ? '#15803d' : '#64748b'
+                                                                }}>
+                                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: exec.IsOnline ? '#10b981' : '#94a3b8' }} />
+                                                                    {exec.IsOnline ? 'Online' : 'Offline'}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                                                <span style={{ fontWeight: '800', fontSize: '1rem', color: '#4338ca' }}>
+                                                                    {exec.totalCalls}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                                                <span style={{ fontWeight: '700', color: '#10b981' }}>{exec.interested}</span>
+                                                            </td>
+                                                            <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                                                <span style={{ fontWeight: '700', color: '#f59e0b' }}>{exec.followups}</span>
+                                                            </td>
+                                                            <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                                                <span style={{ fontWeight: '700', color: '#ef4444' }}>{exec.notInterested}</span>
+                                                            </td>
+                                                            <td style={{ padding: '12px 14px', textAlign: 'center', color: '#64748b' }}>
+                                                                {exec.other}
+                                                            </td>
+                                                            <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setAdminCeFilter(String(exec.UserID));
+                                                                        setCallTrackingTab('overview');
+                                                                    }}
+                                                                    style={{
+                                                                        padding: '5px 12px',
+                                                                        fontSize: '0.75rem',
+                                                                        fontWeight: '700',
+                                                                        borderRadius: '6px',
+                                                                        border: '1px solid #c7d2fe',
+                                                                        background: '#eef2ff',
+                                                                        color: '#4f46e5',
+                                                                        cursor: 'pointer'
+                                                                    }}
+                                                                >
+                                                                    Analyze Performance →
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Tab 3: Live Call Activity Log */}
+                            {callTrackingTab === 'activity' && (
+                                <div className="glass-card" style={{
+                                    background: 'white',
+                                    borderRadius: '16px',
+                                    border: '1px solid #e2e8f0',
+                                    padding: '20px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '14px',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <List size={18} color="#6366f1" />
+                                            <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: '#1e293b' }}>
+                                                Call Activity Stream on {adminCallDate.split('-').reverse().join('-')}
+                                            </h4>
+                                            <span style={{ fontSize: '0.75rem', color: '#64748b', background: '#f1f5f9', padding: '2px 8px', borderRadius: '10px', fontWeight: '600' }}>
+                                                {filteredTeamCallRecords.length} calls
+                                            </span>
+                                        </div>
+
+                                        {/* Search Filter */}
+                                        <div style={{ position: 'relative', width: '260px' }}>
+                                            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                            <input
+                                                type="text"
+                                                className="input-field"
+                                                placeholder="Search by executive, lead, phone..."
+                                                style={{ padding: '6px 8px 6px 30px', width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.8rem' }}
+                                                value={teamCallSearch}
+                                                onChange={e => {
+                                                    setTeamCallSearch(e.target.value);
+                                                    setTeamCallPage(1);
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {filteredTeamCallRecords.length === 0 ? (
+                                        <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8', fontSize: '0.88rem' }}>
+                                            No calls found for the selected criteria on {adminCallDate.split('-').reverse().join('-')}.
+                                        </div>
+                                    ) : (
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                                                <thead>
+                                                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                                                        <th style={{ padding: '10px 12px' }}>#</th>
+                                                        <th style={{ padding: '10px 12px' }}>Time</th>
+                                                        <th style={{ padding: '10px 12px' }}>Executive</th>
+                                                        <th style={{ padding: '10px 12px' }}>Lead Name</th>
+                                                        <th style={{ padding: '10px 12px' }}>Company</th>
+                                                        <th style={{ padding: '10px 12px' }}>Phone</th>
+                                                        <th style={{ padding: '10px 12px' }}>Call Status</th>
+                                                        <th style={{ padding: '10px 12px' }}>Call Notes</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {paginatedTeamCallRecords.map((r, i) => (
+                                                        <tr key={r.HistoryID || i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                            <td style={{ padding: '10px 12px', color: '#94a3b8' }}>{(teamCallPage - 1) * TEAM_CALLS_PER_PAGE + i + 1}</td>
+                                                            <td style={{ padding: '10px 12px', color: '#64748b', whiteSpace: 'nowrap' }}>
+                                                                {r.CreatedAt ? new Date(r.CreatedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '-'}
+                                                            </td>
+                                                            <td style={{ padding: '10px 12px' }}>
+                                                                <span style={{ fontWeight: '600', color: '#4f46e5' }}>
+                                                                    {r.ExecutiveName || 'Call Executive'}
+                                                                </span>
+                                                                {r.ExecutiveEmpID && (
+                                                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block' }}>
+                                                                        {r.ExecutiveEmpID}
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            <td style={{ padding: '10px 12px', fontWeight: '600', color: '#1e293b' }}>
+                                                                <Link to={`/leads?search=${encodeURIComponent(r.FullName || '')}`} style={{ color: '#6366f1', textDecoration: 'none' }}>
+                                                                    {r.FullName || 'Unknown'}
+                                                                </Link>
+                                                            </td>
+                                                            <td style={{ padding: '10px 12px', color: '#64748b' }}>{r.CompanyName || '-'}</td>
+                                                            <td style={{ padding: '10px 12px', color: '#475569', whiteSpace: 'nowrap' }}>{r.Phone || '-'}</td>
+                                                            <td style={{ padding: '10px 12px' }}>
+                                                                <span style={{
+                                                                    display: 'inline-block',
+                                                                    padding: '3px 8px',
+                                                                    borderRadius: '6px',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: '700',
+                                                                    background: getBadgeColor(r.Status).bg,
+                                                                    color: getBadgeColor(r.Status).text
+                                                                }}>
+                                                                    {r.Status || 'N/A'}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ padding: '10px 12px', color: '#64748b', maxWidth: '280px' }}>
+                                                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.CallNote}>
+                                                                    {r.CallNote || 'No notes'}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+
+                                            {totalTeamCallPages > 1 && (
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+                                                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                                        Showing {(teamCallPage - 1) * TEAM_CALLS_PER_PAGE + 1} to {Math.min(teamCallPage * TEAM_CALLS_PER_PAGE, filteredTeamCallRecords.length)} of {filteredTeamCallRecords.length}
+                                                    </span>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button
+                                                            disabled={teamCallPage === 1}
+                                                            onClick={() => setTeamCallPage(p => Math.max(1, p - 1))}
+                                                            style={{ padding: '4px 12px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', cursor: teamCallPage === 1 ? 'not-allowed' : 'pointer', opacity: teamCallPage === 1 ? 0.5 : 1 }}
+                                                        >
+                                                            Previous
+                                                        </button>
+                                                        <button
+                                                            disabled={teamCallPage >= totalTeamCallPages}
+                                                            onClick={() => setTeamCallPage(p => Math.min(totalTeamCallPages, p + 1))}
+                                                            style={{ padding: '4px 12px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', cursor: teamCallPage >= totalTeamCallPages ? 'not-allowed' : 'pointer', opacity: teamCallPage >= totalTeamCallPages ? 0.5 : 1 }}
+                                                        >
+                                                            Next
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
