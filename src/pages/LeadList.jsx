@@ -728,7 +728,7 @@ const LeadList = ({ user, isMyCreated }) => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [search, statusFilter, fromDate, toDate, singleDate, roleFilter, viewFilter, categoryFilter]);
+    }, [search, statusFilter, fromDate, toDate, singleDate, roleFilter, viewFilter, categoryFilter, ceNewDateRange, ceFollowupDateRange]);
 
     const checkDateInRange = useCallback((dateStr, start, end) => {
         if (!dateStr) return false;
@@ -911,7 +911,7 @@ const LeadList = ({ user, isMyCreated }) => {
 
             return true;
         });
-    }, [leads, statusFilter, categoryFilter, search, roleFilter, viewFilter, isMyCreated, isFE, currentUserId, singleDate, fromDate, toDate, isTL, isAdmin, feCallStatuses, checkDateInRange]);
+    }, [leads, statusFilter, categoryFilter, search, roleFilter, viewFilter, isMyCreated, isFE, isCE, currentUserId, singleDate, fromDate, toDate, isTL, isAdmin, feCallStatuses, checkDateInRange, ceNewDateRange, ceFollowupDateRange, todayStr]);
 
     const effectivePageSize = pageSize === 'all' ? (filtered.length || 1) : Number(pageSize);
     const totalPages = Math.max(1, Math.ceil(filtered.length / effectivePageSize));
