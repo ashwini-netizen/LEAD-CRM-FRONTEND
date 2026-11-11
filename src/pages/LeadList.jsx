@@ -156,6 +156,68 @@ const isRecordInDateRange = (recordDateStr, customFrom, customTo, todayStr) => {
     return true;
 };
 
+// Robust time parser to minutes from midnight (0 - 1439). Handles AM/PM, repeated meridians, 12/24hr
+const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr || typeof timeStr !== 'string') return 1440;
+    const match = timeStr.trim().match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)?/i);
+    if (!match) return 1440;
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const meridian = match[3] ? match[3].toUpperCase() : null;
+    if (meridian === 'PM' && hours < 12) hours += 12;
+    if (meridian === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+};
+
+// Date-wise Sorting for Call Executive Follow-up Leads:
+// Priority 1: Follow-ups scheduled for Today (sorted by time ASC)
+// Priority 2: Overdue follow-ups (displayed after today's, most recent overdue first, time ASC)
+// Priority 3: Nearest upcoming follow-ups first (nearest upcoming date first, time ASC)
+const sortFollowupLeads = (a, b, todayStr) => {
+    const dateA = getLocalDateStr(a.FollowupDate) || getLocalDateStr(a.MeetingFollowupDate) || getLocalDateStr(a.UpdatedAt);
+    const dateB = getLocalDateStr(b.FollowupDate) || getLocalDateStr(b.MeetingFollowupDate) || getLocalDateStr(b.UpdatedAt);
+
+    const getRank = (d) => {
+        if (!d) return 4;
+        if (d === todayStr) return 1; // Priority 1: Today
+        if (d < todayStr) return 2;   // Priority 2: Overdue
+        return 3;                     // Priority 3: Upcoming
+    };
+
+    const rankA = getRank(dateA);
+    const rankB = getRank(dateB);
+
+    if (rankA !== rankB) return rankA - rankB;
+
+    // Within Priority 1 (Today): sort by scheduled time ascending
+    if (rankA === 1) {
+        const timeA = parseTimeToMinutes(a.FollowupTime || a.MeetingFollowupTime || a.MeetingTime);
+        const timeB = parseTimeToMinutes(b.FollowupTime || b.MeetingFollowupTime || b.MeetingTime);
+        if (timeA !== timeB) return timeA - timeB;
+        return (b.LeadID || 0) - (a.LeadID || 0);
+    }
+
+    // Within Priority 2 (Overdue): sort by date (most recent overdue first) then time ascending
+    if (rankA === 2) {
+        if (dateA !== dateB) return dateB.localeCompare(dateA);
+        const timeA = parseTimeToMinutes(a.FollowupTime || a.MeetingFollowupTime || a.MeetingTime);
+        const timeB = parseTimeToMinutes(b.FollowupTime || b.MeetingFollowupTime || b.MeetingTime);
+        if (timeA !== timeB) return timeA - timeB;
+        return (b.LeadID || 0) - (a.LeadID || 0);
+    }
+
+    // Within Priority 3 (Upcoming): nearest upcoming date first (ascending) then time ascending
+    if (rankA === 3) {
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        const timeA = parseTimeToMinutes(a.FollowupTime || a.MeetingFollowupTime || a.MeetingTime);
+        const timeB = parseTimeToMinutes(b.FollowupTime || b.MeetingFollowupTime || b.MeetingTime);
+        if (timeA !== timeB) return timeA - timeB;
+        return (b.LeadID || 0) - (a.LeadID || 0);
+    }
+
+    return (b.LeadID || 0) - (a.LeadID || 0);
+};
+
 // In-memory module cache for instant perceived page loads
 let leadsCache = {
     data: null,
@@ -815,7 +877,7 @@ const LeadList = ({ user, isMyCreated }) => {
         const isInterestedFilter = statusLower === 'interested';
         const currentUserIdStr = String(currentUserId || '');
 
-        return leads.filter(l => {
+        const list = leads.filter(l => {
             if (isCE) {
                 const s = String(l.Status || '').trim().toLowerCase();
                 const isFollowup = s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'meetingfollowup' || s === 'meeting follow-up' || Boolean(l.FollowupDate && String(l.FollowupDate).trim() !== '');
@@ -911,6 +973,12 @@ const LeadList = ({ user, isMyCreated }) => {
 
             return true;
         });
+
+        if (isCE && categoryFilter === 'followup') {
+            return [...list].sort((a, b) => sortFollowupLeads(a, b, todayStr));
+        }
+
+        return list;
     }, [leads, statusFilter, categoryFilter, search, roleFilter, viewFilter, isMyCreated, isFE, isCE, currentUserId, singleDate, fromDate, toDate, isTL, isAdmin, feCallStatuses, checkDateInRange, ceNewDateRange, ceFollowupDateRange, todayStr]);
 
     const effectivePageSize = pageSize === 'all' ? (filtered.length || 1) : Number(pageSize);
@@ -1747,6 +1815,17 @@ const LeadList = ({ user, isMyCreated }) => {
                                                 <span style={{ padding: '4px 12px', background: sc.bg, color: sc.color, borderRadius: '20px', fontSize: '0.8rem', fontWeight: '700' }}>
                                                     {getCanonicalStatus(lead.Status)}
                                                 </span>
+                                                {isCE && categoryFilter === 'followup' && (() => {
+                                                    const fDateStr = getLocalDateStr(lead.FollowupDate) || getLocalDateStr(lead.MeetingFollowupDate) || getLocalDateStr(lead.UpdatedAt);
+                                                    if (fDateStr && fDateStr < todayStr) {
+                                                        return (
+                                                            <span style={{ marginLeft: '8px', padding: '2px 7px', background: '#fee2e2', color: '#dc2626', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '800', border: '1px solid #fecaca' }}>
+                                                                Overdue
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                             </td>
                                             <td style={{ padding: '16px 20px', color: '#334155', fontWeight: '700', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
                                                 {lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB') : 'N/A'}

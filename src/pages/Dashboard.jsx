@@ -69,6 +69,68 @@ const isRecordInDateRange = (recordDateStr, customFrom, customTo, todayStr) => {
     return true;
 };
 
+// Robust time parser to minutes from midnight (0 - 1439). Handles AM/PM, repeated meridians, 12/24hr
+const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr || typeof timeStr !== 'string') return 1440;
+    const match = timeStr.trim().match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)?/i);
+    if (!match) return 1440;
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const meridian = match[3] ? match[3].toUpperCase() : null;
+    if (meridian === 'PM' && hours < 12) hours += 12;
+    if (meridian === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+};
+
+// Date-wise Sorting for Call Executive Follow-up Leads:
+// Priority 1: Follow-ups scheduled for Today (sorted by time ASC)
+// Priority 2: Overdue follow-ups (displayed after today's, most recent overdue first, time ASC)
+// Priority 3: Nearest upcoming follow-ups first (nearest upcoming date first, time ASC)
+const sortFollowupLeads = (a, b, todayStr) => {
+    const dateA = getLocalDateStr(a.FollowupDate) || getLocalDateStr(a.MeetingFollowupDate) || getLocalDateStr(a.UpdatedAt);
+    const dateB = getLocalDateStr(b.FollowupDate) || getLocalDateStr(b.MeetingFollowupDate) || getLocalDateStr(b.UpdatedAt);
+
+    const getRank = (d) => {
+        if (!d) return 4;
+        if (d === todayStr) return 1; // Priority 1: Today
+        if (d < todayStr) return 2;   // Priority 2: Overdue
+        return 3;                     // Priority 3: Upcoming
+    };
+
+    const rankA = getRank(dateA);
+    const rankB = getRank(dateB);
+
+    if (rankA !== rankB) return rankA - rankB;
+
+    // Within Priority 1 (Today): sort by scheduled time ascending
+    if (rankA === 1) {
+        const timeA = parseTimeToMinutes(a.FollowupTime || a.MeetingFollowupTime || a.MeetingTime);
+        const timeB = parseTimeToMinutes(b.FollowupTime || b.MeetingFollowupTime || b.MeetingTime);
+        if (timeA !== timeB) return timeA - timeB;
+        return (b.LeadID || 0) - (a.LeadID || 0);
+    }
+
+    // Within Priority 2 (Overdue): sort by date (most recent overdue first) then time ascending
+    if (rankA === 2) {
+        if (dateA !== dateB) return dateB.localeCompare(dateA);
+        const timeA = parseTimeToMinutes(a.FollowupTime || a.MeetingFollowupTime || a.MeetingTime);
+        const timeB = parseTimeToMinutes(b.FollowupTime || b.MeetingFollowupTime || b.MeetingTime);
+        if (timeA !== timeB) return timeA - timeB;
+        return (b.LeadID || 0) - (a.LeadID || 0);
+    }
+
+    // Within Priority 3 (Upcoming): nearest upcoming date first (ascending) then time ascending
+    if (rankA === 3) {
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        const timeA = parseTimeToMinutes(a.FollowupTime || a.MeetingFollowupTime || a.MeetingTime);
+        const timeB = parseTimeToMinutes(b.FollowupTime || b.MeetingFollowupTime || b.MeetingTime);
+        if (timeA !== timeB) return timeA - timeB;
+        return (b.LeadID || 0) - (a.LeadID || 0);
+    }
+
+    return (b.LeadID || 0) - (a.LeadID || 0);
+};
+
 const Dashboard = ({ user, onLogout }) => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -606,12 +668,17 @@ const Dashboard = ({ user, onLogout }) => {
 
     // Category B: Follow-up Leads (Leads scheduled for follow-up, filtered by actual FollowupDate)
     // Default view: scheduled for today. Custom range: scheduled within selected period up to 1 month.
+    // Date-wise sorted:
+    // - Today's scheduled follow-ups first (sorted by time ascending)
+    // - Overdue follow-ups displayed after today's scheduled follow-ups (most recent overdue first, time ascending)
+    // - Nearest upcoming follow-ups next (ascending order of upcoming dates, time ascending)
     const ceFollowupLeads = useMemo(() => {
-        return ceLeads.filter(l => {
+        const list = ceLeads.filter(l => {
             if (!isFollowupLead(l)) return false;
             const fDate = getLocalDateStr(l.FollowupDate) || getLocalDateStr(l.UpdatedAt);
             return isRecordInDateRange(fDate, ceFollowupDateRange.from, ceFollowupDateRange.to, todayStr);
         });
+        return [...list].sort((a, b) => sortFollowupLeads(a, b, todayStr));
     }, [ceLeads, isFollowupLead, ceFollowupDateRange, todayStr]);
 
     // Filter active category leads by search
@@ -1618,8 +1685,22 @@ const Dashboard = ({ user, onLogout }) => {
                                             <tbody>
                                                 {paginatedCeLeads.map((lead, idx) => {
                                                     const badge = getBadgeColor(lead.Status);
+                                                    const fDateStr = ceLeadsCategory === 'followup' 
+                                                        ? (getLocalDateStr(lead.FollowupDate) || getLocalDateStr(lead.MeetingFollowupDate) || getLocalDateStr(lead.UpdatedAt))
+                                                        : '';
+                                                    const isOverdue = ceLeadsCategory === 'followup' && Boolean(fDateStr && fDateStr < todayStr);
+                                                    const isToday = ceLeadsCategory === 'followup' && Boolean(fDateStr && fDateStr === todayStr);
+                                                    const isUpcoming = ceLeadsCategory === 'followup' && Boolean(fDateStr && fDateStr > todayStr);
+
                                                     return (
-                                                        <tr key={lead.LeadID || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                        <tr 
+                                                            key={lead.LeadID || idx} 
+                                                            style={{ 
+                                                                borderBottom: '1px solid #f1f5f9',
+                                                                background: isOverdue ? 'rgba(254, 242, 242, 0.45)' : (isToday ? 'rgba(240, 253, 244, 0.35)' : 'transparent'),
+                                                                transition: 'background 0.2s ease'
+                                                            }}
+                                                        >
                                                             <td style={{ padding: '10px 12px', color: '#94a3b8' }}>
                                                                 {(ceLeadsPage - 1) * CE_LEADS_PER_PAGE + idx + 1}
                                                             </td>
@@ -1663,25 +1744,78 @@ const Dashboard = ({ user, onLogout }) => {
 
                                                             {ceLeadsCategory === 'followup' ? (
                                                                 <>
-                                                                    <td style={{ padding: '10px 12px' }}>
+                                                                    <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                                                                         {lead.FollowupDate ? (
-                                                                            <span style={{
-                                                                                display: 'inline-flex',
-                                                                                alignItems: 'center',
-                                                                                gap: '5px',
-                                                                                padding: '3px 8px',
-                                                                                background: '#fef3c7',
-                                                                                color: '#92400e',
-                                                                                borderRadius: '6px',
-                                                                                fontSize: '0.75rem',
-                                                                                fontWeight: '700'
-                                                                            }}>
-                                                                                <Calendar size={12} />
-                                                                                {new Date(lead.FollowupDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                                                {lead.FollowupTime && (
-                                                                                    <span style={{ marginLeft: '4px', color: '#b45309' }}>• {lead.FollowupTime}</span>
+                                                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                                                                                <span style={{
+                                                                                    display: 'inline-flex',
+                                                                                    alignItems: 'center',
+                                                                                    gap: '5px',
+                                                                                    padding: '3px 8px',
+                                                                                    background: isOverdue ? '#fee2e2' : (isToday ? '#dcfce7' : '#eff6ff'),
+                                                                                    color: isOverdue ? '#991b1b' : (isToday ? '#166534' : '#1e40af'),
+                                                                                    border: isOverdue ? '1px solid #fecaca' : (isToday ? '1px solid #bbf7d0' : '1px solid #bfdbfe'),
+                                                                                    borderRadius: '6px',
+                                                                                    fontSize: '0.75rem',
+                                                                                    fontWeight: '700'
+                                                                                }}>
+                                                                                    <Calendar size={12} />
+                                                                                    {new Date(lead.FollowupDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                                                    {lead.FollowupTime && (
+                                                                                        <span style={{ marginLeft: '4px', fontWeight: '800' }}>• {lead.FollowupTime}</span>
+                                                                                    )}
+                                                                                </span>
+                                                                                {isOverdue && (
+                                                                                    <span style={{
+                                                                                        display: 'inline-flex',
+                                                                                        alignItems: 'center',
+                                                                                        gap: '3px',
+                                                                                        padding: '2px 7px',
+                                                                                        background: '#ef4444',
+                                                                                        color: '#ffffff',
+                                                                                        borderRadius: '4px',
+                                                                                        fontSize: '0.68rem',
+                                                                                        fontWeight: '800',
+                                                                                        letterSpacing: '0.4px',
+                                                                                        textTransform: 'uppercase',
+                                                                                        boxShadow: '0 1px 2px rgba(239, 68, 68, 0.25)'
+                                                                                    }}>
+                                                                                        <AlertCircle size={10} /> Overdue
+                                                                                    </span>
                                                                                 )}
-                                                                            </span>
+                                                                                {isToday && (
+                                                                                    <span style={{
+                                                                                        display: 'inline-flex',
+                                                                                        alignItems: 'center',
+                                                                                        padding: '2px 7px',
+                                                                                        background: '#16a34a',
+                                                                                        color: '#ffffff',
+                                                                                        borderRadius: '4px',
+                                                                                        fontSize: '0.68rem',
+                                                                                        fontWeight: '800',
+                                                                                        letterSpacing: '0.4px',
+                                                                                        textTransform: 'uppercase'
+                                                                                    }}>
+                                                                                        Today
+                                                                                    </span>
+                                                                                )}
+                                                                                {isUpcoming && (
+                                                                                    <span style={{
+                                                                                        display: 'inline-flex',
+                                                                                        alignItems: 'center',
+                                                                                        padding: '2px 7px',
+                                                                                        background: '#3b82f6',
+                                                                                        color: '#ffffff',
+                                                                                        borderRadius: '4px',
+                                                                                        fontSize: '0.68rem',
+                                                                                        fontWeight: '800',
+                                                                                        letterSpacing: '0.4px',
+                                                                                        textTransform: 'uppercase'
+                                                                                    }}>
+                                                                                        Upcoming
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
                                                                         ) : (
                                                                             <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>No date set</span>
                                                                         )}
