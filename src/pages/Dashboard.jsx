@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, UserPlus, List, Settings, LogOut, Loader, AlertCircle, BarChart, Calendar, Clock, FileText, CreditCard, Navigation, Activity, Users, TrendingUp, IndianRupee, Download, FileDown, MessageSquare, CheckCircle, PhoneCall, RotateCcw, Filter, Award, CheckCircle2, XCircle, Search, UserCheck, Eye, BarChart3, Phone, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, UserPlus, List, Settings, LogOut, Loader, AlertCircle, BarChart, Calendar, Clock, FileText, CreditCard, Navigation, Activity, Users, TrendingUp, IndianRupee, Download, FileDown, MessageSquare, CheckCircle, PhoneCall, RotateCcw, Filter, Award, CheckCircle2, XCircle, Search, UserCheck, Eye, BarChart3, Phone, RefreshCw, X } from 'lucide-react';
 import {
     BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, Legend, ResponsiveContainer,
     AreaChart, Area
@@ -12,6 +12,31 @@ import { Browser } from '@capacitor/browser';
 import UserHeader from '../components/UserHeader';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
+
+const getLast7DaysRange = () => {
+    const pad = (n) => String(n).padStart(2, '0');
+    const to = new Date();
+    const from = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
+    return {
+        from: `${from.getFullYear()}-${pad(from.getMonth() + 1)}-${pad(from.getDate())}`,
+        to: `${to.getFullYear()}-${pad(to.getMonth() + 1)}-${pad(to.getDate())}`
+    };
+};
+
+const getLocalDateStr = (dateVal) => {
+    if (!dateVal) return '';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const isDateInRange = (dateStr, from, to) => {
+    if (!dateStr) return false;
+    if (from && dateStr < from) return false;
+    if (to && dateStr > to) return false;
+    return true;
+};
 
 const Dashboard = ({ user, onLogout }) => {
     const navigate = useNavigate();
@@ -32,6 +57,61 @@ const Dashboard = ({ user, onLogout }) => {
     const [ceLeadsSearch, setCeLeadsSearch] = useState('');
     const [ceLeadsPage, setCeLeadsPage] = useState(1);
     const CE_LEADS_PER_PAGE = 15;
+
+    // Independent date ranges for CE Leads categories (default: most recent 7 days)
+    const [ceNewDateRange, setCeNewDateRange] = useState(() => getLast7DaysRange());
+    const [ceFollowupDateRange, setCeFollowupDateRange] = useState(() => getLast7DaysRange());
+
+    const activeCeRange = ceLeadsCategory === 'new' ? ceNewDateRange : ceFollowupDateRange;
+    const isCeRange7Days = useMemo(() => {
+        const d7 = getLast7DaysRange();
+        return activeCeRange.from === d7.from && activeCeRange.to === d7.to;
+    }, [activeCeRange]);
+
+    const handleCeFromDateChange = (val) => {
+        if (ceLeadsCategory === 'new') {
+            setCeNewDateRange(prev => ({
+                from: val,
+                to: (val && prev.to && val > prev.to) ? val : prev.to
+            }));
+        } else {
+            setCeFollowupDateRange(prev => ({
+                from: val,
+                to: (val && prev.to && val > prev.to) ? val : prev.to
+            }));
+        }
+        setCeLeadsPage(1);
+    };
+
+    const handleCeToDateChange = (val) => {
+        if (ceLeadsCategory === 'new') {
+            if (val && ceNewDateRange.from && val < ceNewDateRange.from) return;
+            setCeNewDateRange(prev => ({ ...prev, to: val }));
+        } else {
+            if (val && ceFollowupDateRange.from && val < ceFollowupDateRange.from) return;
+            setCeFollowupDateRange(prev => ({ ...prev, to: val }));
+        }
+        setCeLeadsPage(1);
+    };
+
+    const handleCeResetTo7Days = () => {
+        const range = getLast7DaysRange();
+        if (ceLeadsCategory === 'new') {
+            setCeNewDateRange(range);
+        } else {
+            setCeFollowupDateRange(range);
+        }
+        setCeLeadsPage(1);
+    };
+
+    const handleCeClearDates = () => {
+        if (ceLeadsCategory === 'new') {
+            setCeNewDateRange({ from: '', to: '' });
+        } else {
+            setCeFollowupDateRange({ from: '', to: '' });
+        }
+        setCeLeadsPage(1);
+    };
 
     // Team Lead & Admin Real-Time Call Activity Tracking State
     const [adminCeFilter, setAdminCeFilter] = useState('all');
@@ -472,15 +552,23 @@ const Dashboard = ({ user, onLogout }) => {
         return hasFollowupStatus || hasFollowupDate;
     }, []);
 
-    // Category A: New Leads (Assigned or created leads not in follow-up)
+    // Category A: New Leads (Assigned or created leads not in follow-up, filtered by CreatedAt within ceNewDateRange)
     const ceNewLeads = useMemo(() => {
-        return ceLeads.filter(l => !isFollowupLead(l));
-    }, [ceLeads, isFollowupLead]);
+        return ceLeads.filter(l => {
+            if (isFollowupLead(l)) return false;
+            const cDate = getLocalDateStr(l.CreatedAt);
+            return isDateInRange(cDate, ceNewDateRange.from, ceNewDateRange.to);
+        });
+    }, [ceLeads, isFollowupLead, ceNewDateRange]);
 
-    // Category B: Follow-up Leads (Leads assigned follow-up status or with followup date)
+    // Category B: Follow-up Leads (Leads assigned follow-up status or with followup date, filtered by FollowupDate/UpdatedAt within ceFollowupDateRange)
     const ceFollowupLeads = useMemo(() => {
-        return ceLeads.filter(isFollowupLead);
-    }, [ceLeads, isFollowupLead]);
+        return ceLeads.filter(l => {
+            if (!isFollowupLead(l)) return false;
+            const fDate = getLocalDateStr(l.FollowupDate) || getLocalDateStr(l.UpdatedAt);
+            return isDateInRange(fDate, ceFollowupDateRange.from, ceFollowupDateRange.to);
+        });
+    }, [ceLeads, isFollowupLead, ceFollowupDateRange]);
 
     // Filter active category leads by search
     const activeCategoryLeads = useMemo(() => {
@@ -1301,6 +1389,112 @@ const Dashboard = ({ user, onLogout }) => {
                                             }}>
                                                 {ceFollowupLeads.length}
                                             </span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Independent Date Range Filter Bar for New Leads & Follow-up Leads */}
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    flexWrap: 'wrap',
+                                    gap: '12px',
+                                    padding: '10px 14px',
+                                    background: '#f8fafc',
+                                    borderRadius: '12px',
+                                    border: '1px solid #e2e8f0'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', fontSize: '0.8rem', fontWeight: '700' }}>
+                                            <Calendar size={14} color="#6366f1" />
+                                            <span>{ceLeadsCategory === 'new' ? 'Creation Date:' : 'Follow-up Date:'}</span>
+                                        </div>
+                                        <div style={{ position: 'relative' }}>
+                                            <input
+                                                type="date"
+                                                className="input-field"
+                                                title={`From Date (${ceLeadsCategory === 'new' ? 'New Leads' : 'Follow-up Leads'})`}
+                                                max={activeCeRange.to || undefined}
+                                                style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white' }}
+                                                value={activeCeRange.from}
+                                                onChange={e => handleCeFromDateChange(e.target.value)}
+                                            />
+                                        </div>
+                                        <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: '700' }}>–</span>
+                                        <div style={{ position: 'relative' }}>
+                                            <input
+                                                type="date"
+                                                className="input-field"
+                                                title={`To Date (${ceLeadsCategory === 'new' ? 'New Leads' : 'Follow-up Leads'})`}
+                                                min={activeCeRange.from || undefined}
+                                                style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white' }}
+                                                value={activeCeRange.to}
+                                                onChange={e => handleCeToDateChange(e.target.value)}
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleCeResetTo7Days}
+                                            title="Reset to most recent 7 days"
+                                            style={{
+                                                padding: '6px 12px',
+                                                borderRadius: '8px',
+                                                border: `1px solid ${isCeRange7Days ? '#6366f1' : '#cbd5e1'}`,
+                                                background: isCeRange7Days ? '#eef2ff' : 'white',
+                                                color: isCeRange7Days ? '#4f46e5' : '#475569',
+                                                fontSize: '0.78rem',
+                                                fontWeight: '700',
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '5px'
+                                            }}
+                                        >
+                                            <RotateCcw size={13} /> 7 Days
+                                        </button>
+                                        {(activeCeRange.from || activeCeRange.to) && (
+                                            <button
+                                                type="button"
+                                                onClick={handleCeClearDates}
+                                                title="View all dates"
+                                                style={{
+                                                    padding: '6px 10px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #e2e8f0',
+                                                    background: 'white',
+                                                    color: '#64748b',
+                                                    fontSize: '0.78rem',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '3px'
+                                                }}
+                                            >
+                                                <X size={13} /> Clear
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate('/leads', { state: { categoryFilter: ceLeadsCategory, fromDate: activeCeRange.from, toDate: activeCeRange.to } })}
+                                            style={{
+                                                padding: '6px 12px',
+                                                borderRadius: '8px',
+                                                border: '1px solid #c7d2fe',
+                                                background: '#e0e7ff',
+                                                color: '#4338ca',
+                                                fontSize: '0.78rem',
+                                                fontWeight: '700',
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '5px'
+                                            }}
+                                        >
+                                            <Eye size={13} /> Full Lead Database
                                         </button>
                                     </div>
                                 </div>

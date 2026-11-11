@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Eye, Edit, Search, Loader, RefreshCw, FileText, Upload, Download, ArrowLeft, Calendar, Trash2, AlertTriangle, CheckSquare, Square, X, FileSpreadsheet, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check } from 'lucide-react';
+import { Eye, Edit, Search, Loader, RefreshCw, FileText, Upload, Download, ArrowLeft, Calendar, Trash2, AlertTriangle, CheckSquare, Square, X, FileSpreadsheet, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check, RotateCcw } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -100,6 +100,31 @@ const hasValidPhone = (phone) => {
     return /\d/.test(str);
 };
 
+const getLast7DaysRange = () => {
+    const pad = (n) => String(n).padStart(2, '0');
+    const to = new Date();
+    const from = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
+    return {
+        from: `${from.getFullYear()}-${pad(from.getMonth() + 1)}-${pad(from.getDate())}`,
+        to: `${to.getFullYear()}-${pad(to.getMonth() + 1)}-${pad(to.getDate())}`
+    };
+};
+
+const getLocalDateStr = (dateVal) => {
+    if (!dateVal) return '';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const isDateInRange = (dateStr, from, to) => {
+    if (!dateStr) return false;
+    if (from && dateStr < from) return false;
+    if (to && dateStr > to) return false;
+    return true;
+};
+
 // In-memory module cache for instant perceived page loads
 let leadsCache = {
     data: null,
@@ -128,6 +153,87 @@ const LeadList = ({ user, isMyCreated }) => {
     const [fromDate, setFromDate] = useState(location.state?.fromDate || '');
     const [toDate, setToDate] = useState(location.state?.toDate || '');
     const [singleDate, setSingleDate] = useState('');
+
+    const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
+    const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
+    const isTL = user?.role === 'Team Lead' || user?.Role === 'Team Lead';
+    const isAdmin = user?.role === 'Admin' || user?.Role === 'Admin';
+
+    // Independent date ranges for Call Executive categories (default: most recent 7 days)
+    const [ceNewDateRange, setCeNewDateRange] = useState(() => {
+        if (location.state?.categoryFilter === 'new' && (location.state?.fromDate || location.state?.toDate)) {
+            return { from: location.state.fromDate || '', to: location.state.toDate || '' };
+        }
+        return getLast7DaysRange();
+    });
+    const [ceFollowupDateRange, setCeFollowupDateRange] = useState(() => {
+        if (location.state?.categoryFilter === 'followup' && (location.state?.fromDate || location.state?.toDate)) {
+            return { from: location.state.fromDate || '', to: location.state.toDate || '' };
+        }
+        return getLast7DaysRange();
+    });
+
+    const currentCeRange = categoryFilter === 'new'
+        ? ceNewDateRange
+        : categoryFilter === 'followup'
+        ? ceFollowupDateRange
+        : { from: fromDate, to: toDate };
+
+    const isCurrentCeRange7Days = useMemo(() => {
+        const d7 = getLast7DaysRange();
+        return currentCeRange.from === d7.from && currentCeRange.to === d7.to;
+    }, [currentCeRange]);
+
+    const handleCeFromChange = (val) => {
+        if (categoryFilter === 'new') {
+            setCeNewDateRange(prev => ({
+                from: val,
+                to: (val && prev.to && val > prev.to) ? val : prev.to
+            }));
+        } else if (categoryFilter === 'followup') {
+            setCeFollowupDateRange(prev => ({
+                from: val,
+                to: (val && prev.to && val > prev.to) ? val : prev.to
+            }));
+        } else {
+            handleFromDateChange(val);
+        }
+    };
+
+    const handleCeToChange = (val) => {
+        if (categoryFilter === 'new') {
+            if (val && ceNewDateRange.from && val < ceNewDateRange.from) return;
+            setCeNewDateRange(prev => ({ ...prev, to: val }));
+        } else if (categoryFilter === 'followup') {
+            if (val && ceFollowupDateRange.from && val < ceFollowupDateRange.from) return;
+            setCeFollowupDateRange(prev => ({ ...prev, to: val }));
+        } else {
+            handleToDateChange(val);
+        }
+    };
+
+    const handleResetTo7Days = () => {
+        const range = getLast7DaysRange();
+        if (categoryFilter === 'new') {
+            setCeNewDateRange(range);
+        } else if (categoryFilter === 'followup') {
+            setCeFollowupDateRange(range);
+        } else {
+            setFromDate(range.from);
+            setToDate(range.to);
+        }
+    };
+
+    const handleClearCeDates = () => {
+        if (categoryFilter === 'new') {
+            setCeNewDateRange({ from: '', to: '' });
+        } else if (categoryFilter === 'followup') {
+            setCeFollowupDateRange({ from: '', to: '' });
+        } else {
+            setFromDate('');
+            setToDate('');
+        }
+    };
 
     const handleFromDateChange = (val) => {
         setFromDate(val);
@@ -165,10 +271,6 @@ const LeadList = ({ user, isMyCreated }) => {
     // Drag to scroll refs
     const { ref: tableContainerRef, isDragging, handleMouseDown, handleMouseLeave, handleMouseUp, handleMouseMove } = useDraggableScroll();
 
-    const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
-    const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
-    const isTL = user?.role === 'Team Lead' || user?.Role === 'Team Lead';
-    const isAdmin = user?.role === 'Admin' || user?.Role === 'Admin';
     const feCallStatuses = useMemo(() => [
         'Follow-up', 'Call Follow-up', 'Busy', 'Not Answered', 'Not Answering', 'Invalid',
         'Speaking to Someone Else', 'Speaking with Someone Else', 'Out of Service',
@@ -556,6 +658,13 @@ const LeadList = ({ user, isMyCreated }) => {
     useEffect(() => {
         if (location.state?.categoryFilter) {
             setCategoryFilter(location.state.categoryFilter);
+            if (isCE) {
+                if (location.state.categoryFilter === 'new' && (location.state?.fromDate || location.state?.toDate)) {
+                    setCeNewDateRange({ from: location.state.fromDate || '', to: location.state.toDate || '' });
+                } else if (location.state.categoryFilter === 'followup' && (location.state?.fromDate || location.state?.toDate)) {
+                    setCeFollowupDateRange({ from: location.state.fromDate || '', to: location.state.toDate || '' });
+                }
+            }
         }
         if (location.state?.fromDate !== undefined) {
             setFromDate(location.state.fromDate);
@@ -563,7 +672,7 @@ const LeadList = ({ user, isMyCreated }) => {
         if (location.state?.toDate !== undefined) {
             setToDate(location.state.toDate);
         }
-    }, [location.state?.categoryFilter, location.state?.fromDate, location.state?.toDate]);
+    }, [location.state?.categoryFilter, location.state?.fromDate, location.state?.toDate, isCE]);
 
     useEffect(() => {
         if ((isTL || isFE || isAdmin) && statusFilter === 'N/A Leads') {
@@ -633,7 +742,7 @@ const LeadList = ({ user, isMyCreated }) => {
         return { conversionsCount: conv, pendingCount: pend, allLeadsCount: total };
     }, [leads, baseLeads, isMyCreated, isTL, singleDate, fromDate, toDate, checkDateInRange]);
 
-    // Call Executive New Leads and Follow-up Leads count
+    // Call Executive New Leads and Follow-up Leads count based on independent date ranges
     const { ceNewCount, ceFollowupCount } = useMemo(() => {
         if (!isCE) return { ceNewCount: 0, ceFollowupCount: 0 };
         let n = 0, f = 0;
@@ -641,11 +750,20 @@ const LeadList = ({ user, isMyCreated }) => {
             const l = leads[i];
             const s = String(l.Status || '').trim().toLowerCase();
             const isFollowup = s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'meetingfollowup' || s === 'meeting follow-up' || Boolean(l.FollowupDate && String(l.FollowupDate).trim() !== '');
-            if (isFollowup) f++;
-            else n++;
+            if (isFollowup) {
+                const fDate = getLocalDateStr(l.FollowupDate) || getLocalDateStr(l.UpdatedAt);
+                if (isDateInRange(fDate, ceFollowupDateRange.from, ceFollowupDateRange.to)) {
+                    f++;
+                }
+            } else {
+                const cDate = getLocalDateStr(l.CreatedAt);
+                if (isDateInRange(cDate, ceNewDateRange.from, ceNewDateRange.to)) {
+                    n++;
+                }
+            }
         }
         return { ceNewCount: n, ceFollowupCount: f };
-    }, [isCE, leads]);
+    }, [isCE, leads, ceNewDateRange, ceFollowupDateRange]);
 
     const filtered = useMemo(() => {
         const searchLower = search.trim().toLowerCase();
@@ -657,15 +775,29 @@ const LeadList = ({ user, isMyCreated }) => {
         const currentUserIdStr = String(currentUserId || '');
 
         return leads.filter(l => {
-            if (!hasStatus) {
-                if (isCE) {
-                    const s = String(l.Status || '').trim().toLowerCase();
-                    const isFollowup = s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'meetingfollowup' || s === 'meeting follow-up' || Boolean(l.FollowupDate && String(l.FollowupDate).trim() !== '');
-                    if (categoryFilter === 'new' && isFollowup) return false;
-                    if (categoryFilter === 'followup' && !isFollowup) return false;
+            if (isCE) {
+                const s = String(l.Status || '').trim().toLowerCase();
+                const isFollowup = s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'meetingfollowup' || s === 'meeting follow-up' || Boolean(l.FollowupDate && String(l.FollowupDate).trim() !== '');
+
+                if (categoryFilter === 'new') {
+                    if (isFollowup) return false;
+                    const cDate = getLocalDateStr(l.CreatedAt);
+                    if (!isDateInRange(cDate, ceNewDateRange.from, ceNewDateRange.to)) return false;
+                } else if (categoryFilter === 'followup') {
+                    if (!isFollowup) return false;
+                    const fDate = getLocalDateStr(l.FollowupDate) || getLocalDateStr(l.UpdatedAt);
+                    if (!isDateInRange(fDate, ceFollowupDateRange.from, ceFollowupDateRange.to)) return false;
+                } else if (categoryFilter === 'all') {
+                    if (fromDate || toDate) {
+                        const cDate = getLocalDateStr(l.CreatedAt);
+                        if (!isDateInRange(cDate, fromDate, toDate)) return false;
+                    }
                 }
-                if (categoryFilter === 'conversions' && !isConvertedStatus(l.Status)) return false;
-                if (categoryFilter === 'pending' && !isPendingStatus(l.Status)) return false;
+            } else {
+                if (!hasStatus) {
+                    if (categoryFilter === 'conversions' && !isConvertedStatus(l.Status)) return false;
+                    if (categoryFilter === 'pending' && !isPendingStatus(l.Status)) return false;
+                }
             }
 
             if (hasSearch) {
@@ -720,7 +852,7 @@ const LeadList = ({ user, isMyCreated }) => {
                     const localDateStr = localDateObj.toISOString().split('T')[0];
                     if (localDateStr !== singleDate) return false;
                 }
-            } else {
+            } else if (!isCE) {
                 if (fromDate || toDate) {
                     if (!checkDateInRange(l.CreatedAt, fromDate, toDate)) return false;
                 }
@@ -1148,8 +1280,85 @@ const LeadList = ({ user, isMyCreated }) => {
                         </button>
                     )}
 
-                    {/* From Date – To Date Range Filter (Call Executive, etc.) */}
-                    {!isTL && !isFE && !isAdmin && (
+                    {/* From Date – To Date Range Filter (Call Executive independent date filtering) */}
+                    {isCE && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 1 auto' }}>
+                            <div style={{ position: 'relative', minWidth: '140px', flex: '1 1 auto' }}>
+                                <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                <input
+                                    type="date"
+                                    className="input-field"
+                                    title={`From Date (${categoryFilter === 'new' ? 'New Leads' : categoryFilter === 'followup' ? 'Follow-up Leads' : 'All Leads'})`}
+                                    placeholder="From Date"
+                                    max={currentCeRange.to || undefined}
+                                    style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '36px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
+                                    value={currentCeRange.from}
+                                    onChange={e => handleCeFromChange(e.target.value)}
+                                />
+                            </div>
+                            <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: '700' }}>–</span>
+                            <div style={{ position: 'relative', minWidth: '140px', flex: '1 1 auto' }}>
+                                <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                <input
+                                    type="date"
+                                    className="input-field"
+                                    title={`To Date (${categoryFilter === 'new' ? 'New Leads' : categoryFilter === 'followup' ? 'Follow-up Leads' : 'All Leads'})`}
+                                    placeholder="To Date"
+                                    min={currentCeRange.from || undefined}
+                                    style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '36px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
+                                    value={currentCeRange.to}
+                                    onChange={e => handleCeToChange(e.target.value)}
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleResetTo7Days}
+                                title="Reset date range to most recent 7 days"
+                                style={{
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    border: `1.5px solid ${isCurrentCeRange7Days ? '#6366f1' : '#cbd5e1'}`,
+                                    background: isCurrentCeRange7Days ? '#eef2ff' : 'white',
+                                    color: isCurrentCeRange7Days ? '#4f46e5' : '#475569',
+                                    fontSize: '0.78rem',
+                                    fontWeight: '700',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                <RotateCcw size={13} /> 7 Days
+                            </button>
+                            {(currentCeRange.from || currentCeRange.to) && (
+                                <button
+                                    type="button"
+                                    onClick={handleClearCeDates}
+                                    title="View all dates"
+                                    style={{
+                                        padding: '8px 10px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #e2e8f0',
+                                        background: 'white',
+                                        color: '#64748b',
+                                        fontSize: '0.78rem',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    <X size={13} /> Clear
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* From Date – To Date Range Filter (Other roles if applicable) */}
+                    {!isTL && !isFE && !isAdmin && !isCE && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 1 auto' }}>
                             <div style={{ position: 'relative', minWidth: '150px', flex: '1 1 auto' }}>
                                 <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
