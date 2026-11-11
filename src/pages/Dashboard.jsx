@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, UserPlus, List, Settings, LogOut, Loader, AlertCircle, BarChart, Calendar, Clock, FileText, CreditCard, Navigation, Activity, Users, TrendingUp, IndianRupee, Download, FileDown, MessageSquare, CheckCircle, PhoneCall, RotateCcw, Filter, Award, CheckCircle2, XCircle, Search, UserCheck, Eye, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, UserPlus, List, Settings, LogOut, Loader, AlertCircle, BarChart, Calendar, Clock, FileText, CreditCard, Navigation, Activity, Users, TrendingUp, IndianRupee, Download, FileDown, MessageSquare, CheckCircle, PhoneCall, RotateCcw, Filter, Award, CheckCircle2, XCircle, Search, UserCheck, Eye, BarChart3, Phone, RefreshCw } from 'lucide-react';
 import {
     BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, Legend, ResponsiveContainer,
     AreaChart, Area
@@ -24,6 +24,14 @@ const Dashboard = ({ user, onLogout }) => {
     const [showAllStatuses, setShowAllStatuses] = useState(false);
     const [callPage, setCallPage] = useState(1);
     const CALLS_PER_PAGE = 15;
+
+    // Call Executive Leads List State (New Leads & Follow-up Leads categories)
+    const [ceLeads, setCeLeads] = useState([]);
+    const [loadingCeLeads, setLoadingCeLeads] = useState(false);
+    const [ceLeadsCategory, setCeLeadsCategory] = useState('new'); // 'new' | 'followup'
+    const [ceLeadsSearch, setCeLeadsSearch] = useState('');
+    const [ceLeadsPage, setCeLeadsPage] = useState(1);
+    const CE_LEADS_PER_PAGE = 15;
 
     // Team Lead & Admin Real-Time Call Activity Tracking State
     const [adminCeFilter, setAdminCeFilter] = useState('all');
@@ -130,6 +138,7 @@ const Dashboard = ({ user, onLogout }) => {
     useEffect(() => {
         const handleAutoRefresh = () => {
             fetchOverview(callDate, adminCallDate, adminCeFilter, startDate, endDate);
+            fetchCeLeads();
         };
 
         const handleVisibilityChange = () => {
@@ -151,15 +160,41 @@ const Dashboard = ({ user, onLogout }) => {
         };
     }, [fetchOverview, callDate, adminCallDate, adminCeFilter, startDate, endDate]);
 
+    // Fetch Call Executive leads for New Leads & Follow-up Leads categories
+    const fetchCeLeads = useCallback(async () => {
+        const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
+        if (!isCE) return;
+        setLoadingCeLeads(true);
+        try {
+            const token = localStorage.getItem('crm_token');
+            const res = await fetch(`${API_URL}/api/leads`, {
+                headers: { Authorization: `Bearer ${token || ''}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setCeLeads(Array.isArray(data) ? data : []);
+            }
+        } catch (err) {
+            console.error('Failed to fetch CE leads:', err);
+        } finally {
+            setLoadingCeLeads(false);
+        }
+    }, [user?.role, user?.Role]);
+
+    useEffect(() => {
+        fetchCeLeads();
+    }, [fetchCeLeads]);
+
     // Real-time periodic auto-sync for Call Executive, Team Lead, and Admin (every 15s)
     useEffect(() => {
         const interval = setInterval(() => {
             if (document.visibilityState === 'visible') {
                 fetchOverview(callDate, adminCallDate, adminCeFilter, startDate, endDate);
+                fetchCeLeads();
             }
         }, 15000);
         return () => clearInterval(interval);
-    }, [fetchOverview, callDate, adminCallDate, adminCeFilter, startDate, endDate]);
+    }, [fetchOverview, fetchCeLeads, callDate, adminCallDate, adminCeFilter, startDate, endDate]);
 
     const fetchTimeSeries = useCallback(async () => {
         if (user?.role !== 'Admin' && user?.role !== 'Team Lead') return;
@@ -427,6 +462,46 @@ const Dashboard = ({ user, onLogout }) => {
         const start = (callPage - 1) * CALLS_PER_PAGE;
         return callRecords.slice(start, start + CALLS_PER_PAGE);
     }, [callRecords, callPage]);
+
+    // Helper to identify Follow-up leads
+    const isFollowupLead = useCallback((l) => {
+        if (!l) return false;
+        const s = String(l.Status || '').trim().toLowerCase();
+        const hasFollowupStatus = s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'meetingfollowup' || s === 'meeting follow-up';
+        const hasFollowupDate = Boolean(l.FollowupDate && String(l.FollowupDate).trim() !== '');
+        return hasFollowupStatus || hasFollowupDate;
+    }, []);
+
+    // Category A: New Leads (Assigned or created leads not in follow-up)
+    const ceNewLeads = useMemo(() => {
+        return ceLeads.filter(l => !isFollowupLead(l));
+    }, [ceLeads, isFollowupLead]);
+
+    // Category B: Follow-up Leads (Leads assigned follow-up status or with followup date)
+    const ceFollowupLeads = useMemo(() => {
+        return ceLeads.filter(isFollowupLead);
+    }, [ceLeads, isFollowupLead]);
+
+    // Filter active category leads by search
+    const activeCategoryLeads = useMemo(() => {
+        const sourceList = ceLeadsCategory === 'new' ? ceNewLeads : ceFollowupLeads;
+        if (!ceLeadsSearch.trim()) return sourceList;
+        const q = ceLeadsSearch.toLowerCase();
+        return sourceList.filter(l => 
+            (l.FullName && l.FullName.toLowerCase().includes(q)) ||
+            (l.Phone && String(l.Phone).toLowerCase().includes(q)) ||
+            (l.CompanyName && l.CompanyName.toLowerCase().includes(q)) ||
+            (l.Status && l.Status.toLowerCase().includes(q)) ||
+            (l.ServiceInterested && l.ServiceInterested.toLowerCase().includes(q)) ||
+            (l.CallNote && l.CallNote.toLowerCase().includes(q))
+        );
+    }, [ceLeadsCategory, ceNewLeads, ceFollowupLeads, ceLeadsSearch]);
+
+    const totalCeLeadsPages = Math.ceil(activeCategoryLeads.length / CE_LEADS_PER_PAGE) || 1;
+    const paginatedCeLeads = useMemo(() => {
+        const start = (ceLeadsPage - 1) * CE_LEADS_PER_PAGE;
+        return activeCategoryLeads.slice(start, start + CE_LEADS_PER_PAGE);
+    }, [activeCategoryLeads, ceLeadsPage]);
 
     // Team Lead & Admin Real-Time Call Status Cards
     const teamCallStatusCards = useMemo(() => {
@@ -1093,6 +1168,388 @@ const Dashboard = ({ user, onLogout }) => {
                                                         disabled={callPage >= totalPages}
                                                         onClick={() => setCallPage(p => Math.min(totalPages, p + 1))}
                                                         style={{ padding: '4px 12px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', cursor: callPage >= totalPages ? 'not-allowed' : 'pointer', opacity: callPage >= totalPages ? 0.5 : 1 }}
+                                                    >
+                                                        Next
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Section 4: Leads List – Separate Categories (New Leads & Follow-up Leads) */}
+                            <div id="ce-leads-list-section" className="glass-card" style={{
+                                background: 'white',
+                                borderRadius: '16px',
+                                border: '1px solid #e2e8f0',
+                                padding: '22px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '16px',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                            }}>
+                                {/* Section Header & Controls */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div style={{ padding: '10px', background: '#e0e7ff', borderRadius: '12px', color: '#6366f1' }}>
+                                            <List size={22} />
+                                        </div>
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: '#1e293b' }}>
+                                                    Leads List
+                                                </h3>
+                                                <span style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '5px',
+                                                    fontSize: '0.72rem',
+                                                    fontWeight: '700',
+                                                    color: '#059669',
+                                                    background: '#d1fae5',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '10px'
+                                                }}>
+                                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+                                                    Real-Time
+                                                </span>
+                                            </div>
+                                            <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                                                {ceLeadsCategory === 'new'
+                                                    ? 'Newly created and assigned leads available for outreach'
+                                                    : 'Leads scheduled for follow-up based on interaction history'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Category Filter Switcher Tabs */}
+                                    <div style={{
+                                        display: 'flex',
+                                        background: '#f1f5f9',
+                                        padding: '4px',
+                                        borderRadius: '12px',
+                                        gap: '6px'
+                                    }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setCeLeadsCategory('new');
+                                                setCeLeadsPage(1);
+                                            }}
+                                            style={{
+                                                padding: '8px 18px',
+                                                borderRadius: '9px',
+                                                border: 'none',
+                                                background: ceLeadsCategory === 'new' ? 'white' : 'transparent',
+                                                color: ceLeadsCategory === 'new' ? '#4f46e5' : '#64748b',
+                                                fontWeight: '800',
+                                                fontSize: '0.84rem',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                boxShadow: ceLeadsCategory === 'new' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            <UserCheck size={16} />
+                                            <span>New Leads</span>
+                                            <span style={{
+                                                fontSize: '0.72rem',
+                                                fontWeight: '700',
+                                                padding: '2px 7px',
+                                                borderRadius: '10px',
+                                                background: ceLeadsCategory === 'new' ? '#e0e7ff' : '#e2e8f0',
+                                                color: ceLeadsCategory === 'new' ? '#4338ca' : '#64748b'
+                                            }}>
+                                                {ceNewLeads.length}
+                                            </span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setCeLeadsCategory('followup');
+                                                setCeLeadsPage(1);
+                                            }}
+                                            style={{
+                                                padding: '8px 18px',
+                                                borderRadius: '9px',
+                                                border: 'none',
+                                                background: ceLeadsCategory === 'followup' ? 'white' : 'transparent',
+                                                color: ceLeadsCategory === 'followup' ? '#d97706' : '#64748b',
+                                                fontWeight: '800',
+                                                fontSize: '0.84rem',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                boxShadow: ceLeadsCategory === 'followup' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            <Clock size={16} />
+                                            <span>Follow-up Leads</span>
+                                            <span style={{
+                                                fontSize: '0.72rem',
+                                                fontWeight: '700',
+                                                padding: '2px 7px',
+                                                borderRadius: '10px',
+                                                background: ceLeadsCategory === 'followup' ? '#fef3c7' : '#e2e8f0',
+                                                color: ceLeadsCategory === 'followup' ? '#b45309' : '#64748b'
+                                            }}>
+                                                {ceFollowupLeads.length}
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Search Bar & Count Summary */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                                    <div style={{ position: 'relative', flex: '1 1 280px', maxWidth: '420px' }}>
+                                        <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            placeholder={`Search ${ceLeadsCategory === 'new' ? 'New Leads' : 'Follow-up Leads'} by name, phone, company...`}
+                                            style={{ padding: '8px 10px 8px 34px', width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.82rem' }}
+                                            value={ceLeadsSearch}
+                                            onChange={e => {
+                                                setCeLeadsSearch(e.target.value);
+                                                setCeLeadsPage(1);
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '600' }}>
+                                            Showing {activeCategoryLeads.length} {ceLeadsCategory === 'new' ? 'new leads' : 'follow-up leads'}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => fetchCeLeads()}
+                                            disabled={loadingCeLeads}
+                                            style={{
+                                                padding: '6px 12px',
+                                                fontSize: '0.78rem',
+                                                fontWeight: '600',
+                                                borderRadius: '8px',
+                                                border: '1px solid #cbd5e1',
+                                                background: 'white',
+                                                color: '#475569',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '5px'
+                                            }}
+                                        >
+                                            <RefreshCw size={13} className={loadingCeLeads ? 'spin' : ''} /> Refresh
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Category Table */}
+                                {loadingCeLeads && ceLeads.length === 0 ? (
+                                    <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                                        <Loader className="spin" size={24} style={{ margin: '0 auto 10px auto' }} />
+                                        <p style={{ margin: 0, fontSize: '0.85rem' }}>Loading leads...</p>
+                                    </div>
+                                ) : activeCategoryLeads.length === 0 ? (
+                                    <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                                        <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600', color: '#64748b' }}>
+                                            {ceLeadsCategory === 'new' ? 'No new leads found.' : 'No follow-up leads scheduled.'}
+                                        </p>
+                                        <p style={{ margin: '6px 0 0 0', fontSize: '0.78rem' }}>
+                                            {ceLeadsSearch ? 'Try adjusting your search criteria.' : (ceLeadsCategory === 'new' ? 'Newly created or assigned leads will appear here automatically.' : 'Leads marked with Follow-up status will appear here automatically.')}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div style={{ overflowX: 'auto' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                                            <thead>
+                                                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                                                    <th style={{ padding: '10px 12px' }}>#</th>
+                                                    <th style={{ padding: '10px 12px' }}>Lead Name</th>
+                                                    <th style={{ padding: '10px 12px' }}>Contact Number</th>
+                                                    <th style={{ padding: '10px 12px' }}>Company</th>
+                                                    {ceLeadsCategory === 'followup' ? (
+                                                        <>
+                                                            <th style={{ padding: '10px 12px' }}>Follow-up Date & Time</th>
+                                                            <th style={{ padding: '10px 12px' }}>Current Status</th>
+                                                            <th style={{ padding: '10px 12px' }}>Last Call Note</th>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <th style={{ padding: '10px 12px' }}>Status</th>
+                                                            <th style={{ padding: '10px 12px' }}>Service Interested</th>
+                                                            <th style={{ padding: '10px 12px' }}>Created Date</th>
+                                                        </>
+                                                    )}
+                                                    <th style={{ padding: '10px 12px', textAlign: 'center' }}>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {paginatedCeLeads.map((lead, idx) => {
+                                                    const badge = getBadgeColor(lead.Status);
+                                                    return (
+                                                        <tr key={lead.LeadID || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                            <td style={{ padding: '10px 12px', color: '#94a3b8' }}>
+                                                                {(ceLeadsPage - 1) * CE_LEADS_PER_PAGE + idx + 1}
+                                                            </td>
+                                                            <td style={{ padding: '10px 12px' }}>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => navigate(`/leads/call-manage/${lead.LeadID}`, { state: { from: '/dashboard', label: 'Dashboard' } })}
+                                                                    style={{
+                                                                        background: 'none',
+                                                                        border: 'none',
+                                                                        padding: 0,
+                                                                        color: '#4f46e5',
+                                                                        fontWeight: '700',
+                                                                        fontSize: '0.85rem',
+                                                                        cursor: 'pointer',
+                                                                        textAlign: 'left'
+                                                                    }}
+                                                                >
+                                                                    {lead.FullName || 'Unknown Lead'}
+                                                                </button>
+                                                                {lead.Email && (
+                                                                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                                                                        {lead.Email}
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#334155', fontWeight: '600' }}>
+                                                                    <Phone size={13} color="#6366f1" />
+                                                                    <span>{lead.Phone || '-'}</span>
+                                                                </div>
+                                                                {lead.AlternatePhone && (
+                                                                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginLeft: '19px' }}>
+                                                                        Alt: {lead.AlternatePhone}
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            <td style={{ padding: '10px 12px', color: '#475569' }}>
+                                                                {lead.CompanyName || lead.SpecificCompanyName || '-'}
+                                                            </td>
+
+                                                            {ceLeadsCategory === 'followup' ? (
+                                                                <>
+                                                                    <td style={{ padding: '10px 12px' }}>
+                                                                        {lead.FollowupDate ? (
+                                                                            <span style={{
+                                                                                display: 'inline-flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '5px',
+                                                                                padding: '3px 8px',
+                                                                                background: '#fef3c7',
+                                                                                color: '#92400e',
+                                                                                borderRadius: '6px',
+                                                                                fontSize: '0.75rem',
+                                                                                fontWeight: '700'
+                                                                            }}>
+                                                                                <Calendar size={12} />
+                                                                                {new Date(lead.FollowupDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                                                {lead.FollowupTime && (
+                                                                                    <span style={{ marginLeft: '4px', color: '#b45309' }}>• {lead.FollowupTime}</span>
+                                                                                )}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>No date set</span>
+                                                                        )}
+                                                                    </td>
+                                                                    <td style={{ padding: '10px 12px' }}>
+                                                                        <span style={{
+                                                                            display: 'inline-block',
+                                                                            padding: '3px 8px',
+                                                                            borderRadius: '6px',
+                                                                            fontSize: '0.75rem',
+                                                                            fontWeight: '700',
+                                                                            background: badge.bg,
+                                                                            color: badge.text
+                                                                        }}>
+                                                                            {lead.Status || 'Follow-up'}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td style={{ padding: '10px 12px', color: '#64748b', maxWidth: '240px' }}>
+                                                                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={lead.CallNote}>
+                                                                            {lead.CallNote || 'No notes'}
+                                                                        </div>
+                                                                    </td>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <td style={{ padding: '10px 12px' }}>
+                                                                        <span style={{
+                                                                            display: 'inline-block',
+                                                                            padding: '3px 8px',
+                                                                            borderRadius: '6px',
+                                                                            fontSize: '0.75rem',
+                                                                            fontWeight: '700',
+                                                                            background: badge.bg,
+                                                                            color: badge.text
+                                                                        }}>
+                                                                            {lead.Status || 'New'}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td style={{ padding: '10px 12px', color: '#64748b' }}>
+                                                                        {lead.ServiceInterested || '-'}
+                                                                    </td>
+                                                                    <td style={{ padding: '10px 12px', color: '#64748b', whiteSpace: 'nowrap' }}>
+                                                                        {lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                                                                    </td>
+                                                                </>
+                                                            )}
+
+                                                            <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => navigate(`/leads/call-manage/${lead.LeadID}`, { state: { from: '/dashboard', label: 'Dashboard' } })}
+                                                                    style={{
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '5px',
+                                                                        padding: '6px 12px',
+                                                                        fontSize: '0.75rem',
+                                                                        fontWeight: '700',
+                                                                        borderRadius: '6px',
+                                                                        border: '1px solid #c7d2fe',
+                                                                        background: '#eef2ff',
+                                                                        color: '#4f46e5',
+                                                                        cursor: 'pointer'
+                                                                    }}
+                                                                >
+                                                                    <PhoneCall size={12} /> Call / Manage →
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+
+                                        {/* Pagination Controls */}
+                                        {totalCeLeadsPages > 1 && (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+                                                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                                    Showing {(ceLeadsPage - 1) * CE_LEADS_PER_PAGE + 1} to {Math.min(ceLeadsPage * CE_LEADS_PER_PAGE, activeCategoryLeads.length)} of {activeCategoryLeads.length} leads
+                                                </span>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button
+                                                        type="button"
+                                                        disabled={ceLeadsPage === 1}
+                                                        onClick={() => setCeLeadsPage(p => Math.max(1, p - 1))}
+                                                        style={{ padding: '4px 12px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', cursor: ceLeadsPage === 1 ? 'not-allowed' : 'pointer', opacity: ceLeadsPage === 1 ? 0.5 : 1 }}
+                                                    >
+                                                        Previous
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        disabled={ceLeadsPage >= totalCeLeadsPages}
+                                                        onClick={() => setCeLeadsPage(p => Math.min(totalCeLeadsPages, p + 1))}
+                                                        style={{ padding: '4px 12px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', cursor: ceLeadsPage >= totalCeLeadsPages ? 'not-allowed' : 'pointer', opacity: ceLeadsPage >= totalCeLeadsPages ? 0.5 : 1 }}
                                                     >
                                                         Next
                                                     </button>

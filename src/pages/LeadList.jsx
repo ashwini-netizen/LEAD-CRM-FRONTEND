@@ -633,6 +633,20 @@ const LeadList = ({ user, isMyCreated }) => {
         return { conversionsCount: conv, pendingCount: pend, allLeadsCount: total };
     }, [leads, baseLeads, isMyCreated, isTL, singleDate, fromDate, toDate, checkDateInRange]);
 
+    // Call Executive New Leads and Follow-up Leads count
+    const { ceNewCount, ceFollowupCount } = useMemo(() => {
+        if (!isCE) return { ceNewCount: 0, ceFollowupCount: 0 };
+        let n = 0, f = 0;
+        for (let i = 0; i < leads.length; i++) {
+            const l = leads[i];
+            const s = String(l.Status || '').trim().toLowerCase();
+            const isFollowup = s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'meetingfollowup' || s === 'meeting follow-up' || Boolean(l.FollowupDate && String(l.FollowupDate).trim() !== '');
+            if (isFollowup) f++;
+            else n++;
+        }
+        return { ceNewCount: n, ceFollowupCount: f };
+    }, [isCE, leads]);
+
     const filtered = useMemo(() => {
         const searchLower = search.trim().toLowerCase();
         const hasSearch = searchLower.length > 0;
@@ -644,6 +658,12 @@ const LeadList = ({ user, isMyCreated }) => {
 
         return leads.filter(l => {
             if (!hasStatus) {
+                if (isCE) {
+                    const s = String(l.Status || '').trim().toLowerCase();
+                    const isFollowup = s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'meetingfollowup' || s === 'meeting follow-up' || Boolean(l.FollowupDate && String(l.FollowupDate).trim() !== '');
+                    if (categoryFilter === 'new' && isFollowup) return false;
+                    if (categoryFilter === 'followup' && !isFollowup) return false;
+                }
                 if (categoryFilter === 'conversions' && !isConvertedStatus(l.Status)) return false;
                 if (categoryFilter === 'pending' && !isPendingStatus(l.Status)) return false;
             }
@@ -859,8 +879,65 @@ const LeadList = ({ user, isMyCreated }) => {
                     </div>
                 )}
 
-                {/* Quick Category Filter Tabs (All / Conversions / Pending) - Hidden for Admin and FE Assigned Meetings */}
-                {!isAdmin && !(isFE && !isMyCreated) && (
+                {/* Quick Category Filter Tabs - Customized for Call Executive (New Leads / Follow-up Leads / All Leads) */}
+                {isCE && (
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                        <button
+                            type="button"
+                            onClick={() => { setCategoryFilter('new'); setStatusFilter('All'); }}
+                            style={{
+                                padding: '8px 18px',
+                                borderRadius: '20px',
+                                border: `1.5px solid ${categoryFilter === 'new' ? '#6366f1' : '#e2e8f0'}`,
+                                background: categoryFilter === 'new' ? 'rgba(99, 102, 241, 0.1)' : 'white',
+                                color: categoryFilter === 'new' ? '#6366f1' : '#64748b',
+                                cursor: 'pointer',
+                                fontSize: '0.85rem',
+                                fontWeight: '700',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            New Leads ({ceNewCount})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setCategoryFilter('followup'); setStatusFilter('All'); }}
+                            style={{
+                                padding: '8px 18px',
+                                borderRadius: '20px',
+                                border: `1.5px solid ${categoryFilter === 'followup' ? '#f59e0b' : '#e2e8f0'}`,
+                                background: categoryFilter === 'followup' ? 'rgba(245, 158, 11, 0.1)' : 'white',
+                                color: categoryFilter === 'followup' ? '#d97706' : '#64748b',
+                                cursor: 'pointer',
+                                fontSize: '0.85rem',
+                                fontWeight: '700',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            Follow-up Leads ({ceFollowupCount})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setCategoryFilter('all'); setStatusFilter('All'); }}
+                            style={{
+                                padding: '8px 18px',
+                                borderRadius: '20px',
+                                border: `1.5px solid ${categoryFilter === 'all' ? '#10b981' : '#e2e8f0'}`,
+                                background: categoryFilter === 'all' ? 'rgba(16, 185, 129, 0.1)' : 'white',
+                                color: categoryFilter === 'all' ? '#059669' : '#64748b',
+                                cursor: 'pointer',
+                                fontSize: '0.85rem',
+                                fontWeight: '700',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            All Leads ({leads.length})
+                        </button>
+                    </div>
+                )}
+
+                {/* Quick Category Filter Tabs (All / Conversions / Pending) - Hidden for Admin, Call Executive, and FE Assigned Meetings */}
+                {!isAdmin && !isCE && !(isFE && !isMyCreated) && (
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
                         <button
                             type="button"
