@@ -156,68 +156,6 @@ const isRecordInDateRange = (recordDateStr, customFrom, customTo, todayStr) => {
     return true;
 };
 
-// Robust time parser to minutes from midnight (0 - 1439). Handles AM/PM, repeated meridians, 12/24hr
-const parseTimeToMinutes = (timeStr) => {
-    if (!timeStr || typeof timeStr !== 'string') return 1440;
-    const match = timeStr.trim().match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)?/i);
-    if (!match) return 1440;
-    let hours = parseInt(match[1], 10);
-    const minutes = parseInt(match[2], 10);
-    const meridian = match[3] ? match[3].toUpperCase() : null;
-    if (meridian === 'PM' && hours < 12) hours += 12;
-    if (meridian === 'AM' && hours === 12) hours = 0;
-    return hours * 60 + minutes;
-};
-
-// Date-wise Sorting for Call Executive Follow-up Leads:
-// Priority 1: Follow-ups scheduled for Today (sorted by time ASC)
-// Priority 2: Overdue follow-ups (displayed after today's, most recent overdue first, time ASC)
-// Priority 3: Nearest upcoming follow-ups first (nearest upcoming date first, time ASC)
-const sortFollowupLeads = (a, b, todayStr) => {
-    const dateA = getLocalDateStr(a.FollowupDate) || getLocalDateStr(a.MeetingFollowupDate) || getLocalDateStr(a.UpdatedAt);
-    const dateB = getLocalDateStr(b.FollowupDate) || getLocalDateStr(b.MeetingFollowupDate) || getLocalDateStr(b.UpdatedAt);
-
-    const getRank = (d) => {
-        if (!d) return 4;
-        if (d === todayStr) return 1; // Priority 1: Today
-        if (d < todayStr) return 2;   // Priority 2: Overdue
-        return 3;                     // Priority 3: Upcoming
-    };
-
-    const rankA = getRank(dateA);
-    const rankB = getRank(dateB);
-
-    if (rankA !== rankB) return rankA - rankB;
-
-    // Within Priority 1 (Today): sort by scheduled time ascending
-    if (rankA === 1) {
-        const timeA = parseTimeToMinutes(a.FollowupTime || a.MeetingFollowupTime || a.MeetingTime);
-        const timeB = parseTimeToMinutes(b.FollowupTime || b.MeetingFollowupTime || b.MeetingTime);
-        if (timeA !== timeB) return timeA - timeB;
-        return (b.LeadID || 0) - (a.LeadID || 0);
-    }
-
-    // Within Priority 2 (Overdue): sort by date (most recent overdue first) then time ascending
-    if (rankA === 2) {
-        if (dateA !== dateB) return dateB.localeCompare(dateA);
-        const timeA = parseTimeToMinutes(a.FollowupTime || a.MeetingFollowupTime || a.MeetingTime);
-        const timeB = parseTimeToMinutes(b.FollowupTime || b.MeetingFollowupTime || b.MeetingTime);
-        if (timeA !== timeB) return timeA - timeB;
-        return (b.LeadID || 0) - (a.LeadID || 0);
-    }
-
-    // Within Priority 3 (Upcoming): nearest upcoming date first (ascending) then time ascending
-    if (rankA === 3) {
-        if (dateA !== dateB) return dateA.localeCompare(dateB);
-        const timeA = parseTimeToMinutes(a.FollowupTime || a.MeetingFollowupTime || a.MeetingTime);
-        const timeB = parseTimeToMinutes(b.FollowupTime || b.MeetingFollowupTime || b.MeetingTime);
-        if (timeA !== timeB) return timeA - timeB;
-        return (b.LeadID || 0) - (a.LeadID || 0);
-    }
-
-    return (b.LeadID || 0) - (a.LeadID || 0);
-};
-
 // In-memory module cache for instant perceived page loads
 let leadsCache = {
     data: null,
@@ -236,7 +174,11 @@ const LeadList = ({ user, isMyCreated }) => {
         leadsCache.userId === currentUserId &&
         leadsCache.role === currentRole;
 
-    const [categoryFilter, setCategoryFilter] = useState(location.state?.categoryFilter || 'all');
+    const [categoryFilter, setCategoryFilter] = useState(() => {
+        const initial = location.state?.categoryFilter || 'all';
+        if (initial === 'new' || initial === 'followup') return 'all';
+        return initial;
+    });
     const [leads, setLeads] = useState(() => (hasValidCache ? leadsCache.data : []));
     const [loading, setLoading] = useState(!hasValidCache);
     const [error, setError] = useState('');
@@ -251,91 +193,6 @@ const LeadList = ({ user, isMyCreated }) => {
     const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
     const isTL = user?.role === 'Team Lead' || user?.Role === 'Team Lead';
     const isAdmin = user?.role === 'Admin' || user?.Role === 'Admin';
-
-    // Independent date ranges for Call Executive categories (default: empty, displaying today's records only)
-    const [ceNewDateRange, setCeNewDateRange] = useState(() => {
-        if (location.state?.categoryFilter === 'new' && (location.state?.fromDate || location.state?.toDate)) {
-            return { from: location.state.fromDate || '', to: location.state.toDate || '' };
-        }
-        return { from: '', to: '' };
-    });
-    const [ceFollowupDateRange, setCeFollowupDateRange] = useState(() => {
-        if (location.state?.categoryFilter === 'followup' && (location.state?.fromDate || location.state?.toDate)) {
-            return { from: location.state.fromDate || '', to: location.state.toDate || '' };
-        }
-        return { from: '', to: '' };
-    });
-    const [ceDateRangeError, setCeDateRangeError] = useState('');
-
-    const todayStr = useMemo(() => getTodayDateStr(), []);
-
-    const currentCeRange = categoryFilter === 'new'
-        ? ceNewDateRange
-        : categoryFilter === 'followup'
-        ? ceFollowupDateRange
-        : { from: fromDate, to: toDate };
-
-    const handleCeFromChange = (val) => {
-        setCeDateRangeError('');
-        const updateRange = (prev) => {
-            let to = prev.to;
-            if (val && to) {
-                if (val > to) {
-                    to = val;
-                } else if (getDaysDifference(val, to) > 31) {
-                    to = addDaysToDate(val, 31);
-                    setCeDateRangeError('Date range adjusted to 1 month maximum (31 days)');
-                }
-            }
-            return { from: val, to };
-        };
-
-        if (categoryFilter === 'new') {
-            setCeNewDateRange(updateRange);
-        } else if (categoryFilter === 'followup') {
-            setCeFollowupDateRange(updateRange);
-        } else {
-            handleFromDateChange(val);
-        }
-    };
-
-    const handleCeToChange = (val) => {
-        setCeDateRangeError('');
-        const updateRange = (prev) => {
-            let from = prev.from;
-            if (val && from) {
-                if (val < from) {
-                    setCeDateRangeError('To Date cannot be earlier than From Date');
-                    return prev;
-                }
-                if (getDaysDifference(from, val) > 31) {
-                    setCeDateRangeError('Date range cannot exceed 1 month (maximum 31 days)');
-                    val = addDaysToDate(from, 31);
-                }
-            }
-            return { from, to: val };
-        };
-
-        if (categoryFilter === 'new') {
-            setCeNewDateRange(updateRange);
-        } else if (categoryFilter === 'followup') {
-            setCeFollowupDateRange(updateRange);
-        } else {
-            handleToDateChange(val);
-        }
-    };
-
-    const handleClearCeDates = () => {
-        setCeDateRangeError('');
-        if (categoryFilter === 'new') {
-            setCeNewDateRange({ from: '', to: '' });
-        } else if (categoryFilter === 'followup') {
-            setCeFollowupDateRange({ from: '', to: '' });
-        } else {
-            setFromDate('');
-            setToDate('');
-        }
-    };
 
     const handleFromDateChange = (val) => {
         setFromDate(val);
@@ -759,14 +616,8 @@ const LeadList = ({ user, isMyCreated }) => {
 
     useEffect(() => {
         if (location.state?.categoryFilter) {
-            setCategoryFilter(location.state.categoryFilter);
-            if (isCE) {
-                if (location.state.categoryFilter === 'new' && (location.state?.fromDate || location.state?.toDate)) {
-                    setCeNewDateRange({ from: location.state.fromDate || '', to: location.state.toDate || '' });
-                } else if (location.state.categoryFilter === 'followup' && (location.state?.fromDate || location.state?.toDate)) {
-                    setCeFollowupDateRange({ from: location.state.fromDate || '', to: location.state.toDate || '' });
-                }
-            }
+            const cat = location.state.categoryFilter;
+            setCategoryFilter((cat === 'new' || cat === 'followup') ? 'all' : cat);
         }
         if (location.state?.fromDate !== undefined) {
             setFromDate(location.state.fromDate);
@@ -774,7 +625,7 @@ const LeadList = ({ user, isMyCreated }) => {
         if (location.state?.toDate !== undefined) {
             setToDate(location.state.toDate);
         }
-    }, [location.state?.categoryFilter, location.state?.fromDate, location.state?.toDate, isCE]);
+    }, [location.state?.categoryFilter, location.state?.fromDate, location.state?.toDate]);
 
     useEffect(() => {
         if ((isTL || isFE || isAdmin) && statusFilter === 'N/A Leads') {
@@ -790,7 +641,7 @@ const LeadList = ({ user, isMyCreated }) => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [search, statusFilter, fromDate, toDate, singleDate, roleFilter, viewFilter, categoryFilter, ceNewDateRange, ceFollowupDateRange]);
+    }, [search, statusFilter, fromDate, toDate, singleDate, roleFilter, viewFilter, categoryFilter]);
 
     const checkDateInRange = useCallback((dateStr, start, end) => {
         if (!dateStr) return false;
@@ -844,30 +695,6 @@ const LeadList = ({ user, isMyCreated }) => {
         return { conversionsCount: conv, pendingCount: pend, allLeadsCount: total };
     }, [leads, baseLeads, isMyCreated, isTL, singleDate, fromDate, toDate, checkDateInRange]);
 
-    // Call Executive New Leads and Follow-up Leads count based on independent date ranges
-    // Default view: today's records only. Custom range: up to 1 month.
-    const { ceNewCount, ceFollowupCount } = useMemo(() => {
-        if (!isCE) return { ceNewCount: 0, ceFollowupCount: 0 };
-        let n = 0, f = 0;
-        for (let i = 0; i < leads.length; i++) {
-            const l = leads[i];
-            const s = String(l.Status || '').trim().toLowerCase();
-            const isFollowup = s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'meetingfollowup' || s === 'meeting follow-up' || Boolean(l.FollowupDate && String(l.FollowupDate).trim() !== '');
-            if (isFollowup) {
-                const fDate = getLocalDateStr(l.FollowupDate) || getLocalDateStr(l.UpdatedAt);
-                if (isRecordInDateRange(fDate, ceFollowupDateRange.from, ceFollowupDateRange.to, todayStr)) {
-                    f++;
-                }
-            } else {
-                const cDate = getLocalDateStr(l.CreatedAt);
-                if (isRecordInDateRange(cDate, ceNewDateRange.from, ceNewDateRange.to, todayStr)) {
-                    n++;
-                }
-            }
-        }
-        return { ceNewCount: n, ceFollowupCount: f };
-    }, [isCE, leads, ceNewDateRange, ceFollowupDateRange, todayStr]);
-
     const filtered = useMemo(() => {
         const searchLower = search.trim().toLowerCase();
         const hasSearch = searchLower.length > 0;
@@ -877,30 +704,10 @@ const LeadList = ({ user, isMyCreated }) => {
         const isInterestedFilter = statusLower === 'interested';
         const currentUserIdStr = String(currentUserId || '');
 
-        const list = leads.filter(l => {
-            if (isCE) {
-                const s = String(l.Status || '').trim().toLowerCase();
-                const isFollowup = s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'meetingfollowup' || s === 'meeting follow-up' || Boolean(l.FollowupDate && String(l.FollowupDate).trim() !== '');
-
-                if (categoryFilter === 'new') {
-                    if (isFollowup) return false;
-                    const cDate = getLocalDateStr(l.CreatedAt);
-                    if (!isRecordInDateRange(cDate, ceNewDateRange.from, ceNewDateRange.to, todayStr)) return false;
-                } else if (categoryFilter === 'followup') {
-                    if (!isFollowup) return false;
-                    const fDate = getLocalDateStr(l.FollowupDate) || getLocalDateStr(l.UpdatedAt);
-                    if (!isRecordInDateRange(fDate, ceFollowupDateRange.from, ceFollowupDateRange.to, todayStr)) return false;
-                } else if (categoryFilter === 'all') {
-                    if (fromDate || toDate) {
-                        const cDate = getLocalDateStr(l.CreatedAt);
-                        if (!isRecordInDateRange(cDate, fromDate, toDate, todayStr)) return false;
-                    }
-                }
-            } else {
-                if (!hasStatus) {
-                    if (categoryFilter === 'conversions' && !isConvertedStatus(l.Status)) return false;
-                    if (categoryFilter === 'pending' && !isPendingStatus(l.Status)) return false;
-                }
+        return leads.filter(l => {
+            if (!hasStatus) {
+                if (categoryFilter === 'conversions' && !isConvertedStatus(l.Status)) return false;
+                if (categoryFilter === 'pending' && !isPendingStatus(l.Status)) return false;
             }
 
             if (hasSearch) {
@@ -955,7 +762,7 @@ const LeadList = ({ user, isMyCreated }) => {
                     const localDateStr = localDateObj.toISOString().split('T')[0];
                     if (localDateStr !== singleDate) return false;
                 }
-            } else if (!isCE) {
+            } else {
                 if (fromDate || toDate) {
                     if (!checkDateInRange(l.CreatedAt, fromDate, toDate)) return false;
                 }
@@ -973,13 +780,7 @@ const LeadList = ({ user, isMyCreated }) => {
 
             return true;
         });
-
-        if (isCE && categoryFilter === 'followup') {
-            return [...list].sort((a, b) => sortFollowupLeads(a, b, todayStr));
-        }
-
-        return list;
-    }, [leads, statusFilter, categoryFilter, search, roleFilter, viewFilter, isMyCreated, isFE, isCE, currentUserId, singleDate, fromDate, toDate, isTL, isAdmin, feCallStatuses, checkDateInRange, ceNewDateRange, ceFollowupDateRange, todayStr]);
+    }, [leads, statusFilter, categoryFilter, search, roleFilter, viewFilter, isMyCreated, isFE, currentUserId, singleDate, fromDate, toDate, isTL, isAdmin, feCallStatuses, checkDateInRange]);
 
     const effectivePageSize = pageSize === 'all' ? (filtered.length || 1) : Number(pageSize);
     const totalPages = Math.max(1, Math.ceil(filtered.length / effectivePageSize));
@@ -1120,65 +921,8 @@ const LeadList = ({ user, isMyCreated }) => {
                     </div>
                 )}
 
-                {/* Quick Category Filter Tabs - Customized for Call Executive (New Leads / Follow-up Leads / All Leads) */}
-                {isCE && (
-                    <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                        <button
-                            type="button"
-                            onClick={() => { setCategoryFilter('new'); setStatusFilter('All'); }}
-                            style={{
-                                padding: '8px 18px',
-                                borderRadius: '20px',
-                                border: `1.5px solid ${categoryFilter === 'new' ? '#6366f1' : '#e2e8f0'}`,
-                                background: categoryFilter === 'new' ? 'rgba(99, 102, 241, 0.1)' : 'white',
-                                color: categoryFilter === 'new' ? '#6366f1' : '#64748b',
-                                cursor: 'pointer',
-                                fontSize: '0.85rem',
-                                fontWeight: '700',
-                                transition: 'all 0.15s ease'
-                            }}
-                        >
-                            New Leads ({ceNewCount})
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => { setCategoryFilter('followup'); setStatusFilter('All'); }}
-                            style={{
-                                padding: '8px 18px',
-                                borderRadius: '20px',
-                                border: `1.5px solid ${categoryFilter === 'followup' ? '#f59e0b' : '#e2e8f0'}`,
-                                background: categoryFilter === 'followup' ? 'rgba(245, 158, 11, 0.1)' : 'white',
-                                color: categoryFilter === 'followup' ? '#d97706' : '#64748b',
-                                cursor: 'pointer',
-                                fontSize: '0.85rem',
-                                fontWeight: '700',
-                                transition: 'all 0.15s ease'
-                            }}
-                        >
-                            Follow-up Leads ({ceFollowupCount})
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => { setCategoryFilter('all'); setStatusFilter('All'); }}
-                            style={{
-                                padding: '8px 18px',
-                                borderRadius: '20px',
-                                border: `1.5px solid ${categoryFilter === 'all' ? '#10b981' : '#e2e8f0'}`,
-                                background: categoryFilter === 'all' ? 'rgba(16, 185, 129, 0.1)' : 'white',
-                                color: categoryFilter === 'all' ? '#059669' : '#64748b',
-                                cursor: 'pointer',
-                                fontSize: '0.85rem',
-                                fontWeight: '700',
-                                transition: 'all 0.15s ease'
-                            }}
-                        >
-                            All Leads ({leads.length})
-                        </button>
-                    </div>
-                )}
-
-                {/* Quick Category Filter Tabs (All / Conversions / Pending) - Hidden for Admin, Call Executive, and FE Assigned Meetings */}
-                {!isAdmin && !isCE && !(isFE && !isMyCreated) && (
+                {/* Quick Category Filter Tabs (All / Conversions / Pending) - Hidden for Admin and FE Assigned Meetings */}
+                {!isAdmin && !(isFE && !isMyCreated) && (
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
                         <button
                             type="button"
@@ -1389,70 +1133,8 @@ const LeadList = ({ user, isMyCreated }) => {
                         </button>
                     )}
 
-                    {/* From Date – To Date Range Filter (Call Executive independent date filtering: default today, up to 1 month custom range) */}
-                    {isCE && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 1 auto' }}>
-                            <div style={{ position: 'relative', minWidth: '140px', flex: '1 1 auto' }}>
-                                <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
-                                <input
-                                    type="date"
-                                    className="input-field"
-                                    title={`From Date (${categoryFilter === 'new' ? 'New Leads' : categoryFilter === 'followup' ? 'Follow-up Leads' : 'All Leads'})`}
-                                    placeholder="From Date"
-                                    max={currentCeRange.to || undefined}
-                                    style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '36px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
-                                    value={currentCeRange.from}
-                                    onChange={e => handleCeFromChange(e.target.value)}
-                                />
-                            </div>
-                            <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: '700' }}>–</span>
-                            <div style={{ position: 'relative', minWidth: '140px', flex: '1 1 auto' }}>
-                                <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
-                                <input
-                                    type="date"
-                                    className="input-field"
-                                    title={`To Date (${categoryFilter === 'new' ? 'New Leads' : categoryFilter === 'followup' ? 'Follow-up Leads' : 'All Leads'})`}
-                                    placeholder="To Date"
-                                    min={currentCeRange.from || undefined}
-                                    max={currentCeRange.from ? addDaysToDate(currentCeRange.from, 31) : undefined}
-                                    style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '36px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
-                                    value={currentCeRange.to}
-                                    onChange={e => handleCeToChange(e.target.value)}
-                                />
-                            </div>
-                            {(currentCeRange.from || currentCeRange.to) && (
-                                <button
-                                    type="button"
-                                    onClick={handleClearCeDates}
-                                    title="Remove custom date range and return to today's records"
-                                    style={{
-                                        padding: '8px 12px',
-                                        borderRadius: '8px',
-                                        border: '1px solid #cbd5e1',
-                                        background: 'white',
-                                        color: '#dc2626',
-                                        fontSize: '0.78rem',
-                                        fontWeight: '700',
-                                        cursor: 'pointer',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        whiteSpace: 'nowrap'
-                                    }}
-                                >
-                                    <X size={13} /> Clear
-                                </button>
-                            )}
-                            {ceDateRangeError && (
-                                <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: '600' }}>
-                                    {ceDateRangeError}
-                                </span>
-                            )}
-                        </div>
-                    )}
-
-                    {/* From Date – To Date Range Filter (Other roles if applicable) */}
-                    {!isTL && !isFE && !isAdmin && !isCE && (
+                    {/* From Date – To Date Range Filter */}
+                    {!isTL && !isFE && !isAdmin && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 1 auto' }}>
                             <div style={{ position: 'relative', minWidth: '150px', flex: '1 1 auto' }}>
                                 <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
@@ -1815,17 +1497,6 @@ const LeadList = ({ user, isMyCreated }) => {
                                                 <span style={{ padding: '4px 12px', background: sc.bg, color: sc.color, borderRadius: '20px', fontSize: '0.8rem', fontWeight: '700' }}>
                                                     {getCanonicalStatus(lead.Status)}
                                                 </span>
-                                                {isCE && categoryFilter === 'followup' && (() => {
-                                                    const fDateStr = getLocalDateStr(lead.FollowupDate) || getLocalDateStr(lead.MeetingFollowupDate) || getLocalDateStr(lead.UpdatedAt);
-                                                    if (fDateStr && fDateStr < todayStr) {
-                                                        return (
-                                                            <span style={{ marginLeft: '8px', padding: '2px 7px', background: '#fee2e2', color: '#dc2626', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '800', border: '1px solid #fecaca' }}>
-                                                                Overdue
-                                                            </span>
-                                                        );
-                                                    }
-                                                    return null;
-                                                })()}
                                             </td>
                                             <td style={{ padding: '16px 20px', color: '#334155', fontWeight: '700', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
                                                 {lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB') : 'N/A'}

@@ -1578,7 +1578,7 @@ const Dashboard = ({ user, onLogout }) => {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <button
                                             type="button"
-                                            onClick={() => navigate('/leads', { state: { categoryFilter: ceLeadsCategory, fromDate: activeCeRange.from, toDate: activeCeRange.to } })}
+                                            onClick={() => navigate('/leads', { state: { categoryFilter: 'all' } })}
                                             style={{
                                                 padding: '6px 12px',
                                                 borderRadius: '8px',
