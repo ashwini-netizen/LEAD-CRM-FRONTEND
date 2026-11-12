@@ -348,6 +348,7 @@ const LeadList = ({ user, isMyCreated }) => {
     const [rangeInput, setRangeInput] = useState('');
     const [rangeError, setRangeError] = useState('');
     const [rangeFeedback, setRangeFeedback] = useState('');
+    const [activeRange, setActiveRange] = useState(null);
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -475,12 +476,34 @@ const LeadList = ({ user, isMyCreated }) => {
     };
 
     const toggleSelectLead = (leadId) => {
+        if (isCE && activeRange) {
+            const leadIndex = filtered.findIndex(l => l.LeadID === leadId);
+            if (leadIndex !== -1) {
+                const recordNum = leadIndex + 1;
+                if (recordNum < activeRange.start || recordNum > activeRange.end) {
+                    return; // Strictly restrict selection to specified range only
+                }
+            }
+        }
         setSelectedLeads(prev =>
             prev.includes(leadId) ? prev.filter(id => id !== leadId) : [...prev, leadId]
         );
     };
 
     const toggleSelectAll = () => {
+        if (isCE && activeRange) {
+            const inRangeLeads = filtered.slice(activeRange.start - 1, activeRange.end);
+            const inRangeIds = inRangeLeads.map(l => l.LeadID);
+            const allInRangeSelected = inRangeIds.every(id => selectedLeads.includes(id));
+            if (allInRangeSelected) {
+                setSelectedLeads(prev => prev.filter(id => !inRangeIds.includes(id)));
+            } else {
+                const newSelected = new Set(selectedLeads);
+                inRangeIds.forEach(id => newSelected.add(id));
+                setSelectedLeads(Array.from(newSelected));
+            }
+            return;
+        }
         if (selectedLeads.length === filtered.length) {
             setSelectedLeads([]);
         } else {
@@ -622,6 +645,15 @@ const LeadList = ({ user, isMyCreated }) => {
         }
 
         const trimmed = rangeInput.trim();
+
+        // Reject attempts to input multiple or additional ranges (e.g. "1-6, 7-10")
+        if (trimmed.includes(',') || trimmed.includes(';') || (trimmed.match(/[-–—]/g) && trimmed.match(/[-–—]/g).length > 1)) {
+            const msg = 'Please specify a single range only (e.g., 1-6). Multiple ranges cannot be selected.';
+            setRangeError(msg);
+            alert(msg);
+            return;
+        }
+
         // Match formats: 1-30, 1–30, 1—30, 1 to 30, with optional spaces
         const match = trimmed.match(/^(\d+)\s*(?:[-–—]|to)\s*(\d+)$/i);
         if (!match) {
@@ -674,6 +706,9 @@ const LeadList = ({ user, isMyCreated }) => {
         const rangeIds = rangeRecords.map(l => l.LeadID);
 
         setSelectedLeads(rangeIds);
+        if (isCE) {
+            setActiveRange({ start, end });
+        }
         setSelectMode(true);
         setRangeFeedback(`Range: ${start}–${end}`);
 
@@ -687,6 +722,7 @@ const LeadList = ({ user, isMyCreated }) => {
 
     const handleClearSelection = () => {
         setSelectedLeads([]);
+        setActiveRange(null);
         setRangeFeedback('');
         setRangeInput('');
         setRangeError('');
@@ -717,6 +753,7 @@ const LeadList = ({ user, isMyCreated }) => {
             if (!res.ok) throw new Error(data.message || 'Delete failed');
             alert(data.message);
             setSelectedLeads([]);
+            setActiveRange(null);
             setRangeFeedback('');
             setRangeInput('');
             setRangeError('');
@@ -767,6 +804,9 @@ const LeadList = ({ user, isMyCreated }) => {
 
     useEffect(() => {
         setCurrentPage(1);
+        if (isCE && activeRange) {
+            handleClearSelection();
+        }
     }, [search, statusFilter, fromDate, toDate, singleDate, roleFilter, viewFilter, categoryFilter]);
 
     const checkDateInRange = useCallback((dateStr, start, end) => {
@@ -919,16 +959,28 @@ const LeadList = ({ user, isMyCreated }) => {
     }, [filtered, pageSize, startIndex, endIndex]);
 
     const selectedLeadsSet = useMemo(() => new Set(selectedLeads), [selectedLeads]);
-    const isAllCurrentPageSelected = paginatedLeads.length > 0 && paginatedLeads.every(l => selectedLeadsSet.has(l.LeadID));
-    const isSomeCurrentPageSelected = paginatedLeads.some(l => selectedLeadsSet.has(l.LeadID));
+
+    const selectablePageLeads = useMemo(() => {
+        if (isCE && activeRange) {
+            return paginatedLeads.filter((_, idx) => {
+                const num = startIndex + idx + 1;
+                return num >= activeRange.start && num <= activeRange.end;
+            });
+        }
+        return paginatedLeads;
+    }, [paginatedLeads, isCE, activeRange, startIndex]);
+
+    const isAllCurrentPageSelected = selectablePageLeads.length > 0 && selectablePageLeads.every(l => selectedLeadsSet.has(l.LeadID));
+    const isSomeCurrentPageSelected = selectablePageLeads.some(l => selectedLeadsSet.has(l.LeadID));
 
     const toggleSelectAllCurrentPage = () => {
+        if (selectablePageLeads.length === 0) return;
         if (isAllCurrentPageSelected) {
-            const currentPageIds = new Set(paginatedLeads.map(l => l.LeadID));
-            setSelectedLeads(prev => prev.filter(id => !currentPageIds.has(id)));
+            const pageIds = new Set(selectablePageLeads.map(l => l.LeadID));
+            setSelectedLeads(prev => prev.filter(id => !pageIds.has(id)));
         } else {
             const newSelected = new Set(selectedLeads);
-            paginatedLeads.forEach(l => newSelected.add(l.LeadID));
+            selectablePageLeads.forEach(l => newSelected.add(l.LeadID));
             setSelectedLeads(Array.from(newSelected));
         }
     };
@@ -1387,6 +1439,29 @@ const LeadList = ({ user, isMyCreated }) => {
                             >
                                 <CheckSquare size={16} /> Select
                             </button>
+                            {isCE && activeRange && (
+                                <button
+                                    type="button"
+                                    onClick={handleClearSelection}
+                                    style={{
+                                        background: '#fee2e2',
+                                        color: '#dc2626',
+                                        border: '1px solid #fecaca',
+                                        padding: '10px 14px',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontWeight: '700',
+                                        fontSize: '0.85rem',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                    title="Clear range selection"
+                                >
+                                    <X size={14} /> Clear
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -1416,7 +1491,7 @@ const LeadList = ({ user, isMyCreated }) => {
                             </span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {selectedLeads.length < filtered.length && (
+                            {selectedLeads.length < filtered.length && !(isCE && activeRange) && (
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -1434,6 +1509,26 @@ const LeadList = ({ user, isMyCreated }) => {
                                     }}
                                 >
                                     Select all {filtered.length} leads
+                                </button>
+                            )}
+                            {isCE && activeRange && selectedLeads.length < (activeRange.end - activeRange.start + 1) && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const inRangeLeads = filtered.slice(activeRange.start - 1, activeRange.end);
+                                        setSelectedLeads(inRangeLeads.map(l => l.LeadID));
+                                    }}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#6366f1',
+                                        fontSize: '0.85rem',
+                                        fontWeight: '700',
+                                        cursor: 'pointer',
+                                        textDecoration: 'underline'
+                                    }}
+                                >
+                                    Select all in Range {activeRange.start}–{activeRange.end}
                                 </button>
                             )}
                             <button
@@ -1553,8 +1648,19 @@ const LeadList = ({ user, isMyCreated }) => {
                                                     }
                                                 }}
                                                 onChange={toggleSelectAllCurrentPage}
-                                                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#6366f1' }}
-                                                title={isAllCurrentPageSelected ? "Deselect current page" : "Select all on current page"}
+                                                disabled={selectablePageLeads.length === 0}
+                                                style={{
+                                                    width: '18px',
+                                                    height: '18px',
+                                                    cursor: selectablePageLeads.length === 0 ? 'not-allowed' : 'pointer',
+                                                    accentColor: '#6366f1',
+                                                    opacity: selectablePageLeads.length === 0 ? 0.35 : 1
+                                                }}
+                                                title={
+                                                    selectablePageLeads.length === 0
+                                                        ? (isCE && activeRange ? `No records on this page within specified range (${activeRange.start}–${activeRange.end})` : "No selectable records")
+                                                        : (isAllCurrentPageSelected ? "Deselect current page" : "Select all on current page")
+                                                }
                                             />
                                         </th>
                                     )}
@@ -1596,16 +1702,28 @@ const LeadList = ({ user, isMyCreated }) => {
                                             onMouseEnter={e => { if (!isLeadSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
                                             onMouseLeave={e => { if (!isLeadSelected) e.currentTarget.style.background = 'transparent'; }}
                                         >
-                                            {selectMode && (
-                                                <td style={{ padding: '16px 12px', textAlign: 'center', width: '40px' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={isLeadSelected}
-                                                        onChange={() => toggleSelectLead(lead.LeadID)}
-                                                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#6366f1' }}
-                                                    />
-                                                </td>
-                                            )}
+                                            {selectMode && (() => {
+                                                const recordNum = startIndex + i + 1;
+                                                const isOutOfRange = isCE && activeRange && (recordNum < activeRange.start || recordNum > activeRange.end);
+                                                return (
+                                                    <td style={{ padding: '16px 12px', textAlign: 'center', width: '40px' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isLeadSelected}
+                                                            disabled={isOutOfRange}
+                                                            onChange={() => toggleSelectLead(lead.LeadID)}
+                                                            title={isOutOfRange ? `Selection restricted to specified range (${activeRange.start}–${activeRange.end})` : ''}
+                                                            style={{
+                                                                width: '18px',
+                                                                height: '18px',
+                                                                cursor: isOutOfRange ? 'not-allowed' : 'pointer',
+                                                                accentColor: '#6366f1',
+                                                                opacity: isOutOfRange ? 0.25 : 1
+                                                            }}
+                                                        />
+                                                    </td>
+                                                );
+                                            })()}
                                             <td style={{ padding: '16px 20px', color: '#64748b', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{startIndex + i + 1}</td>
                                             <td style={{ padding: '16px 20px', fontWeight: '800', color: '#0f172a', whiteSpace: 'nowrap' }}>{lead.FullName}</td>
                                             <td style={{ padding: '16px 20px', color: '#64748b', whiteSpace: 'nowrap' }}>{lead.Phone || 'N/A'}</td>
