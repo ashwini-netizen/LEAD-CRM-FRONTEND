@@ -245,7 +245,11 @@ const UserHeader = ({ user, title, onLogout, onToggleSidebar }) => {
                                                                 detail: { UserID: n.TargetID, EmployeeName: 'Chat Partner', Role: 'Member' } 
                                                             }));
                                                         } else if (n.LeadID) {
-                                                            navigate(`/leads/${n.LeadID}`);
+                                                            if (user?.role === 'Call Executive') {
+                                                                navigate(`/leads/call-manage/${n.LeadID}`, { state: { from: '/dashboard', label: 'Follow-up Reminder' } });
+                                                            } else {
+                                                                navigate(`/leads/${n.LeadID}`);
+                                                            }
                                                         } else if (n.Type === 'Payment') {
                                                             navigate('/leads/payment-pending');
                                                         } else {
@@ -270,8 +274,12 @@ const UserHeader = ({ user, title, onLogout, onToggleSidebar }) => {
                                                         width: '32px',
                                                         height: '32px',
                                                         borderRadius: '50%',
-                                                        background: n.Type === 'Chat' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                                                        color: n.Type === 'Chat' ? '#6366f1' : '#f59e0b',
+                                                        background: n.Type === 'Chat' 
+                                                            ? 'rgba(99, 102, 241, 0.1)' 
+                                                            : (n.Type === 'FollowupReminder' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.1)'),
+                                                        color: n.Type === 'Chat' 
+                                                            ? '#6366f1' 
+                                                            : (n.Type === 'FollowupReminder' ? '#059669' : '#f59e0b'),
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',

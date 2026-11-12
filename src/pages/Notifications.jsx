@@ -128,7 +128,11 @@ const Notifications = ({ user }) => {
                 detail: { UserID: n.TargetID, EmployeeName: 'Chat Partner', Role: 'Member' }
             }));
         } else if (n.LeadID) {
-            navigate(`/leads/${n.LeadID}`);
+            if (user?.role === 'Call Executive') {
+                navigate(`/leads/call-manage/${n.LeadID}`, { state: { from: '/notifications', label: 'Notifications' } });
+            } else {
+                navigate(`/leads/${n.LeadID}`);
+            }
         } else if (n.Type === 'Payment') {
             navigate('/leads/payment-pending');
         }
@@ -277,7 +281,7 @@ const Notifications = ({ user }) => {
                                                         }}
                                                         style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontWeight: '700', fontSize: '0.82rem', padding: 0 }}
                                                     >
-                                                        View Lead Details →
+                                                        {user?.role === 'Call Executive' ? 'Manage Call →' : 'View Lead Details →'}
                                                     </button>
                                                 )}
                                             </div>
