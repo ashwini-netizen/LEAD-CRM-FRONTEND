@@ -6,25 +6,21 @@ import { stripEmojis } from '../utils/stringUtils';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
-const ROLE_CREDENTIALS = {
+const ROLE_INFO = {
     call_executive: {
         title: 'Call Executive',
-        email: 'supriya@navabharathtechnologies.com',
         color: '#6366f1'
     },
     team_lead: {
         title: 'Team Lead',
-        email: 'deekshitha@navabharathtechnologies.com',
         color: '#ec4899'
     },
     field_executive: {
         title: 'Field Executive',
-        email: 'bhoomika@navabharathtechnologies.com',
         color: '#10b981'
     },
     admin: {
         title: 'Admin',
-        email: 'anish@navabharathtechnologies.com',
         color: '#f59e0b'
     }
 };
@@ -39,71 +35,50 @@ const normalizeRoleKey = (r) => {
     return clean;
 };
 
-// Check if an email string belongs to a different role
-const isOtherRoleEmail = (val, currentRoleKey) => {
-    if (!val) return false;
-    const v = val.toLowerCase().trim();
-    for (const [key, cfg] of Object.entries(ROLE_CREDENTIALS)) {
-        if (key !== currentRoleKey && cfg.email.toLowerCase() === v) {
-            return true;
-        }
-    }
-    return false;
-};
-
-const getStoredCredsForRole = (roleKey) => {
-    try {
-        const stored = localStorage.getItem(`crm_creds_${roleKey}`);
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed && typeof parsed === 'object') {
-                return {
-                    email: parsed.email || ROLE_CREDENTIALS[roleKey]?.email || '',
-                    password: parsed.password || ''
-                };
-            }
-        }
-    } catch (e) {}
-    return {
-        email: ROLE_CREDENTIALS[roleKey]?.email || '',
-        password: ''
-    };
-};
-
 const LoginScreen = ({ role, onLogin }) => {
     const navigate = useNavigate();
     const activeRole = role || localStorage.getItem('selected_role') || 'call_executive';
     const activeRoleKey = normalizeRoleKey(activeRole);
-    const roleInfo = ROLE_CREDENTIALS[activeRoleKey] || ROLE_CREDENTIALS.call_executive;
+    const roleInfo = ROLE_INFO[activeRoleKey] || ROLE_INFO.call_executive;
 
-    const initialCreds = getStoredCredsForRole(activeRoleKey);
-    const [email, setEmail] = useState(initialCreds.email);
-    const [password, setPassword] = useState(initialCreds.password);
+    // Credentials must be completely EMPTY by default in all modules
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Sync credentials whenever the active role changes
+    // Track user focus to prevent browser password managers from auto-filling saved passwords by default
+    const [emailFocused, setEmailFocused] = useState(false);
+    const [passFocused, setPassFocused] = useState(false);
+
+    // Completely clear credentials on role switch or mount (no default prefill in any module)
     useEffect(() => {
-        const creds = getStoredCredsForRole(activeRoleKey);
-        setEmail(creds.email);
-        setPassword(creds.password);
+        setEmail('');
+        setPassword('');
         setError('');
         setSuccess('');
         setForgotMode(false);
-    }, [activeRoleKey]);
+        setEmailFocused(false);
+        setPassFocused(false);
 
-    // Active guard against browser password autofill dumping another role's credentials (e.g. Team Lead into Field Executive)
-    useEffect(() => {
-        const checkTimer = setTimeout(() => {
-            if (isOtherRoleEmail(email, activeRoleKey)) {
-                const creds = getStoredCredsForRole(activeRoleKey);
-                setEmail(creds.email);
-                setPassword(creds.password);
-            }
-        }, 150);
-        return () => clearTimeout(checkTimer);
-    }, [email, activeRoleKey]);
+        // Wipe any previously saved credential caches from localStorage
+        try {
+            Object.keys(localStorage).forEach(k => {
+                if (k.startsWith('crm_creds_')) localStorage.removeItem(k);
+            });
+        } catch (e) {}
+
+        // Active safety reset: if browser autofill forces values on mount, wipe them clean
+        const t1 = setTimeout(() => { setEmail(''); setPassword(''); }, 50);
+        const t2 = setTimeout(() => { setEmail(''); setPassword(''); }, 150);
+        const t3 = setTimeout(() => { setEmail(''); setPassword(''); }, 300);
+        return () => {
+            clearTimeout(t1);
+            clearTimeout(t2);
+            clearTimeout(t3);
+        };
+    }, [activeRoleKey]);
 
     // Forgot Password States
     const [forgotMode, setForgotMode] = useState(false); // false, 'request', 'verify'
@@ -112,16 +87,6 @@ const LoginScreen = ({ role, onLogin }) => {
     const [newPassword, setNewPassword] = useState('');
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [success, setSuccess] = useState('');
-
-    const handleEmailChange = (e) => {
-        const rawVal = e.target.value;
-        const cleaned = stripEmojis(rawVal).toLowerCase().replace(/\s/g, '');
-        // Block browser autofill if it attempts to inject an email registered to another role
-        if (isOtherRoleEmail(cleaned, activeRoleKey)) {
-            return;
-        }
-        setEmail(cleaned);
-    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -152,8 +117,6 @@ const LoginScreen = ({ role, onLogin }) => {
             }
             localStorage.setItem('crm_token', data.token);
             localStorage.setItem('crm_user', JSON.stringify(data.user));
-            // Remember credentials specifically for this role without bleeding to other roles
-            localStorage.setItem(`crm_creds_${activeRoleKey}`, JSON.stringify({ email: trimmedEmail, password }));
             onLogin(data.user);
             if (data.user.isFirstLogin) {
                 navigate('/reset-password', { replace: true });
@@ -389,20 +352,31 @@ const LoginScreen = ({ role, onLogin }) => {
                         style={formStyle}
                         autoComplete="off"
                     >
+                        {/* Chrome autofill decoy fields to absorb browser credential injection */}
+                        <div style={{ position: 'absolute', opacity: 0, height: 0, width: 0, overflow: 'hidden', pointerEvents: 'none' }} tabIndex="-1" aria-hidden="true">
+                            <input type="text" name="fake_user_prevent_autofill" tabIndex="-1" autoComplete="off" />
+                            <input type="password" name="fake_pass_prevent_autofill" tabIndex="-1" autoComplete="off" />
+                        </div>
+
                         <div style={inputGroupStyle}>
                             <label style={labelStyle}>Work Email</label>
                             <div style={inputWrapperStyle}>
                                 <Mail size={18} style={inputIconStyle} />
                                 <input
                                     id={`login-email-${activeRoleKey}`}
-                                    name={`email_${activeRoleKey}`}
+                                    name={`work_email_${activeRoleKey}`}
                                     type="email"
                                     className="premium-input"
-                                    placeholder={roleInfo.email}
+                                    placeholder="name@company.com"
                                     value={email}
-                                    onChange={handleEmailChange}
+                                    readOnly={!emailFocused}
+                                    onFocus={() => setEmailFocused(true)}
+                                    onChange={e => setEmail(stripEmojis(e.target.value).toLowerCase().replace(/\s/g, ''))}
                                     onKeyDown={e => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); }}
-                                    onBlur={() => setEmail(prev => prev.trim().replace(/\s/g, ''))}
+                                    onBlur={() => {
+                                        setEmailFocused(false);
+                                        setEmail(prev => prev.trim().replace(/\s/g, ''));
+                                    }}
                                     autoComplete="off"
                                     required
                                 />
@@ -415,12 +389,15 @@ const LoginScreen = ({ role, onLogin }) => {
                                 <Lock size={18} style={inputIconStyle} />
                                 <input
                                     id={`login-password-${activeRoleKey}`}
-                                    name={`password_${activeRoleKey}`}
+                                    name={`security_password_${activeRoleKey}`}
                                     type={showPassword ? 'text' : 'password'}
                                     className="premium-input"
                                     placeholder="••••••••"
                                     value={password}
+                                    readOnly={!passFocused}
+                                    onFocus={() => setPassFocused(true)}
                                     onChange={e => setPassword(stripEmojis(e.target.value))}
+                                    onBlur={() => setPassFocused(false)}
                                     autoComplete="new-password"
                                     required
                                 />
