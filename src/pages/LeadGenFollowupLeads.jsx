@@ -211,69 +211,50 @@ const LeadGenFollowupLeads = ({ user }) => {
                             <p style={{ color: '#94a3b8' }}>No initial follow-up leads found.</p>
                         </div>
                     ) : (
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto', minWidth: '1050px' }}>
+                        <table className="lead-gen-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto' }}>
                             <thead>
                                 <tr style={{ background: '#f1f5f9', color: '#1e293b', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: '800', borderBottom: '2px solid #e2e8f0' }}>
-                                    <th style={{ padding: '12px 14px', width: '220px', minWidth: '170px' }}>Lead Name</th>
-                                    <th style={{ padding: '12px 14px', width: '190px', minWidth: '140px' }}>Location</th>
-                                    <th style={{ padding: '12px 14px', width: '135px', whiteSpace: 'nowrap' }}>Follow-up Date</th>
-                                    <th style={{ padding: '12px 14px', width: '125px', whiteSpace: 'nowrap' }}>Preferred Time</th>
-                                    <th style={{ padding: '12px 14px', width: '160px', minWidth: '120px' }}>Company</th>
-                                    <th style={{ padding: '12px 14px', width: '120px', whiteSpace: 'nowrap' }}>Status</th>
-                                    <th style={{ padding: '12px 14px', width: '110px', whiteSpace: 'nowrap' }}>Assignment</th>
-                                    <th style={{ padding: '12px 14px', textAlign: 'center', width: '160px', whiteSpace: 'nowrap' }}>Actions</th>
+                                    <th className="col-name">Lead Name</th>
+                                    <th className="col-location">Location</th>
+                                    <th className="col-date">Follow-up Date</th>
+                                    <th className="col-time">Preferred Time</th>
+                                    <th className="col-company">Company</th>
+                                    <th className="col-status">Status</th>
+                                    <th className="col-assignment">Assignment</th>
+                                    <th className="col-actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filtered.map(lead => (
                                     <tr key={lead.LeadID} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                        <td style={{ 
-                                            padding: '12px 14px', 
-                                            fontWeight: '800', 
-                                            color: '#0f172a',
-                                            maxWidth: '220px',
-                                            wordBreak: 'break-word',
-                                            whiteSpace: 'normal',
-                                            lineHeight: '1.4'
-                                        }}>
-                                            {lead.FullName}
+                                        <td className="col-name" style={{ fontWeight: '800', color: '#0f172a' }}>
+                                            <div className="lead-gen-two-line" title={lead.FullName}>
+                                                {lead.FullName}
+                                            </div>
                                         </td>
-                                        <td style={{ 
-                                            padding: '12px 14px', 
-                                            color: '#64748b', 
-                                            fontSize: '0.85rem',
-                                            fontWeight: '600',
-                                            maxWidth: '190px',
-                                            wordBreak: 'break-word',
-                                            whiteSpace: 'normal',
-                                            lineHeight: '1.4'
-                                        }}>
-                                            {lead.Address || 'N/A'}
+                                        <td className="col-location" style={{ color: '#64748b', fontSize: '0.82rem', fontWeight: '600' }}>
+                                            <div className="lead-gen-two-line" title={lead.Address || 'N/A'}>
+                                                {lead.Address || 'N/A'}
+                                            </div>
                                         </td>
-                                        <td style={{ padding: '12px 14px', color: '#1e293b', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                                        <td className="col-date" style={{ color: '#1e293b', fontWeight: '700' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <Calendar size={14} color="#10b981" />
                                                 {lead.FollowupDate ? new Date(lead.FollowupDate).toLocaleDateString('en-GB') : 'N/A'}
                                             </div>
                                         </td>
-                                        <td style={{ padding: '12px 14px', color: '#1e293b', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                                        <td className="col-time" style={{ color: '#1e293b', fontWeight: '700' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <Clock size={14} color="#6366f1" />
                                                 {formatCleanTime(lead.FollowupTime) || 'N/A'}
                                             </div>
                                         </td>
-                                        <td style={{ 
-                                            padding: '12px 14px', 
-                                            color: '#1e293b', 
-                                            fontWeight: '800',
-                                            maxWidth: '160px',
-                                            wordBreak: 'break-word',
-                                            whiteSpace: 'normal',
-                                            lineHeight: '1.4'
-                                        }}>
-                                            {lead.CompanyName || 'N/A'}
+                                        <td className="col-company" style={{ color: '#1e293b', fontWeight: '800' }}>
+                                            <div className="lead-gen-two-line" title={lead.CompanyName || 'N/A'}>
+                                                {lead.CompanyName || 'N/A'}
+                                            </div>
                                         </td>
-                                        <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                                        <td className="col-status">
                                             {(() => {
                                                 const sc = statusColors[lead.Status] || { bg: 'rgba(99,102,241,0.12)', color: '#6366f1' };
                                                 return (
@@ -292,14 +273,14 @@ const LeadGenFollowupLeads = ({ user }) => {
                                                 );
                                             })()}
                                         </td>
-                                        <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                                        <td className="col-assignment">
                                             {lead.AssignedTo ? (
                                                 <span style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: '600', padding: '4px 10px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '20px' }}>Assigned</span>
                                             ) : (
                                                 <span style={{ color: '#f59e0b', fontSize: '0.85rem', fontWeight: '600', padding: '4px 10px', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '20px' }}>Pending</span>
                                             )}
                                         </td>
-                                        <td style={{ padding: '12px 14px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                        <td className="col-actions">
                                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                                                 {user?.role === 'Team Lead' && (
                                                     <button
