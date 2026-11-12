@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader, RefreshCw, Eye, Search, Calendar, Clock, UserCheck, ArrowLeft } from 'lucide-react';
 import UserHeader from '../components/UserHeader';
 import { stripEmojis } from '../utils/stringUtils';
+import { formatCleanTime } from '../utils/notificationSync';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
@@ -142,7 +143,7 @@ const AssignedLeads = ({ user }) => {
                                         <td style={{ padding: '20px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b', fontWeight: '800' }}>
                                                 <Clock size={14} />
-                                                {lead.FollowupTime || 'N/A'}
+                                                {formatCleanTime(lead.FollowupTime) || 'N/A'}
                                             </div>
                                         </td>
                                         <td style={{ padding: '20px' }}>

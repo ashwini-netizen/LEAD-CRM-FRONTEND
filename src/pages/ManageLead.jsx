@@ -3,36 +3,33 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Loader, AlertCircle, Phone, Mail, Building, MapPin, Calendar, Clock, FileText, CheckCircle2, Upload, Send, XCircle, CreditCard, RefreshCw, Edit, AlertTriangle, Trash2 } from 'lucide-react';
 import UserHeader from '../components/UserHeader';
 import { stripEmojis, validatePhoneNumber } from '../utils/stringUtils';
+import { formatCleanTime } from '../utils/notificationSync';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
-const formatTo12Hr = (time24) => {
-    if (!time24) return null;
-    let [hours, minutes] = time24.split(':');
-    hours = parseInt(hours);
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    return `${hours}:${minutes} ${ampm}`;
+const formatTo12Hr = (time) => {
+    if (!time) return null;
+    return formatCleanTime(time);
 };
 
 const parseTime24 = (timeStr) => {
     if (!timeStr) return { hour12: '', minute: '00', ampm: 'AM' };
-    const is12Hr = /am|pm/i.test(timeStr);
+    const clean = formatCleanTime(timeStr);
+    const is12Hr = /am|pm/i.test(clean);
     if (is12Hr) {
-        const ampmMatch = timeStr.match(/(am|pm)/i);
-        const ampm = ampmMatch ? ampmMatch[0].toUpperCase() : 'AM';
-        const timePart = timeStr.replace(/(am|pm)/i, '').trim();
+        const ampmMatch = clean.match(/\b(AM|PM)\b/i);
+        const ampm = ampmMatch ? ampmMatch[1].toUpperCase() : 'AM';
+        const timePart = clean.replace(/\b(AM|PM)\b/gi, '').trim();
         const [hStr, mStr] = timePart.split(':');
-        const h = parseInt(hStr) || 12;
+        const h = parseInt(hStr, 10) || 12;
         return {
             hour12: String(h),
             minute: (mStr || '00').padStart(2, '0'),
             ampm
         };
     } else {
-        const [hStr, mStr] = timeStr.split(':');
-        let h = parseInt(hStr) || 0;
+        const [hStr, mStr] = clean.split(':');
+        let h = parseInt(hStr, 10) || 0;
         const ampm = h >= 12 ? 'PM' : 'AM';
         h = h % 12 || 12;
         return {
@@ -989,9 +986,10 @@ const ManageLead = ({ user }) => {
                             <p style={labelStyle}>Meeting Time</p>
                             <p style={{ fontWeight: '600' }}>
                                 {(() => {
-                                    return (lead.Status === 'meetingFollowup' || lead.Status === 'Meeting Follow-up' || lead.Status === 'Meeting Followup')
+                                    const rawT = (lead.Status === 'meetingFollowup' || lead.Status === 'Meeting Follow-up' || lead.Status === 'Meeting Followup')
                                         ? (lead.MeetingFollowupTime || lead.MeetingTime || 'N/A')
                                         : (lead.MeetingTime || lead.MeetingFollowupTime || 'N/A');
+                                    return rawT === 'N/A' ? 'N/A' : (formatCleanTime(rawT) || 'N/A');
                                 })()}
                             </p>
                         </div>

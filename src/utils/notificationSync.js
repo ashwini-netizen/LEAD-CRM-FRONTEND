@@ -127,9 +127,52 @@ export const formatNotificationMessage = (msg, type) => {
         cleaned = cleaned.replace(/^Please complete the scheduled follow-up call with\s*/i, '');
         // Clean repeated meridians like "AM AM", "PM AM", "AM AM AM AM" -> "AM" or "PM"
         cleaned = cleaned.replace(/\b([AP]M)(?:\s+[AP]M)+\b/gi, '$1');
+        cleaned = cleaned.replace(/at\s+(\d{1,2}:\d{2})\s+([AP]M)/gi, 'at $1 $2');
         cleaned = cleaned.replace(/\.\s*$/, '');
         return cleaned.trim();
     }
     return msg;
+};
+
+/**
+ * Normalizes time strings to a clean 12-hour format: "9:00 AM", "12:15 PM".
+ * Strips out duplicated or repeated meridians like "AM AM", "PM AM", "AM AM AM AM".
+ * Supports both 12-hr and 24-hr inputs.
+ */
+export const formatCleanTime = (timeStr) => {
+    if (!timeStr || typeof timeStr !== 'string') return '';
+    const trimmed = timeStr.trim();
+    if (!trimmed) return '';
+
+    // Match hours and minutes (e.g. "9:00", "09:18", "14:30")
+    const timeMatch = trimmed.match(/(\d{1,2}):(\d{2})/);
+    if (!timeMatch) return trimmed.replace(/\b([AP]M)(?:\s+[AP]M)+\b/gi, '$1');
+
+    let h = parseInt(timeMatch[1], 10);
+    const m = timeMatch[2];
+
+    // Find the FIRST meridian (AM/PM) in the string if present
+    const ampmMatch = trimmed.match(/\b(AM|PM)\b/i);
+    let ampm = ampmMatch ? ampmMatch[1].toUpperCase() : null;
+
+    if (!ampm) {
+        // No AM/PM found, convert 24-hr time to 12-hr
+        if (h >= 12) {
+            ampm = 'PM';
+            if (h > 12) h -= 12;
+        } else {
+            ampm = 'AM';
+            if (h === 0) h = 12;
+        }
+    } else {
+        // Normalize 12-hr hour range just in case (e.g. 0 -> 12)
+        if (h > 12) {
+            h = h % 12 || 12;
+        } else if (h === 0) {
+            h = 12;
+        }
+    }
+
+    return `${h}:${m} ${ampm}`;
 };
 

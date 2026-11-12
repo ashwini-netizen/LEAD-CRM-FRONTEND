@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 import { savePDF } from '../utils/pdfDownload';
 import UserHeader from '../components/UserHeader';
 import { stripEmojis } from '../utils/stringUtils';
+import { formatCleanTime } from '../utils/notificationSync';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
@@ -403,9 +404,9 @@ const LeadList = ({ user, isMyCreated }) => {
                     "Status": getCanonicalStatus(lead.Status) || lead.Status || '',
                     "Service Interested": lead.ServiceInterested || '',
                     "Follow-up Date": lead.FollowupDate ? new Date(lead.FollowupDate).toLocaleDateString('en-GB') : '',
-                    "Follow-up Time": lead.FollowupTime || '',
+                    "Follow-up Time": formatCleanTime(lead.FollowupTime) || '',
                     "Meeting Date": lead.MeetingDate ? new Date(lead.MeetingDate).toLocaleDateString('en-GB') : '',
-                    "Meeting Time": lead.MeetingTime || '',
+                    "Meeting Time": formatCleanTime(lead.MeetingTime) || '',
                     "Address": lead.Address || '',
                     "Call Note": lead.CallNote || '',
                     "Created Date": lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB') : '',
@@ -1486,9 +1487,10 @@ const LeadList = ({ user, isMyCreated }) => {
                                                     </td>
                                                     <td style={{ padding: '16px 20px', color: '#0f172a', fontWeight: '700', whiteSpace: 'nowrap' }}>
                                                         {(() => {
-                                                            return (lead.Status === 'meetingFollowup' || lead.Status === 'Meeting Follow-up' || lead.Status === 'Meeting Followup')
+                                                            const rawT = (lead.Status === 'meetingFollowup' || lead.Status === 'Meeting Follow-up' || lead.Status === 'Meeting Followup')
                                                                 ? (lead.MeetingFollowupTime || lead.MeetingTime || 'N/A')
                                                                 : (lead.MeetingTime || lead.MeetingFollowupTime || 'N/A');
+                                                            return rawT === 'N/A' ? 'N/A' : (formatCleanTime(rawT) || 'N/A');
                                                         })()}
                                                     </td>
                                                 </>

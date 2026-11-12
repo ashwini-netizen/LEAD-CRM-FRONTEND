@@ -10,6 +10,7 @@ import html2canvas from 'html2canvas';
 import { savePDF } from '../utils/pdfDownload';
 import { Browser } from '@capacitor/browser';
 import UserHeader from '../components/UserHeader';
+import { formatCleanTime } from '../utils/notificationSync';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
@@ -1762,7 +1763,7 @@ const Dashboard = ({ user, onLogout }) => {
                                                                                     <Calendar size={12} />
                                                                                     {new Date(lead.FollowupDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                                                     {lead.FollowupTime && (
-                                                                                        <span style={{ marginLeft: '4px', fontWeight: '800' }}>• {lead.FollowupTime}</span>
+                                                                                        <span style={{ marginLeft: '4px', fontWeight: '800' }}>• {formatCleanTime(lead.FollowupTime)}</span>
                                                                                     )}
                                                                                 </span>
                                                                                 {isOverdue && (

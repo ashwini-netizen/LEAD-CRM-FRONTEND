@@ -4,6 +4,7 @@ import { Loader, RefreshCw, Eye, Search, Calendar, Clock, UserPlus, ArrowLeft } 
 import UserHeader from '../components/UserHeader';
 import AssignModal from '../components/AssignModal';
 import { stripEmojis } from '../utils/stringUtils';
+import { formatCleanTime } from '../utils/notificationSync';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
 
 const statusColors = {
@@ -165,7 +166,7 @@ const MeetingFollowupLeads = ({ user }) => {
                                         <td style={{ padding: '20px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b', fontWeight: '800' }}>
                                                 <Clock size={14} />
-                                                {lead.MeetingFollowupTime || 'N/A'}
+                                                {formatCleanTime(lead.MeetingFollowupTime) || 'N/A'}
                                             </div>
                                         </td>
                                         <td style={{ padding: '20px' }}>

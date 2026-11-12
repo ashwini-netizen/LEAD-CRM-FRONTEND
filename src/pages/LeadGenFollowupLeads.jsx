@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader, RefreshCw, Eye, Search, Calendar, Clock, UserPlus, Phone, ArrowLeft } from 'lucide-react';
 import UserHeader from '../components/UserHeader';
 import { stripEmojis } from '../utils/stringUtils';
+import { formatCleanTime } from '../utils/notificationSync';
 import AssignModal from '../components/AssignModal';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
 
@@ -233,7 +234,7 @@ const LeadGenFollowupLeads = ({ user }) => {
                                         <td style={{ padding: '16px 20px', color: '#1e293b', fontWeight: '700' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <Clock size={14} color="#6366f1" />
-                                                {lead.FollowupTime || 'N/A'}
+                                                {formatCleanTime(lead.FollowupTime) || 'N/A'}
                                             </div>
                                         </td>
                                         <td style={{ padding: '16px 20px', color: '#1e293b', fontWeight: '800' }}>{lead.CompanyName || 'N/A'}</td>
