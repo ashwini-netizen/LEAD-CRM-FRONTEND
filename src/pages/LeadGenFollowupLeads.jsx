@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader, RefreshCw, Eye, Search, Calendar, Clock, UserPlus, Phone, ArrowLeft } from 'lucide-react';
+import { Loader, RefreshCw, Eye, Search, Calendar, Clock, UserPlus, Phone, ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import UserHeader from '../components/UserHeader';
 import { stripEmojis } from '../utils/stringUtils';
 import { formatCleanTime } from '../utils/notificationSync';
@@ -135,6 +135,22 @@ const LeadGenFollowupLeads = ({ user }) => {
         return matchesSearch && matchesDate;
     });
 
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search, dateFilter]);
+
+    const effectivePageSize = pageSize === 'all' ? (filtered.length || 1) : Number(pageSize);
+    const totalPages = Math.max(1, Math.ceil(filtered.length / effectivePageSize));
+    const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+    const startIndex = (safeCurrentPage - 1) * effectivePageSize;
+    const endIndex = Math.min(startIndex + effectivePageSize, filtered.length);
+    const paginatedLeads = useMemo(() => {
+        return pageSize === 'all' ? filtered : filtered.slice(startIndex, endIndex);
+    }, [filtered, pageSize, startIndex, endIndex]);
+
     return (
         <div style={{ background: '#f8fafc', minHeight: '100vh', width: '100vw', overflowX: 'hidden' }}>
             <UserHeader user={user} title="Pre-Meeting Nurturing" />
@@ -214,6 +230,7 @@ const LeadGenFollowupLeads = ({ user }) => {
                         <table className="lead-gen-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto' }}>
                             <thead>
                                 <tr style={{ background: '#f1f5f9', color: '#1e293b', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: '800', borderBottom: '2px solid #e2e8f0' }}>
+                                    <th className="col-sno">S.No</th>
                                     <th className="col-name">Lead Name</th>
                                     <th className="col-location">Location</th>
                                     <th className="col-date">Follow-up Date</th>
@@ -225,13 +242,16 @@ const LeadGenFollowupLeads = ({ user }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map(lead => (
+                                {paginatedLeads.map((lead, index) => (
                                     <tr 
                                         key={lead.LeadID} 
                                         style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}
                                         onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.03)'; }}
                                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                                     >
+                                        <td className="col-sno" style={{ textAlign: 'center', color: '#64748b', fontSize: '0.85rem', fontWeight: '600' }}>
+                                            {startIndex + index + 1}
+                                        </td>
                                         <td className="col-name" style={{ fontWeight: '800', color: '#0f172a' }}>
                                             <div className="lead-gen-cell-text" style={{ fontWeight: '800', color: '#0f172a', fontSize: '0.92rem' }}>
                                                 {lead.FullName}
@@ -335,6 +355,228 @@ const LeadGenFollowupLeads = ({ user }) => {
                         </table>
                     )}
                 </div>
+
+                {/* Pagination Controls */}
+                {filtered.length > 0 && (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '16px',
+                        padding: '16px 20px',
+                        background: 'white',
+                        borderRadius: '12px',
+                        marginTop: '16px',
+                        border: '1px solid #e2e8f0',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                    }}>
+                        {/* Left side: Showing X-Y of Z */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '500' }}>
+                                Showing <strong style={{ color: '#1e293b' }}>{filtered.length === 0 ? 0 : startIndex + 1}</strong> to <strong style={{ color: '#1e293b' }}>{endIndex}</strong> of <strong style={{ color: '#1e293b' }}>{filtered.length}</strong> records
+                            </span>
+
+                            {/* Rows per page selector */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}>Per page:</span>
+                                <select
+                                    value={pageSize}
+                                    onChange={e => {
+                                        const newSize = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                                        setPageSize(newSize);
+                                        setCurrentPage(1);
+                                    }}
+                                    style={{
+                                        padding: '6px 10px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #cbd5e1',
+                                        background: '#f8fafc',
+                                        fontSize: '0.82rem',
+                                        fontWeight: '600',
+                                        color: '#334155',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <option value={25}>25</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                    <option value={200}>200</option>
+                                    <option value={500}>500</option>
+                                    <option value="all">All</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Right side: Page navigation */}
+                        {pageSize !== 'all' && totalPages > 1 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage(1)}
+                                    disabled={safeCurrentPage === 1}
+                                    style={{
+                                        padding: '6px 10px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #e2e8f0',
+                                        background: safeCurrentPage === 1 ? '#f8fafc' : 'white',
+                                        color: safeCurrentPage === 1 ? '#cbd5e1' : '#475569',
+                                        cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                    }}
+                                    title="First Page"
+                                >
+                                    <ChevronsLeft size={16} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={safeCurrentPage === 1}
+                                    style={{
+                                        padding: '6px 10px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #e2e8f0',
+                                        background: safeCurrentPage === 1 ? '#f8fafc' : 'white',
+                                        color: safeCurrentPage === 1 ? '#cbd5e1' : '#475569',
+                                        cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                    }}
+                                    title="Previous Page"
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+
+                                {(() => {
+                                    const pages = [];
+                                    const maxButtons = 5;
+                                    let startP = Math.max(1, safeCurrentPage - 2);
+                                    let endP = Math.min(totalPages, startP + maxButtons - 1);
+                                    if (endP - startP + 1 < maxButtons) {
+                                        startP = Math.max(1, endP - maxButtons + 1);
+                                    }
+
+                                    if (startP > 1) {
+                                        pages.push(
+                                            <button
+                                                key={1}
+                                                type="button"
+                                                onClick={() => setCurrentPage(1)}
+                                                style={{
+                                                    minWidth: '32px',
+                                                    height: '32px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #e2e8f0',
+                                                    background: 'white',
+                                                    color: '#475569',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.82rem',
+                                                    fontWeight: '600'
+                                                }}
+                                            >
+                                                1
+                                            </button>
+                                        );
+                                        if (startP > 2) {
+                                            pages.push(<span key="dots-start" style={{ padding: '0 4px', color: '#94a3b8' }}>...</span>);
+                                        }
+                                    }
+
+                                    for (let p = startP; p <= endP; p++) {
+                                        const isActive = p === safeCurrentPage;
+                                        pages.push(
+                                            <button
+                                                key={p}
+                                                type="button"
+                                                onClick={() => setCurrentPage(p)}
+                                                style={{
+                                                    minWidth: '32px',
+                                                    height: '32px',
+                                                    borderRadius: '8px',
+                                                    border: `1px solid ${isActive ? '#6366f1' : '#e2e8f0'}`,
+                                                    background: isActive ? '#6366f1' : 'white',
+                                                    color: isActive ? 'white' : '#475569',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.82rem',
+                                                    fontWeight: isActive ? '700' : '600',
+                                                    boxShadow: isActive ? '0 2px 6px rgba(99,102,241,0.25)' : 'none'
+                                                }}
+                                            >
+                                                {p}
+                                            </button>
+                                        );
+                                    }
+
+                                    if (endP < totalPages) {
+                                        if (endP < totalPages - 1) {
+                                            pages.push(<span key="dots-end" style={{ padding: '0 4px', color: '#94a3b8' }}>...</span>);
+                                        }
+                                        pages.push(
+                                            <button
+                                                key={totalPages}
+                                                type="button"
+                                                onClick={() => setCurrentPage(totalPages)}
+                                                style={{
+                                                    minWidth: '32px',
+                                                    height: '32px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #e2e8f0',
+                                                    background: 'white',
+                                                    color: '#475569',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.82rem',
+                                                    fontWeight: '600'
+                                                }}
+                                            >
+                                                {totalPages}
+                                            </button>
+                                        );
+                                    }
+
+                                    return pages;
+                                })()}
+
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    disabled={safeCurrentPage === totalPages}
+                                    style={{
+                                        padding: '6px 10px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #e2e8f0',
+                                        background: safeCurrentPage === totalPages ? '#f8fafc' : 'white',
+                                        color: safeCurrentPage === totalPages ? '#cbd5e1' : '#475569',
+                                        cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                    }}
+                                    title="Next Page"
+                                >
+                                    <ChevronRight size={16} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage(totalPages)}
+                                    disabled={safeCurrentPage === totalPages}
+                                    style={{
+                                        padding: '6px 10px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #e2e8f0',
+                                        background: safeCurrentPage === totalPages ? '#f8fafc' : 'white',
+                                        color: safeCurrentPage === totalPages ? '#cbd5e1' : '#475569',
+                                        cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                    }}
+                                    title="Last Page"
+                                >
+                                    <ChevronsRight size={16} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {selectingLead && (
