@@ -2,9 +2,10 @@ import { App as CapApp } from '@capacitor/app';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Bell, X } from 'lucide-react';
 import io from 'socket.io-client';
 import useLocationTracker from './utils/useLocationTracker';
+import { formatNotificationMessage } from './utils/notificationSync';
 import EntryScreen from './pages/EntryScreen';
 import LoginScreen from './pages/LoginScreen';
 import Dashboard from './pages/Dashboard';
@@ -48,6 +49,40 @@ function App() {
     const [selectedRole, setSelectedRole] = useState(localStorage.getItem('selected_role'));
     const [chatPartner, setChatPartner] = useState(null);
     const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+    // Call Executive Follow-up Reminder Top-Center Pop-up Banner State
+    const [activeFollowupBanner, setActiveFollowupBanner] = useState(null);
+    const bannerTimerRef = useRef(null);
+
+    const triggerFollowupBanner = (data) => {
+        if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+        const cleanedMsg = formatNotificationMessage(data.message, data.type);
+        setActiveFollowupBanner({
+            leadId: data.leadId,
+            message: cleanedMsg,
+            timestamp: Date.now()
+        });
+        // Auto-dismiss after 6 seconds while keeping notification saved in the notification bell
+        bannerTimerRef.current = setTimeout(() => {
+            setActiveFollowupBanner(null);
+        }, 6000);
+    };
+
+    const handleBannerClick = () => {
+        if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+        const targetLeadId = activeFollowupBanner?.leadId;
+        setActiveFollowupBanner(null);
+        if (targetLeadId) {
+            navigate(`/leads/call-manage/${targetLeadId}`, { state: { from: '/dashboard', label: 'Follow-up Reminder' } });
+        }
+    };
+
+    const handleBannerDismiss = (e) => {
+        e.stopPropagation();
+        if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+        setActiveFollowupBanner(null);
+        // Preserves notification unread in the notification bell
+    };
 
     // Keep navigate in a ref so the listener doesn't need to re-register on location change
     const navigateRef = useRef(navigate);
@@ -261,61 +296,69 @@ function App() {
         });
 
         socket.on('notification', (data) => {
-            // Provide a unique ID using just the message to aggressively deduplicate simultaneous toasts
-            toast.custom(
-                (t) => (
-                    <div 
-                        onClick={() => {
-                            toast.dismiss(t.id);
-                            if (data.type === 'Chat' && data.targetId) {
-                                openChat({ UserID: data.targetId, EmployeeName: 'Chat Partner', Role: 'Member' });
-                            } else if (data.leadId) {
-                                navigate(`/leads/${data.leadId}`);
-                            } else if (data.type === 'Payment') {
-                                navigate('/leads/payment-pending');
-                            }
-                        }}
-                        style={{
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            background: '#ffffff',
-                            color: '#1e293b',
-                            fontFamily: 'Inter, sans-serif',
-                            fontSize: '0.85rem',
-                            padding: '16px 20px',
-                            border: '1px solid #e2e8f0',
-                            fontWeight: '600',
-                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                            borderRadius: '16px',
-                            borderLeft: '5px solid #6366f1',
-                            maxWidth: '400px',
-                            width: '100%',
-                            transition: 'all 0.2s ease-in-out',
-                            opacity: t.visible ? 1 : 0,
-                            transform: t.visible ? 'scale(1)' : 'scale(0.9)'
-                        }}
-                    >
-                        <span style={{ fontSize: '1.4rem' }}>
-                            {data.type === 'Chat' ? '💬' : '🔔'}
-                        </span>
-                        <div style={{ flex: 1 }}>
-                            <p style={{ margin: 0, fontWeight: '700', fontSize: '0.88rem', color: '#1e293b' }}>
-                                {data.type === 'Chat' ? 'New Internal Chat' : 'New Notification'}
-                            </p>
-                            <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#64748b', fontSize: '0.82rem', lineHeight: '1.4' }}>
-                                {data.message}
-                            </p>
+            const isCe = user?.role === 'Call Executive';
+            const isFollowup = data.type === 'FollowupReminder' || (data.message && data.message.includes('Scheduled:'));
+
+            if (isCe && isFollowup) {
+                // Display as top-center pop-up banner for Call Executive
+                triggerFollowupBanner(data);
+            } else {
+                // Provide a unique ID using just the message to aggressively deduplicate simultaneous toasts
+                toast.custom(
+                    (t) => (
+                        <div 
+                            onClick={() => {
+                                toast.dismiss(t.id);
+                                if (data.type === 'Chat' && data.targetId) {
+                                    openChat({ UserID: data.targetId, EmployeeName: 'Chat Partner', Role: 'Member' });
+                                } else if (data.leadId) {
+                                    navigate(`/leads/${data.leadId}`);
+                                } else if (data.type === 'Payment') {
+                                    navigate('/leads/payment-pending');
+                                }
+                            }}
+                            style={{
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                background: '#ffffff',
+                                color: '#1e293b',
+                                fontFamily: 'Inter, sans-serif',
+                                fontSize: '0.85rem',
+                                padding: '16px 20px',
+                                border: '1px solid #e2e8f0',
+                                fontWeight: '600',
+                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                                borderRadius: '16px',
+                                borderLeft: '5px solid #6366f1',
+                                maxWidth: '400px',
+                                width: '100%',
+                                transition: 'all 0.2s ease-in-out',
+                                opacity: t.visible ? 1 : 0,
+                                transform: t.visible ? 'scale(1)' : 'scale(0.9)'
+                            }}
+                        >
+                            <span style={{ fontSize: '1.4rem' }}>
+                                {data.type === 'Chat' ? '💬' : '🔔'}
+                            </span>
+                            <div style={{ flex: 1 }}>
+                                <p style={{ margin: 0, fontWeight: '700', fontSize: '0.88rem', color: '#1e293b' }}>
+                                    {data.type === 'Chat' ? 'New Internal Chat' : 'New Notification'}
+                                </p>
+                                <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#64748b', fontSize: '0.82rem', lineHeight: '1.4' }}>
+                                    {formatNotificationMessage(data.message, data.type)}
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                ),
-                {
-                    id: data.message,
-                    duration: 6000,
-                    position: 'bottom-right'
-                }
-            );
+                    ),
+                    {
+                        id: data.message,
+                        duration: 6000,
+                        position: 'bottom-right'
+                    }
+                );
+            }
             
             // Dispatch event for real-time list updates
             window.dispatchEvent(new CustomEvent('refresh_notifications'));
@@ -343,9 +386,25 @@ function App() {
                     
                     // Filter for all unread notifications
                     const unreadNotifications = data.filter(n => !n.IsRead);
-                    
+                    const isCe = user?.role === 'Call Executive';
+
+                    let regularUnreads = unreadNotifications;
+                    if (isCe) {
+                        const unreadFollowups = unreadNotifications.filter(n => n.Type === 'FollowupReminder' || (n.Message && n.Message.includes('Scheduled:')));
+                        if (unreadFollowups.length > 0) {
+                            const latest = unreadFollowups[0];
+                            triggerFollowupBanner({
+                                leadId: latest.LeadID,
+                                message: latest.Message,
+                                type: latest.Type
+                            });
+                            // Exclude from bottom-right toasts
+                            regularUnreads = unreadNotifications.filter(n => n.NotificationID !== latest.NotificationID);
+                        }
+                    }
+
                     // Show up to 3 most recent unread notifications to prevent screen flooding, staggering them
-                    unreadNotifications.slice(0, 3).forEach((n, idx) => {
+                    regularUnreads.slice(0, 3).forEach((n, idx) => {
                         setTimeout(() => {
                             toast.custom(
                                 (t) => (
@@ -398,7 +457,7 @@ function App() {
                                                 {n.Type === 'Chat' ? 'Unread Chat Message' : 'Unread Notification'}
                                             </p>
                                             <p style={{ margin: '4px 0 0 0', fontWeight: '500', color: '#64748b', fontSize: '0.82rem', lineHeight: '1.4' }}>
-                                                {n.Message}
+                                                {formatNotificationMessage(n.Message, n.Type)}
                                             </p>
                                         </div>
                                     </div>
@@ -457,6 +516,115 @@ function App() {
 
     return (
         <>
+            <style>{`
+                @keyframes ceBannerSlideDown {
+                    0% {
+                        opacity: 0;
+                        transform: translate(-50%, -24px) scale(0.96);
+                    }
+                    100% {
+                        opacity: 1;
+                        transform: translate(-50%, 0) scale(1);
+                    }
+                }
+            `}</style>
+
+            {/* Top-Center Mobile-Style Pop-up Banner for Call Executive Follow-up Reminders */}
+            {activeFollowupBanner && user?.role === 'Call Executive' && (
+                <div
+                    role="alert"
+                    aria-live="assertive"
+                    onClick={handleBannerClick}
+                    style={{
+                        position: 'fixed',
+                        top: '16px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 999999,
+                        width: 'calc(100vw - 28px)',
+                        maxWidth: '440px',
+                        boxSizing: 'border-box',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        background: '#ffffff',
+                        color: '#0f172a',
+                        fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                        padding: '10px 14px',
+                        borderRadius: '16px',
+                        border: '1px solid #cbd5e1',
+                        borderLeft: '4px solid #4f46e5',
+                        boxShadow: '0 12px 32px -4px rgba(15, 23, 42, 0.2), 0 4px 12px rgba(0, 0, 0, 0.08)',
+                        animation: 'ceBannerSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+                        pointerEvents: 'auto',
+                        transition: 'transform 0.15s ease'
+                    }}
+                >
+                    <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        boxShadow: '0 2px 6px rgba(79, 70, 229, 0.35)'
+                    }}>
+                        <Bell size={18} strokeWidth={2.2} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{
+                            display: 'block',
+                            fontSize: '0.68rem',
+                            fontWeight: '800',
+                            color: '#4f46e5',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            marginBottom: '2px'
+                        }}>
+                            Follow-up Reminder
+                        </span>
+                        <p style={{
+                            margin: 0,
+                            fontWeight: '700',
+                            fontSize: '0.86rem',
+                            color: '#0f172a',
+                            lineHeight: '1.35',
+                            wordBreak: 'break-word'
+                        }}>
+                            {activeFollowupBanner.message}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleBannerDismiss}
+                        title="Dismiss banner"
+                        style={{
+                            background: '#f1f5f9',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '26px',
+                            height: '26px',
+                            padding: 0,
+                            color: '#64748b',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                            transition: 'background 0.15s ease'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#f1f5f9'}
+                    >
+                        <X size={14} strokeWidth={2.5} />
+                    </button>
+                </div>
+            )}
+
             <Toaster position="top-right" />
             <GlobalModal />
             <Routes>

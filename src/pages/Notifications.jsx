@@ -6,7 +6,8 @@ import {
     isNotificationUnread,
     markNotificationAsRead,
     markAllNotificationsAsRead,
-    syncWithServerList
+    syncWithServerList,
+    formatNotificationMessage
 } from '../utils/notificationSync';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
@@ -234,7 +235,7 @@ const Notifications = ({ user }) => {
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
                                                 <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: unread ? '700' : '600', color: '#1e293b' }}>
-                                                    {n.Message}
+                                                    {formatNotificationMessage(n.Message, n.Type)}
                                                 </h4>
                                                 {unread ? (
                                                     <span style={{

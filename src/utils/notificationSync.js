@@ -115,3 +115,19 @@ export const syncWithServerList = (serverList) => {
     }
 };
 
+/**
+ * Clean & format follow-up reminder messages to strict format:
+ * "Medical clinic (Scheduled: 12/11/2026 at 9:00 AM)"
+ * Removes "Please complete the scheduled follow-up call with" or "Follow-up Reminder:"
+ */
+export const formatNotificationMessage = (msg, type) => {
+    if (!msg || typeof msg !== 'string') return '';
+    if (type === 'FollowupReminder' || msg.includes('Scheduled:')) {
+        let cleaned = msg.replace(/^Follow-up Reminder:\s*/i, '');
+        cleaned = cleaned.replace(/^Please complete the scheduled follow-up call with\s*/i, '');
+        cleaned = cleaned.replace(/\.\s*$/, '');
+        return cleaned.trim();
+    }
+    return msg;
+};
+

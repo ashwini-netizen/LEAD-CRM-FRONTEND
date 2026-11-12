@@ -6,7 +6,8 @@ import {
     isNotificationUnread,
     markNotificationAsRead,
     markAllNotificationsAsRead,
-    syncWithServerList
+    syncWithServerList,
+    formatNotificationMessage
 } from '../utils/notificationSync';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
@@ -301,7 +302,7 @@ const UserHeader = ({ user, title, onLogout, onToggleSidebar }) => {
                                                             WebkitLineClamp: 2,
                                                             WebkitBoxOrient: 'vertical'
                                                         }}>
-                                                            {n.Message}
+                                                            {formatNotificationMessage(n.Message, n.Type)}
                                                         </p>
                                                         <span style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
                                                             {new Date(n.CreatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
