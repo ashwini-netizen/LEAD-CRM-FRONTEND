@@ -38,6 +38,131 @@ const statusColors = {
     'Meeting Attended': { bg: 'rgba(99,102,241,0.12)', color: '#6366f1' },
     'Meeting Follow-up': { bg: 'rgba(99,102,241,0.15)', color: '#6366f1' },
     'Meeting Followup': { bg: 'rgba(99,102,241,0.15)', color: '#6366f1' },
+    'Wrong Number': { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' },
+    'Direct Visit': { bg: 'rgba(168,85,247,0.12)', color: '#a855f7' },
+    'Active': { bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
+    'Expired': { bg: 'rgba(100,116,139,0.15)', color: '#64748b' },
+    'Temporarily Closed': { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
+    'Permanently Closed': { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' },
+    'Upgraded': { bg: 'rgba(59,130,246,0.12)', color: '#3b82f6' },
+    'Withdrawn': { bg: 'rgba(100,116,139,0.15)', color: '#64748b' },
+    'Paid': { bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
+    'Due Payment': { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
+    'Completed': { bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
+};
+
+const toTitleCase = (str) => {
+    if (!str) return '';
+    return str
+        .trim()
+        .toLowerCase()
+        .split(/\s+/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+};
+
+const canonicalStatusesCE = [
+    'Interested',
+    'Not Interested',
+    'Follow-up',
+    'Not Answering',
+    'Busy',
+    'Switch Off',
+    'Incoming Not Available',
+    'Speaking with Someone Else',
+    'Hold',
+    'Invalid',
+    'Wrong Number',
+    'Direct Visit',
+    'Converted',
+    'Processing',
+    'Out of Service',
+    'Completed',
+    'Active',
+    'Expired',
+    'Temporarily Closed',
+    'Permanently Closed',
+    'Upgraded',
+    'Withdrawn',
+    'Paid',
+    'Due Payment',
+    'Quotation',
+    'Meeting Done',
+    'Meeting Attended',
+    'Meeting Follow-up'
+];
+
+const getCanonicalStatusCE = (status) => {
+    if (!status || typeof status !== 'string') return '';
+    const s = status.trim().toLowerCase();
+    if (!s) return '';
+
+    // Standard conversions & common CRM statuses
+    if (s === 'converted' || s === 'conversion') return 'Converted';
+    if (s === 'interested') return 'Interested';
+    if (s === 'not interested') return 'Not Interested';
+    if (s === 'invalid') return 'Invalid';
+    if (s === 'busy') return 'Busy';
+    if (s === 'hold') return 'Hold';
+    if (s === 'processing') return 'Processing';
+
+    // Spelling fixes & duplicates for Switch Off
+    if (s === 'switch off' || s === 'switched off' || s === 'swiched off') return 'Switch Off';
+
+    // Spelling fixes & duplicates for Speaking with Someone Else
+    if (s === 'speaking with someone else' || s === 'speaking to someone else' || s === 'busy to speaking wth someone else') {
+        return 'Speaking with Someone Else';
+    }
+
+    // Spelling fixes & duplicates for Incoming Not Available
+    if (s === 'incoming not available' || s === 'incoming call not available' || s === 'incoming call not available ' || s === 'no incoming' || s === 'incoming cl not available') {
+        return 'Incoming Not Available';
+    }
+
+    // Spelling fixes & duplicates for Not Answering
+    if (s === 'not answering' || s === 'not answered') return 'Not Answering';
+
+    // Spelling fixes & duplicates for Follow-up
+    if (s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'follow up') {
+        return 'Follow-up';
+    }
+
+    // Out of Service
+    if (s === 'out of service' || s === 'out of services') return 'Out of Service';
+
+    // Wrong Number & spelling mistakes
+    if (s === 'wrong number' || s.includes('wrong number') || s.includes('contact number is wrong')) {
+        return 'Wrong Number';
+    }
+
+    // Direct Visit & spelling mistakes (e.g. "Direct Vist", "filed visit", "field visit")
+    if (s === 'direct visit' || s === 'direct vist' || s === 'field visit' || s === 'filed visit' || s.includes('direct visit') || s.includes('direct vist')) {
+        return 'Direct Visit';
+    }
+
+    // Active, Expired, Upgraded, Withdrawn (normalize UPPERCASE to Title Case)
+    if (s === 'active') return 'Active';
+    if (s === 'expired') return 'Expired';
+    if (s === 'upgraded') return 'Upgraded';
+    if (s === 'withdrawn') return 'Withdrawn';
+
+    // Closures
+    if (s === 'temporarily closed') return 'Temporarily Closed';
+    if (s === 'permanently closed') return 'Permanently Closed';
+
+    // Quotation & Payments
+    if (s === 'quotation' || s === 'quotation needed' || s === 'quotation done') return 'Quotation';
+    if (s === 'paid') return 'Paid';
+    if (s === 'due payment') return 'Due Payment';
+    if (s === 'completed') return 'Completed';
+
+    // Meetings
+    if (s === 'meeting done') return 'Meeting Done';
+    if (s === 'meeting attended') return 'Meeting Attended';
+    if (s === 'meeting follow-up' || s === 'meeting followup' || s === 'meetingfollowup') return 'Meeting Follow-up';
+
+    // Fallback: title case to ensure no duplicates
+    return toTitleCase(status);
 };
 
 const canonicalStatuses = [
@@ -401,7 +526,7 @@ const LeadList = ({ user, isMyCreated }) => {
                     "Email": lead.Email || '',
                     "Company Type": lead.CompanyName || lead.CompanyType || '',
                     "Specific Company Name": lead.SpecificCompanyName || '',
-                    "Status": getCanonicalStatus(lead.Status) || lead.Status || '',
+                    "Status": (isCE ? getCanonicalStatusCE(lead.Status) : getCanonicalStatus(lead.Status)) || lead.Status || '',
                     "Service Interested": lead.ServiceInterested || '',
                     "Follow-up Date": lead.FollowupDate ? new Date(lead.FollowupDate).toLocaleDateString('en-GB') : '',
                     "Follow-up Time": formatCleanTime(lead.FollowupTime) || '',
@@ -457,7 +582,7 @@ const LeadList = ({ user, isMyCreated }) => {
                     lead.AlternatePhone || '-',
                     lead.CompanyName || lead.CompanyType || '-',
                     lead.SpecificCompanyName || '-',
-                    getCanonicalStatus(lead.Status) || lead.Status || '-',
+                    (isCE ? getCanonicalStatusCE(lead.Status) : getCanonicalStatus(lead.Status)) || lead.Status || '-',
                     lead.ServiceInterested || '-',
                     lead.MeetingDate 
                         ? new Date(lead.MeetingDate).toLocaleDateString('en-GB') 
@@ -772,8 +897,9 @@ const LeadList = ({ user, isMyCreated }) => {
             if (isNAFilter) {
                 if (hasValidPhone(l.Phone)) return false;
             } else if (hasStatus) {
-                const matchesStatus = getCanonicalStatus(l.Status).toLowerCase() === statusLower ||
-                    (l.Status && l.Status.trim().toLowerCase() === statusLower);
+                const matchesStatus = isCE
+                    ? (getCanonicalStatusCE(l.Status).toLowerCase() === statusLower || (l.Status && l.Status.trim().toLowerCase() === statusLower))
+                    : (getCanonicalStatus(l.Status).toLowerCase() === statusLower || (l.Status && l.Status.trim().toLowerCase() === statusLower));
                 if (!matchesStatus) return false;
 
                 if (isInterestedFilter && !hasValidPhone(l.Phone)) return false;
@@ -781,7 +907,7 @@ const LeadList = ({ user, isMyCreated }) => {
 
             return true;
         });
-    }, [leads, statusFilter, categoryFilter, search, roleFilter, viewFilter, isMyCreated, isFE, currentUserId, singleDate, fromDate, toDate, isTL, isAdmin, feCallStatuses, checkDateInRange]);
+    }, [leads, statusFilter, categoryFilter, search, roleFilter, viewFilter, isMyCreated, isFE, isCE, currentUserId, singleDate, fromDate, toDate, isTL, isAdmin, feCallStatuses, checkDateInRange]);
 
     const effectivePageSize = pageSize === 'all' ? (filtered.length || 1) : Number(pageSize);
     const totalPages = Math.max(1, Math.ceil(filtered.length / effectivePageSize));
@@ -1004,6 +1130,26 @@ const LeadList = ({ user, isMyCreated }) => {
                             }}
                         >
                             {(() => {
+                                if (isCE) {
+                                    const rawStatuses = leads.map(l => l.Status).filter(Boolean);
+                                    const ceSet = new Set(rawStatuses.map(getCanonicalStatusCE).filter(Boolean));
+                                    ceSet.add('Hold');
+                                    ceSet.delete('All');
+                                    ceSet.delete('N/A Leads');
+                                    const sorted = Array.from(ceSet).sort((a, b) => {
+                                        const idxA = canonicalStatusesCE.indexOf(a);
+                                        const idxB = canonicalStatusesCE.indexOf(b);
+                                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                                        if (idxA !== -1) return -1;
+                                        if (idxB !== -1) return 1;
+                                        return a.localeCompare(b);
+                                    });
+                                    const statusOptions = ['All', 'N/A Leads', ...sorted];
+                                    return statusOptions.map(s => (
+                                        <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s}</option>
+                                    ));
+                                }
+
                                 const rawStatuses = leads.map(l => l.Status).filter(Boolean);
                                 const normalizedSet = new Set(rawStatuses.map(getCanonicalStatus));
                                 normalizedSet.add('Hold');
@@ -1442,7 +1588,8 @@ const LeadList = ({ user, isMyCreated }) => {
                             </thead>
                             <tbody>
                                 {paginatedLeads.map((lead, i) => {
-                                    const sc = statusColors[getCanonicalStatus(lead.Status)] || { bg: 'rgba(99,102,241,0.12)', color: '#6366f1' };
+                                    const currentCanonicalStatus = (isCE ? getCanonicalStatusCE(lead.Status) : getCanonicalStatus(lead.Status)) || lead.Status;
+                                    const sc = statusColors[currentCanonicalStatus] || { bg: 'rgba(99,102,241,0.12)', color: '#6366f1' };
                                     const isLeadSelected = selectedLeadsSet.has(lead.LeadID);
                                     return (
                                         <tr key={lead.LeadID} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: '0.15s', background: isLeadSelected ? 'rgba(99,102,241,0.06)' : 'transparent' }}
@@ -1497,7 +1644,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                             )}
                                             <td style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>
                                                 <span style={{ padding: '4px 12px', background: sc.bg, color: sc.color, borderRadius: '20px', fontSize: '0.8rem', fontWeight: '700' }}>
-                                                    {getCanonicalStatus(lead.Status)}
+                                                    {currentCanonicalStatus}
                                                 </span>
                                             </td>
                                             <td style={{ padding: '16px 20px', color: '#334155', fontWeight: '700', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>

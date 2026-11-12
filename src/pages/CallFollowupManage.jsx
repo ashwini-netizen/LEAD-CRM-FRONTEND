@@ -193,8 +193,17 @@ const CallFollowupManage = ({ user }) => {
                 ? services.map(s => s.type === 'Other' ? s.custom : s.type).filter(Boolean).join(', ')
                 : '';
 
+            const normalizeCustomStatus = (raw) => {
+                if (!raw) return '';
+                const s = raw.trim().toLowerCase();
+                if (s.includes('wrong number') || s.includes('contact number is wrong')) return 'Wrong Number';
+                if (s.includes('direct visit') || s.includes('direct vist') || s.includes('field visit') || s.includes('filed visit')) return 'Direct Visit';
+                if (s === 'converted' || s === 'conversion') return 'Converted';
+                return raw.trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            };
+
             const resolvedStatus = status === 'other' 
-                ? (customStatus.trim().toLowerCase() === 'converted' || customStatus.trim().toLowerCase() === 'conversion' ? 'Converted' : customStatus.trim())
+                ? normalizeCustomStatus(customStatus)
                 : status;
 
             if (status === 'other' && !customStatus.trim()) {
@@ -365,8 +374,17 @@ const CallFollowupManage = ({ user }) => {
                 ? services.map(s => s.type === 'Other' ? s.custom : s.type).filter(Boolean).join(', ')
                 : '';
 
+            const normalizeCustomStatus = (raw) => {
+                if (!raw) return '';
+                const s = raw.trim().toLowerCase();
+                if (s.includes('wrong number') || s.includes('contact number is wrong')) return 'Wrong Number';
+                if (s.includes('direct visit') || s.includes('direct vist') || s.includes('field visit') || s.includes('filed visit')) return 'Direct Visit';
+                if (s === 'converted' || s === 'conversion') return 'Converted';
+                return raw.trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            };
+
             const resolvedStatus = status === 'other' 
-                ? (customStatus.trim().toLowerCase() === 'converted' || customStatus.trim().toLowerCase() === 'conversion' ? 'Converted' : customStatus.trim())
+                ? normalizeCustomStatus(customStatus)
                 : status;
 
             if (status === 'other' && !customStatus.trim()) {
