@@ -520,7 +520,7 @@ function App() {
             <GlobalModal />
             <Routes>
                 <Route path="/" element={<EntryScreen onSelectRole={handleSetRole} />} />
-                <Route path="/login" element={<LoginScreen role={selectedRole} onLogin={handleLogin} />} />
+                <Route path="/login" element={<LoginScreen key={selectedRole || 'login'} role={selectedRole} onLogin={handleLogin} />} />
                 <Route path="/reset-password" element={user && user.isFirstLogin ? <ResetPassword user={user} onComplete={handleLevelUp} /> : <Navigate to="/dashboard" />} />
 
                 <Route path="/dashboard" element={<ProtectedRoute element={<Dashboard user={user} onLogout={handleLogout} />} />} />

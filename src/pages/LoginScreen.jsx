@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, Loader, LogIn } from 'lucide-react';
@@ -6,13 +6,104 @@ import { stripEmojis } from '../utils/stringUtils';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
+const ROLE_CREDENTIALS = {
+    call_executive: {
+        title: 'Call Executive',
+        email: 'supriya@navabharathtechnologies.com',
+        color: '#6366f1'
+    },
+    team_lead: {
+        title: 'Team Lead',
+        email: 'deekshitha@navabharathtechnologies.com',
+        color: '#ec4899'
+    },
+    field_executive: {
+        title: 'Field Executive',
+        email: 'bhoomika@navabharathtechnologies.com',
+        color: '#10b981'
+    },
+    admin: {
+        title: 'Admin',
+        email: 'anish@navabharathtechnologies.com',
+        color: '#f59e0b'
+    }
+};
+
+const normalizeRoleKey = (r) => {
+    if (!r) return 'call_executive';
+    const clean = String(r).toLowerCase().replace(/[\s-]+/g, '_');
+    if (clean.includes('call')) return 'call_executive';
+    if (clean.includes('team')) return 'team_lead';
+    if (clean.includes('field')) return 'field_executive';
+    if (clean.includes('admin')) return 'admin';
+    return clean;
+};
+
+// Check if an email string belongs to a different role
+const isOtherRoleEmail = (val, currentRoleKey) => {
+    if (!val) return false;
+    const v = val.toLowerCase().trim();
+    for (const [key, cfg] of Object.entries(ROLE_CREDENTIALS)) {
+        if (key !== currentRoleKey && cfg.email.toLowerCase() === v) {
+            return true;
+        }
+    }
+    return false;
+};
+
+const getStoredCredsForRole = (roleKey) => {
+    try {
+        const stored = localStorage.getItem(`crm_creds_${roleKey}`);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && typeof parsed === 'object') {
+                return {
+                    email: parsed.email || ROLE_CREDENTIALS[roleKey]?.email || '',
+                    password: parsed.password || ''
+                };
+            }
+        }
+    } catch (e) {}
+    return {
+        email: ROLE_CREDENTIALS[roleKey]?.email || '',
+        password: ''
+    };
+};
+
 const LoginScreen = ({ role, onLogin }) => {
     const navigate = useNavigate();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const activeRole = role || localStorage.getItem('selected_role') || 'call_executive';
+    const activeRoleKey = normalizeRoleKey(activeRole);
+    const roleInfo = ROLE_CREDENTIALS[activeRoleKey] || ROLE_CREDENTIALS.call_executive;
+
+    const initialCreds = getStoredCredsForRole(activeRoleKey);
+    const [email, setEmail] = useState(initialCreds.email);
+    const [password, setPassword] = useState(initialCreds.password);
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Sync credentials whenever the active role changes
+    useEffect(() => {
+        const creds = getStoredCredsForRole(activeRoleKey);
+        setEmail(creds.email);
+        setPassword(creds.password);
+        setError('');
+        setSuccess('');
+        setForgotMode(false);
+    }, [activeRoleKey]);
+
+    // Active guard against browser password autofill dumping another role's credentials (e.g. Team Lead into Field Executive)
+    useEffect(() => {
+        const checkTimer = setTimeout(() => {
+            if (isOtherRoleEmail(email, activeRoleKey)) {
+                const creds = getStoredCredsForRole(activeRoleKey);
+                setEmail(creds.email);
+                setPassword(creds.password);
+            }
+        }, 150);
+        return () => clearTimeout(checkTimer);
+    }, [email, activeRoleKey]);
 
     // Forgot Password States
     const [forgotMode, setForgotMode] = useState(false); // false, 'request', 'verify'
@@ -21,6 +112,16 @@ const LoginScreen = ({ role, onLogin }) => {
     const [newPassword, setNewPassword] = useState('');
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [success, setSuccess] = useState('');
+
+    const handleEmailChange = (e) => {
+        const rawVal = e.target.value;
+        const cleaned = stripEmojis(rawVal).toLowerCase().replace(/\s/g, '');
+        // Block browser autofill if it attempts to inject an email registered to another role
+        if (isOtherRoleEmail(cleaned, activeRoleKey)) {
+            return;
+        }
+        setEmail(cleaned);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -41,7 +142,7 @@ const LoginScreen = ({ role, onLogin }) => {
             const res = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: trimmedEmail, password, role })
+                body: JSON.stringify({ email: trimmedEmail, password, role: activeRoleKey })
             });
             const data = await res.json();
             if (!res.ok) {
@@ -51,6 +152,8 @@ const LoginScreen = ({ role, onLogin }) => {
             }
             localStorage.setItem('crm_token', data.token);
             localStorage.setItem('crm_user', JSON.stringify(data.user));
+            // Remember credentials specifically for this role without bleeding to other roles
+            localStorage.setItem(`crm_creds_${activeRoleKey}`, JSON.stringify({ email: trimmedEmail, password }));
             onLogin(data.user);
             if (data.user.isFirstLogin) {
                 navigate('/reset-password', { replace: true });
@@ -180,7 +283,7 @@ const LoginScreen = ({ role, onLogin }) => {
                     <p style={subtitleStyle}>
                         {forgotMode 
                             ? 'Admin security portal verification' 
-                            : <>Accessing as <strong style={{ color: '#818cf8', textTransform: 'capitalize' }}>{role === 'team_lead' ? 'Team Lead' : (role?.replace('_', ' ') || 'USER')}</strong></>
+                            : <>Accessing as <strong style={{ color: roleInfo.color || '#818cf8', textTransform: 'capitalize' }}>{roleInfo.title}</strong></>
                         }
                     </p>
                 </div>
@@ -280,19 +383,27 @@ const LoginScreen = ({ role, onLogin }) => {
                 )}
 
                 {!forgotMode && (
-                    <form onSubmit={handleSubmit} style={formStyle}>
+                    <form 
+                        key={`login-form-${activeRoleKey}`} 
+                        onSubmit={handleSubmit} 
+                        style={formStyle}
+                        autoComplete="off"
+                    >
                         <div style={inputGroupStyle}>
                             <label style={labelStyle}>Work Email</label>
                             <div style={inputWrapperStyle}>
                                 <Mail size={18} style={inputIconStyle} />
                                 <input
-                                    type="text"
+                                    id={`login-email-${activeRoleKey}`}
+                                    name={`email_${activeRoleKey}`}
+                                    type="email"
                                     className="premium-input"
-                                    placeholder="name@company.com"
+                                    placeholder={roleInfo.email}
                                     value={email}
-                                    onChange={e => setEmail(stripEmojis(e.target.value).toLowerCase().replace(/\s/g, ''))}
+                                    onChange={handleEmailChange}
                                     onKeyDown={e => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); }}
                                     onBlur={() => setEmail(prev => prev.trim().replace(/\s/g, ''))}
+                                    autoComplete="off"
                                     required
                                 />
                             </div>
@@ -303,11 +414,14 @@ const LoginScreen = ({ role, onLogin }) => {
                             <div style={inputWrapperStyle}>
                                 <Lock size={18} style={inputIconStyle} />
                                 <input
+                                    id={`login-password-${activeRoleKey}`}
+                                    name={`password_${activeRoleKey}`}
                                     type={showPassword ? 'text' : 'password'}
                                     className="premium-input"
                                     placeholder="••••••••"
                                     value={password}
                                     onChange={e => setPassword(stripEmojis(e.target.value))}
+                                    autoComplete="new-password"
                                     required
                                 />
                                 <button
@@ -320,7 +434,7 @@ const LoginScreen = ({ role, onLogin }) => {
                             </div>
                         </div>
 
-                        {role === 'admin' && (
+                        {activeRoleKey === 'admin' && (
                             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-10px' }}>
                                 <button
                                     type="button"
@@ -408,6 +522,16 @@ const LoginScreen = ({ role, onLogin }) => {
                     width: 0 !important;
                     height: 0 !important;
                     pointer-events: none !important;
+                }
+
+                /* Prevent browser autofill background from bleeding */
+                .premium-input:-webkit-autofill,
+                .premium-input:-webkit-autofill:hover, 
+                .premium-input:-webkit-autofill:focus, 
+                .premium-input:-webkit-autofill:active {
+                    -webkit-box-shadow: 0 0 0 30px white inset !important;
+                    -webkit-text-fill-color: #1e293b !important;
+                    transition: background-color 5000s ease-in-out 0s;
                 }
 
                 .premium-input:focus {
