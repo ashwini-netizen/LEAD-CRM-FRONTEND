@@ -112,10 +112,12 @@ const LeadGenFollowupLeads = ({ user }) => {
     }, []);
 
     const filtered = leads.filter(l => {
-        const matchesSearch = l.FullName?.toLowerCase().includes(search.toLowerCase()) ||
-            (l.Phone && String(l.Phone).toLowerCase().includes(search.toLowerCase())) ||
-            l.CompanyName?.toLowerCase().includes(search.toLowerCase()) ||
-            l.ServiceInterested?.toLowerCase().includes(search.toLowerCase());
+        const s = search.toLowerCase();
+        const matchesSearch = l.FullName?.toLowerCase().includes(s) ||
+            (l.Phone && String(l.Phone).toLowerCase().includes(s)) ||
+            (l.Address && l.Address.toLowerCase().includes(s)) ||
+            l.CompanyName?.toLowerCase().includes(s) ||
+            l.ServiceInterested?.toLowerCase().includes(s);
 
         let matchesDate = true;
         if (dateFilter) {
@@ -209,36 +211,69 @@ const LeadGenFollowupLeads = ({ user }) => {
                             <p style={{ color: '#94a3b8' }}>No initial follow-up leads found.</p>
                         </div>
                     ) : (
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto', minWidth: '1000px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto', minWidth: '1050px' }}>
                             <thead>
                                 <tr style={{ background: '#f1f5f9', color: '#1e293b', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: '800', borderBottom: '2px solid #e2e8f0' }}>
-                                    <th style={{ padding: '16px 20px' }}>Lead Name</th>
-                                    <th style={{ padding: '16px 20px' }}>Follow-up Date</th>
-                                    <th style={{ padding: '16px 20px' }}>Preferred Time</th>
-                                    <th style={{ padding: '16px 20px' }}>Company</th>
-                                    <th style={{ padding: '16px 20px' }}>Status</th>
-                                    <th style={{ padding: '16px 20px' }}>Assignment</th>
-                                     <th style={{ padding: '16px 20px', textAlign: 'center' }}>Actions</th>
+                                    <th style={{ padding: '12px 14px', width: '220px', minWidth: '170px' }}>Lead Name</th>
+                                    <th style={{ padding: '12px 14px', width: '190px', minWidth: '140px' }}>Location</th>
+                                    <th style={{ padding: '12px 14px', width: '135px', whiteSpace: 'nowrap' }}>Follow-up Date</th>
+                                    <th style={{ padding: '12px 14px', width: '125px', whiteSpace: 'nowrap' }}>Preferred Time</th>
+                                    <th style={{ padding: '12px 14px', width: '160px', minWidth: '120px' }}>Company</th>
+                                    <th style={{ padding: '12px 14px', width: '120px', whiteSpace: 'nowrap' }}>Status</th>
+                                    <th style={{ padding: '12px 14px', width: '110px', whiteSpace: 'nowrap' }}>Assignment</th>
+                                    <th style={{ padding: '12px 14px', textAlign: 'center', width: '160px', whiteSpace: 'nowrap' }}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filtered.map(lead => (
                                     <tr key={lead.LeadID} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                        <td style={{ padding: '16px 20px', fontWeight: '800', color: '#0f172a' }}>{lead.FullName}</td>
-                                        <td style={{ padding: '16px 20px', color: '#1e293b', fontWeight: '700' }}>
+                                        <td style={{ 
+                                            padding: '12px 14px', 
+                                            fontWeight: '800', 
+                                            color: '#0f172a',
+                                            maxWidth: '220px',
+                                            wordBreak: 'break-word',
+                                            whiteSpace: 'normal',
+                                            lineHeight: '1.4'
+                                        }}>
+                                            {lead.FullName}
+                                        </td>
+                                        <td style={{ 
+                                            padding: '12px 14px', 
+                                            color: '#64748b', 
+                                            fontSize: '0.85rem',
+                                            fontWeight: '600',
+                                            maxWidth: '190px',
+                                            wordBreak: 'break-word',
+                                            whiteSpace: 'normal',
+                                            lineHeight: '1.4'
+                                        }}>
+                                            {lead.Address || 'N/A'}
+                                        </td>
+                                        <td style={{ padding: '12px 14px', color: '#1e293b', fontWeight: '700', whiteSpace: 'nowrap' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <Calendar size={14} color="#10b981" />
                                                 {lead.FollowupDate ? new Date(lead.FollowupDate).toLocaleDateString('en-GB') : 'N/A'}
                                             </div>
                                         </td>
-                                        <td style={{ padding: '16px 20px', color: '#1e293b', fontWeight: '700' }}>
+                                        <td style={{ padding: '12px 14px', color: '#1e293b', fontWeight: '700', whiteSpace: 'nowrap' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <Clock size={14} color="#6366f1" />
                                                 {formatCleanTime(lead.FollowupTime) || 'N/A'}
                                             </div>
                                         </td>
-                                        <td style={{ padding: '16px 20px', color: '#1e293b', fontWeight: '800' }}>{lead.CompanyName || 'N/A'}</td>
-                                        <td style={{ padding: '16px 20px' }}>
+                                        <td style={{ 
+                                            padding: '12px 14px', 
+                                            color: '#1e293b', 
+                                            fontWeight: '800',
+                                            maxWidth: '160px',
+                                            wordBreak: 'break-word',
+                                            whiteSpace: 'normal',
+                                            lineHeight: '1.4'
+                                        }}>
+                                            {lead.CompanyName || 'N/A'}
+                                        </td>
+                                        <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                                             {(() => {
                                                 const sc = statusColors[lead.Status] || { bg: 'rgba(99,102,241,0.12)', color: '#6366f1' };
                                                 return (
@@ -257,54 +292,56 @@ const LeadGenFollowupLeads = ({ user }) => {
                                                 );
                                             })()}
                                         </td>
-                                        <td style={{ padding: '20px' }}>
+                                        <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                                             {lead.AssignedTo ? (
                                                 <span style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: '600', padding: '4px 10px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '20px' }}>Assigned</span>
                                             ) : (
                                                 <span style={{ color: '#f59e0b', fontSize: '0.85rem', fontWeight: '600', padding: '4px 10px', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '20px' }}>Pending</span>
                                             )}
                                         </td>
-                                        <td style={{ padding: '20px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                                            {user?.role === 'Team Lead' && (
+                                        <td style={{ padding: '12px 14px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                                {user?.role === 'Team Lead' && (
+                                                    <button
+                                                        onClick={() => setSelectingLead(lead)}
+                                                        disabled={!!lead.AssignedTo}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px',
+                                                            background: '#6366f1',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            padding: '8px 14px',
+                                                            borderRadius: '8px',
+                                                            fontWeight: '700',
+                                                            cursor: lead.AssignedTo ? 'not-allowed' : 'pointer',
+                                                            opacity: lead.AssignedTo ? 0.5 : 1
+                                                        }}
+                                                    >
+                                                        <UserPlus size={14} /> Assign
+                                                    </button>
+                                                )}
                                                 <button
-                                                    onClick={() => setSelectingLead(lead)}
-                                                    disabled={!!lead.AssignedTo}
+                                                    onClick={() => navigate(`/leads/call-manage/${lead.LeadID}`, { state: { from: '/leads/lead-gen-followup', label: 'Lead Gen Follow-ups' } })}
+                                                    disabled={user?.role === 'Team Lead' && !!lead.AssignedTo}
                                                     style={{
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         gap: '6px',
-                                                        background: '#6366f1',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        padding: '8px 16px',
+                                                        background: 'rgba(16,185,129,0.1)',
+                                                        color: '#10b981',
+                                                        border: '1px solid rgba(16,185,129,0.2)',
+                                                        padding: '8px 14px',
                                                         borderRadius: '8px',
                                                         fontWeight: '700',
-                                                        cursor: lead.AssignedTo ? 'not-allowed' : 'pointer',
-                                                        opacity: lead.AssignedTo ? 0.5 : 1
+                                                        cursor: (user?.role === 'Team Lead' && !!lead.AssignedTo) ? 'not-allowed' : 'pointer',
+                                                        opacity: (user?.role === 'Team Lead' && !!lead.AssignedTo) ? 0.5 : 1
                                                     }}
                                                 >
-                                                    <UserPlus size={14} /> Assign
+                                                    <Eye size={14} /> Manage
                                                 </button>
-                                            )}
-                                            <button
-                                                onClick={() => navigate(`/leads/call-manage/${lead.LeadID}`, { state: { from: '/leads/lead-gen-followup', label: 'Lead Gen Follow-ups' } })}
-                                                disabled={user?.role === 'Team Lead' && !!lead.AssignedTo}
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '6px',
-                                                    background: 'rgba(16,185,129,0.1)',
-                                                    color: '#10b981',
-                                                    border: '1px solid rgba(16,185,129,0.2)',
-                                                    padding: '8px 16px',
-                                                    borderRadius: '8px',
-                                                    fontWeight: '700',
-                                                    cursor: (user?.role === 'Team Lead' && !!lead.AssignedTo) ? 'not-allowed' : 'pointer',
-                                                    opacity: (user?.role === 'Team Lead' && !!lead.AssignedTo) ? 0.5 : 1
-                                                }}
-                                            >
-                                                <Eye size={14} /> Manage
-                                            </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
