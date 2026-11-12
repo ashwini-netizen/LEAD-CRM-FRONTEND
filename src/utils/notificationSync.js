@@ -125,6 +125,8 @@ export const formatNotificationMessage = (msg, type) => {
     if (type === 'FollowupReminder' || msg.includes('Scheduled:')) {
         let cleaned = msg.replace(/^Follow-up Reminder:\s*/i, '');
         cleaned = cleaned.replace(/^Please complete the scheduled follow-up call with\s*/i, '');
+        // Clean repeated meridians like "AM AM", "PM AM", "AM AM AM AM" -> "AM" or "PM"
+        cleaned = cleaned.replace(/\b([AP]M)(?:\s+[AP]M)+\b/gi, '$1');
         cleaned = cleaned.replace(/\.\s*$/, '');
         return cleaned.trim();
     }
