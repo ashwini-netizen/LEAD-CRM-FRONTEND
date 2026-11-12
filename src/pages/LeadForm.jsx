@@ -47,6 +47,51 @@ const formatTime24 = (hour12, minute, ampm) => {
     return `${hStr}:${minute || '00'}`;
 };
 
+const normalizeCustomStatusCE = (raw) => {
+    if (!raw || typeof raw !== 'string') return '';
+    const s = raw.trim().toLowerCase();
+    if (!s) return '';
+
+    // Standard conversions & typos
+    if (s === 'busy' || s === 'buzy' || s === 'buzi') return 'Busy';
+    if (s === 'direct visit' || s === 'direct vist' || s === 'directvisit' || s === 'field visit' || s === 'filed visit' || s.includes('direct visit') || s.includes('direct vist') || s.includes('field visit')) return 'Direct Visit';
+    if (s === 'wrong number' || s.includes('wrong number') || s.includes('contact number is wrong') || s === 'wrong no' || s === 'wrng number') return 'Wrong Number';
+    if (s === 'switch off' || s === 'switched off' || s === 'swiched off' || s === 'switchoff') return 'Switch Off';
+    if (s === 'speaking with someone else' || s === 'speaking to someone else' || s === 'busy to speaking wth someone else' || s.includes('speaking with someone') || s.includes('speaking to someone')) {
+        return 'Speaking with Someone Else';
+    }
+    if (s === 'incoming not available' || s === 'incoming call not available' || s === 'incoming call not available ' || s === 'no incoming' || s === 'incoming cl not available') {
+        return 'Incoming Not Available';
+    }
+    if (s === 'not answering' || s === 'not answered' || s === 'not answer') return 'Not Answering';
+    if (s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'follow up') {
+        return 'Follow-up';
+    }
+    if (s === 'not interested' || s === 'not intrested' || s === 'not intrest') return 'Not Interested';
+    if (s === 'interested' || s === 'intrested') return 'Interested';
+    if (s === 'hold') return 'Hold';
+    if (s === 'invalid') return 'Invalid';
+    if (s === 'processing') return 'Processing';
+    if (s === 'out of service' || s === 'out of services' || s === 'outofservice') return 'Out of Service';
+    if (s === 'converted' || s === 'conversion') return 'Converted';
+    if (s === 'active') return 'Active';
+    if (s === 'expired') return 'Expired';
+    if (s === 'upgraded') return 'Upgraded';
+    if (s === 'withdrawn') return 'Withdrawn';
+    if (s === 'temporarily closed' || s === 'temp closed') return 'Temporarily Closed';
+    if (s === 'permanently closed' || s === 'perm closed') return 'Permanently Closed';
+    if (s === 'paid') return 'Paid';
+    if (s === 'due payment') return 'Due Payment';
+    if (s === 'quotation' || s === 'quotation needed' || s === 'quotation done') return 'Quotation';
+    if (s === 'completed') return 'Completed';
+
+    // Custom status title-casing so lower/upper case entries never create duplicates in the database
+    return s
+        .split(/\s+/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+};
+
 const LeadForm = ({ user }) => {
     const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
     const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
@@ -276,6 +321,12 @@ const LeadForm = ({ user }) => {
                 setFormData(prev => ({ ...prev, email: cleanedEmail }));
             }
 
+            const isOther = formData.status === 'other';
+            const normalizedCustom = isCE 
+                ? normalizeCustomStatusCE(formData.customStatus) 
+                : (formData.customStatus.trim().toLowerCase() === 'converted' || formData.customStatus.trim().toLowerCase() === 'conversion' ? 'Converted' : formData.customStatus.trim());
+            const resolvedStatus = isOther ? normalizedCustom : formData.status;
+
             const payload = {
                 fullName: formData.fullName,
                 phone: formData.phone || null,
@@ -284,14 +335,12 @@ const LeadForm = ({ user }) => {
                 serviceInterested: serviceSummary,
                 address: formData.address,
                 callDate: formData.callDate || null,
-                callNote: isFE ? null : (isFollowupStatus && formData.status !== 'Follow-up' ? (formData.status === 'other' ? formData.customStatus : formData.status) : formData.callNote),
+                callNote: isFE ? null : (isFollowupStatus && formData.status !== 'Follow-up' ? (isOther ? resolvedStatus : formData.status) : formData.callNote),
                 followupDate: formData.status === 'Follow-up' ? formData.followupDate : null,
                 followupTime: formData.status === 'Follow-up' ? formatTo12Hr(formData.followupTime) : null,
                 meetingDate: formData.meetingDate || null,
                 meetingTime: formData.status === 'Interested' ? formatTo12Hr(formData.meetingTime) : null,
-                status: formData.status === 'other' 
-                    ? (formData.customStatus.trim().toLowerCase() === 'converted' || formData.customStatus.trim().toLowerCase() === 'conversion' ? 'Converted' : formData.customStatus)
-                    : formData.status,
+                status: resolvedStatus,
                 createdBy: user?.id || user?.UserID || null
             };
             const res = await fetch(`${API_URL}/api/leads`, {
@@ -420,11 +469,33 @@ const LeadForm = ({ user }) => {
                             <input 
                                 name="customStatus" 
                                 className="input-field" 
-                                placeholder="Enter Lead Status" 
+                                placeholder="Enter Lead Status (e.g. Direct Visit, Busy)" 
                                 value={formData.customStatus} 
                                 onChange={handleChange} 
+                                onBlur={(e) => {
+                                    if (isCE && e.target.value.trim()) {
+                                        const norm = normalizeCustomStatusCE(e.target.value);
+                                        setFormData(prev => ({ ...prev, customStatus: norm }));
+                                    }
+                                }}
+                                list="ce-status-suggestions"
                                 required 
                             />
+                            <datalist id="ce-status-suggestions">
+                                <option value="Direct Visit" />
+                                <option value="Wrong Number" />
+                            </datalist>
+                            {isCE && formData.customStatus.trim() && (() => {
+                                const norm = normalizeCustomStatusCE(formData.customStatus);
+                                if (norm && norm.toLowerCase() !== formData.customStatus.trim().toLowerCase()) {
+                                    return (
+                                        <div style={{ fontSize: '0.8rem', color: '#6366f1', marginTop: '6px', fontWeight: '600' }}>
+                                            Standardized to: <strong>{norm}</strong> (avoids duplicates in Lead Database)
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
                         </div>
                     )}
 

@@ -196,7 +196,8 @@ const CallFollowupManage = ({ user }) => {
             const normalizeCustomStatus = (raw) => {
                 if (!raw) return '';
                 const s = raw.trim().toLowerCase();
-                if (s.includes('wrong number') || s.includes('contact number is wrong')) return 'Wrong Number';
+                if (s === 'busy' || s === 'buzy' || s === 'buzi') return 'Busy';
+                if (s.includes('wrong number') || s.includes('contact number is wrong') || s === 'wrong no') return 'Wrong Number';
                 if (s.includes('direct visit') || s.includes('direct vist') || s.includes('field visit') || s.includes('filed visit')) return 'Direct Visit';
                 if (s === 'converted' || s === 'conversion') return 'Converted';
                 return raw.trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
@@ -377,7 +378,8 @@ const CallFollowupManage = ({ user }) => {
             const normalizeCustomStatus = (raw) => {
                 if (!raw) return '';
                 const s = raw.trim().toLowerCase();
-                if (s.includes('wrong number') || s.includes('contact number is wrong')) return 'Wrong Number';
+                if (s === 'busy' || s === 'buzy' || s === 'buzi') return 'Busy';
+                if (s.includes('wrong number') || s.includes('contact number is wrong') || s === 'wrong no') return 'Wrong Number';
                 if (s.includes('direct visit') || s.includes('direct vist') || s.includes('field visit') || s.includes('filed visit')) return 'Direct Visit';
                 if (s === 'converted' || s === 'conversion') return 'Converted';
                 return raw.trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
@@ -712,11 +714,27 @@ const CallFollowupManage = ({ user }) => {
                                 <label style={labelStyle}>Specific Lead Status *</label>
                                 <input 
                                     className="input-field" 
-                                    placeholder="Enter Lead Status" 
+                                    placeholder="Enter Lead Status (e.g. Direct Visit, Busy)" 
                                     value={customStatus} 
                                     onChange={e => setCustomStatus(e.target.value)} 
+                                    onBlur={e => {
+                                        const raw = e.target.value.trim();
+                                        if (raw) {
+                                            const s = raw.toLowerCase();
+                                            if (s === 'busy' || s === 'buzy' || s === 'buzi') setCustomStatus('Busy');
+                                            else if (s.includes('wrong number') || s.includes('contact number is wrong') || s === 'wrong no') setCustomStatus('Wrong Number');
+                                            else if (s.includes('direct visit') || s.includes('direct vist') || s.includes('field visit') || s.includes('filed visit')) setCustomStatus('Direct Visit');
+                                            else if (s === 'converted' || s === 'conversion') setCustomStatus('Converted');
+                                            else setCustomStatus(raw.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '));
+                                        }
+                                    }}
+                                    list="cf-status-suggestions"
                                     required 
                                 />
+                                <datalist id="cf-status-suggestions">
+                                    <option value="Direct Visit" />
+                                    <option value="Wrong Number" />
+                                </datalist>
                             </div>
                         )}
 

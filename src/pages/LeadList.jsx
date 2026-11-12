@@ -99,18 +99,18 @@ const getCanonicalStatusCE = (status) => {
 
     // Standard conversions & common CRM statuses
     if (s === 'converted' || s === 'conversion') return 'Converted';
-    if (s === 'interested') return 'Interested';
-    if (s === 'not interested') return 'Not Interested';
+    if (s === 'interested' || s === 'intrested') return 'Interested';
+    if (s === 'not interested' || s === 'not intrested' || s === 'not intrest') return 'Not Interested';
     if (s === 'invalid') return 'Invalid';
-    if (s === 'busy') return 'Busy';
+    if (s === 'busy' || s === 'buzy' || s === 'buzi') return 'Busy';
     if (s === 'hold') return 'Hold';
     if (s === 'processing') return 'Processing';
 
     // Spelling fixes & duplicates for Switch Off
-    if (s === 'switch off' || s === 'switched off' || s === 'swiched off') return 'Switch Off';
+    if (s === 'switch off' || s === 'switched off' || s === 'swiched off' || s === 'switchoff') return 'Switch Off';
 
     // Spelling fixes & duplicates for Speaking with Someone Else
-    if (s === 'speaking with someone else' || s === 'speaking to someone else' || s === 'busy to speaking wth someone else') {
+    if (s === 'speaking with someone else' || s === 'speaking to someone else' || s === 'busy to speaking wth someone else' || s.includes('speaking with someone') || s.includes('speaking to someone')) {
         return 'Speaking with Someone Else';
     }
 
@@ -120,7 +120,7 @@ const getCanonicalStatusCE = (status) => {
     }
 
     // Spelling fixes & duplicates for Not Answering
-    if (s === 'not answering' || s === 'not answered') return 'Not Answering';
+    if (s === 'not answering' || s === 'not answered' || s === 'not answer') return 'Not Answering';
 
     // Spelling fixes & duplicates for Follow-up
     if (s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'follow up') {
@@ -128,15 +128,15 @@ const getCanonicalStatusCE = (status) => {
     }
 
     // Out of Service
-    if (s === 'out of service' || s === 'out of services') return 'Out of Service';
+    if (s === 'out of service' || s === 'out of services' || s === 'outofservice') return 'Out of Service';
 
     // Wrong Number & spelling mistakes
-    if (s === 'wrong number' || s.includes('wrong number') || s.includes('contact number is wrong')) {
+    if (s === 'wrong number' || s.includes('wrong number') || s.includes('contact number is wrong') || s === 'wrong no' || s === 'wrng number') {
         return 'Wrong Number';
     }
 
-    // Direct Visit & spelling mistakes (e.g. "Direct Vist", "filed visit", "field visit")
-    if (s === 'direct visit' || s === 'direct vist' || s === 'field visit' || s === 'filed visit' || s.includes('direct visit') || s.includes('direct vist')) {
+    // Direct Visit & spelling mistakes (e.g. "Direct Vist", "filed visit", "field visit", "directvisit")
+    if (s === 'direct visit' || s === 'direct vist' || s === 'directvisit' || s === 'field visit' || s === 'filed visit' || s.includes('direct visit') || s.includes('direct vist') || s.includes('field visit')) {
         return 'Direct Visit';
     }
 
@@ -147,8 +147,8 @@ const getCanonicalStatusCE = (status) => {
     if (s === 'withdrawn') return 'Withdrawn';
 
     // Closures
-    if (s === 'temporarily closed') return 'Temporarily Closed';
-    if (s === 'permanently closed') return 'Permanently Closed';
+    if (s === 'temporarily closed' || s === 'temp closed') return 'Temporarily Closed';
+    if (s === 'permanently closed' || s === 'perm closed') return 'Permanently Closed';
 
     // Quotation & Payments
     if (s === 'quotation' || s === 'quotation needed' || s === 'quotation done') return 'Quotation';
@@ -161,8 +161,8 @@ const getCanonicalStatusCE = (status) => {
     if (s === 'meeting attended') return 'Meeting Attended';
     if (s === 'meeting follow-up' || s === 'meeting followup' || s === 'meetingfollowup') return 'Meeting Follow-up';
 
-    // Fallback: title case to ensure no duplicates
-    return toTitleCase(status);
+    // Fallback: title case to ensure no duplicates in lower or upper char
+    return toTitleCase(s);
 };
 
 const canonicalStatuses = [
@@ -1184,11 +1184,23 @@ const LeadList = ({ user, isMyCreated }) => {
                             {(() => {
                                 if (isCE) {
                                     const rawStatuses = leads.map(l => l.Status).filter(Boolean);
-                                    const ceSet = new Set(rawStatuses.map(getCanonicalStatusCE).filter(Boolean));
-                                    ceSet.add('Hold');
-                                    ceSet.delete('All');
-                                    ceSet.delete('N/A Leads');
-                                    const sorted = Array.from(ceSet).sort((a, b) => {
+                                    // Case-insensitive deduplication: ensures only one entry per status regardless of lower or upper char
+                                    const statusMap = new Map();
+                                    statusMap.set('hold', 'Hold');
+
+                                    rawStatuses.forEach(raw => {
+                                        const canonical = getCanonicalStatusCE(raw);
+                                        if (!canonical) return;
+                                        const key = canonical.toLowerCase();
+                                        if (!statusMap.has(key)) {
+                                            statusMap.set(key, canonical);
+                                        }
+                                    });
+
+                                    statusMap.delete('all');
+                                    statusMap.delete('n/a leads');
+
+                                    const sorted = Array.from(statusMap.values()).sort((a, b) => {
                                         const idxA = canonicalStatusesCE.indexOf(a);
                                         const idxB = canonicalStatusesCE.indexOf(b);
                                         if (idxA !== -1 && idxB !== -1) return idxA - idxB;
