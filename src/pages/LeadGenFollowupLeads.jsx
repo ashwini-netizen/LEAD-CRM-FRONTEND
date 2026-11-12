@@ -195,8 +195,8 @@ const LeadGenFollowupLeads = ({ user }) => {
 
                 <div 
                     ref={tableContainerRef}
-                    className="glass-card hide-scrollbar" 
-                    style={{ padding: '0', overflowX: 'auto', cursor: isDragging ? 'grabbing' : 'grab' }}
+                    className="glass-card lead-gen-table-container" 
+                    style={{ padding: '0', cursor: isDragging ? 'grabbing' : 'grab' }}
                     onMouseDown={handleMouseDown}
                     onMouseLeave={handleMouseLeave}
                     onMouseUp={handleMouseUp}
@@ -226,31 +226,36 @@ const LeadGenFollowupLeads = ({ user }) => {
                             </thead>
                             <tbody>
                                 {filtered.map(lead => (
-                                    <tr key={lead.LeadID} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                    <tr 
+                                        key={lead.LeadID} 
+                                        style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.03)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                                    >
                                         <td className="col-name" style={{ fontWeight: '800', color: '#0f172a' }}>
-                                            <div className="lead-gen-two-line" title={lead.FullName}>
+                                            <div className="lead-gen-cell-text" style={{ fontWeight: '800', color: '#0f172a', fontSize: '0.92rem' }}>
                                                 {lead.FullName}
                                             </div>
                                         </td>
-                                        <td className="col-location" style={{ color: '#64748b', fontSize: '0.82rem', fontWeight: '600' }}>
-                                            <div className="lead-gen-two-line" title={lead.Address || 'N/A'}>
+                                        <td className="col-location" style={{ color: '#475569', fontSize: '0.85rem' }}>
+                                            <div className="lead-gen-cell-text" style={{ color: '#475569', fontSize: '0.85rem', fontWeight: '500' }}>
                                                 {lead.Address || 'N/A'}
                                             </div>
                                         </td>
                                         <td className="col-date" style={{ color: '#1e293b', fontWeight: '700' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                                                 <Calendar size={14} color="#10b981" />
                                                 {lead.FollowupDate ? new Date(lead.FollowupDate).toLocaleDateString('en-GB') : 'N/A'}
                                             </div>
                                         </td>
                                         <td className="col-time" style={{ color: '#1e293b', fontWeight: '700' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                                                 <Clock size={14} color="#6366f1" />
                                                 {formatCleanTime(lead.FollowupTime) || 'N/A'}
                                             </div>
                                         </td>
                                         <td className="col-company" style={{ color: '#1e293b', fontWeight: '800' }}>
-                                            <div className="lead-gen-two-line" title={lead.CompanyName || 'N/A'}>
+                                            <div className="lead-gen-cell-text" style={{ color: '#1e293b', fontWeight: '800', fontSize: '0.88rem' }}>
                                                 {lead.CompanyName || 'N/A'}
                                             </div>
                                         </td>
