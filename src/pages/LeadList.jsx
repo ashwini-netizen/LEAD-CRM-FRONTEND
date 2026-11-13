@@ -278,6 +278,15 @@ let leadsCache = {
     timestamp: 0
 };
 
+const formatAddress = (addr) => {
+    if (!addr) return 'N/A';
+    const cleaned = String(addr)
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return cleaned || 'N/A';
+};
+
 const LeadList = ({ user, isMyCreated }) => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -1646,10 +1655,10 @@ const LeadList = ({ user, isMyCreated }) => {
                                             />
                                         </th>
                                     )}
-                                    <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>S.No</th>
-                                    <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Name</th>
-                                    <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Phone</th>
-                                    <th style={{ padding: '16px 14px', whiteSpace: 'nowrap', width: '160px', minWidth: '140px', maxWidth: '180px' }}>Location</th>
+                                    <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', width: '60px' }}>S.No</th>
+                                    <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', minWidth: '160px' }}>Name</th>
+                                    <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', width: '140px', minWidth: '130px' }}>Phone</th>
+                                    <th style={{ padding: '16px 16px', whiteSpace: 'nowrap', width: '220px', minWidth: '200px', maxWidth: '240px' }}>Location</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Email</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Company</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Service</th>
@@ -1706,21 +1715,28 @@ const LeadList = ({ user, isMyCreated }) => {
                                                     </td>
                                                 );
                                             })()}
-                                            <td style={{ padding: '16px 20px', color: '#64748b', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{startIndex + i + 1}</td>
-                                            <td style={{ padding: '16px 20px', fontWeight: '800', color: '#0f172a', whiteSpace: 'nowrap' }}>{lead.FullName}</td>
-                                            <td style={{ padding: '16px 20px', color: '#64748b', whiteSpace: 'nowrap' }}>{lead.Phone || 'N/A'}</td>
-                                            <td style={{ padding: '16px 14px', color: '#64748b', width: '160px', minWidth: '140px', maxWidth: '180px', whiteSpace: 'normal', wordBreak: 'break-word', verticalAlign: 'middle' }}>
+                                            <td style={{ padding: '16px 20px', color: '#64748b', fontSize: '0.85rem', whiteSpace: 'nowrap', width: '60px' }}>{startIndex + i + 1}</td>
+                                            <td style={{ padding: '16px 20px', fontWeight: '800', color: '#0f172a', whiteSpace: 'nowrap', minWidth: '160px' }}>{lead.FullName}</td>
+                                            <td style={{ padding: '16px 20px', color: '#64748b', whiteSpace: 'nowrap', width: '140px', minWidth: '130px' }}>{lead.Phone || 'N/A'}</td>
+                                            <td style={{ padding: '14px 16px', color: '#64748b', width: '220px', minWidth: '200px', maxWidth: '240px', verticalAlign: 'middle' }}>
                                                 <div 
                                                     style={{ 
                                                         width: '100%',
-                                                        maxWidth: '180px', 
+                                                        minWidth: '200px',
+                                                        maxWidth: '240px', 
                                                         whiteSpace: 'normal', 
-                                                        wordBreak: 'break-word', 
-                                                        lineHeight: '1.4' 
+                                                        wordBreak: 'normal', 
+                                                        overflowWrap: 'break-word', 
+                                                        lineHeight: '1.4',
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 2,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden',
+                                                        fontSize: '0.85rem'
                                                     }} 
-                                                    title={lead.Address || ''}
+                                                    title={lead.Address ? formatAddress(lead.Address) : ''}
                                                 >
-                                                    {lead.Address || 'N/A'}
+                                                    {formatAddress(lead.Address)}
                                                 </div>
                                             </td>
                                             <td style={{ padding: '16px 20px', color: '#64748b', whiteSpace: 'nowrap' }}>{lead.Email || 'N/A'}</td>
