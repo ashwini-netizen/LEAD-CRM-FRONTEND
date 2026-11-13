@@ -1649,7 +1649,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>S.No</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Name</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Phone</th>
-                                    <th style={{ padding: '16px 14px', whiteSpace: 'nowrap', width: '130px', maxWidth: '150px' }}>Location</th>
+                                    <th style={{ padding: '16px 14px', whiteSpace: 'nowrap', width: '160px', minWidth: '140px', maxWidth: '180px' }}>Location</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Email</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Company</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Service</th>
@@ -1709,13 +1709,14 @@ const LeadList = ({ user, isMyCreated }) => {
                                             <td style={{ padding: '16px 20px', color: '#64748b', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{startIndex + i + 1}</td>
                                             <td style={{ padding: '16px 20px', fontWeight: '800', color: '#0f172a', whiteSpace: 'nowrap' }}>{lead.FullName}</td>
                                             <td style={{ padding: '16px 20px', color: '#64748b', whiteSpace: 'nowrap' }}>{lead.Phone || 'N/A'}</td>
-                                            <td style={{ padding: '16px 14px', color: '#64748b', whiteSpace: 'nowrap', width: '130px', maxWidth: '150px' }}>
+                                            <td style={{ padding: '16px 14px', color: '#64748b', width: '160px', minWidth: '140px', maxWidth: '180px', whiteSpace: 'normal', wordBreak: 'break-word', verticalAlign: 'middle' }}>
                                                 <div 
                                                     style={{ 
-                                                        maxWidth: '130px', 
-                                                        overflow: 'hidden', 
-                                                        textOverflow: 'ellipsis', 
-                                                        whiteSpace: 'nowrap' 
+                                                        width: '100%',
+                                                        maxWidth: '180px', 
+                                                        whiteSpace: 'normal', 
+                                                        wordBreak: 'break-word', 
+                                                        lineHeight: '1.4' 
                                                     }} 
                                                     title={lead.Address || ''}
                                                 >
