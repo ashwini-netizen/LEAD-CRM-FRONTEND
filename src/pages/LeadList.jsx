@@ -168,35 +168,23 @@ const getCanonicalStatusCE = (status) => {
 const canonicalStatuses = [
     'Interested',
     'Not Interested',
-    'Invalid',
+    'Follow-up',
+    'Not Answering',
     'Busy',
     'Hold',
     'Switch Off',
     'Speaking with Someone Else',
     'Incoming Not Available',
-    'Not Answering',
-    'Follow-up',
+    'Wrong Number',
+    'Direct Visit',
     'Converted',
     'Processing',
-    'Out of Service'
+    'Out of Service',
+    'Invalid'
 ];
 
 const getCanonicalStatus = (status) => {
-    const s = (status || '').trim().toLowerCase();
-    if (s === 'converted' || s === 'conversion') return 'Converted';
-    if (s === 'interested') return 'Interested';
-    if (s === 'not interested') return 'Not Interested';
-    if (s === 'invalid') return 'Invalid';
-    if (s === 'busy') return 'Busy';
-    if (s === 'hold') return 'Hold';
-    if (s === 'switch off' || s === 'swiched off') return 'Switch Off';
-    if (s === 'speaking with someone else' || s === 'speaking to someone else' || s === 'busy to speaking wth someone else') return 'Speaking with Someone Else';
-    if (s === 'incoming not available' || s === 'incoming call not available' || s === 'no incoming' || s === 'incoming cl not available') return 'Incoming Not Available';
-    if (s === 'not answering' || s === 'not answered') return 'Not Answering';
-    if (s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'follow up') return 'Follow-up';
-    if (s === 'processing') return 'Processing';
-    if (s === 'out of service' || s === 'out of services') return 'Out of Service';
-    return status;
+    return getCanonicalStatusCE(status);
 };
 
 const CONVERTED_STATUSES = ['converted', 'conversion', 'completed', 'paid', 'quotation', 'quotation done', 'quotation needed', 'due payment'];
@@ -1182,51 +1170,33 @@ const LeadList = ({ user, isMyCreated }) => {
                             }}
                         >
                             {(() => {
-                                if (isCE) {
-                                    const rawStatuses = leads.map(l => l.Status).filter(Boolean);
-                                    // Case-insensitive deduplication: ensures only one entry per status regardless of lower or upper char
-                                    const statusMap = new Map();
-                                    statusMap.set('hold', 'Hold');
-
-                                    rawStatuses.forEach(raw => {
-                                        const canonical = getCanonicalStatusCE(raw);
-                                        if (!canonical) return;
-                                        const key = canonical.toLowerCase();
-                                        if (!statusMap.has(key)) {
-                                            statusMap.set(key, canonical);
-                                        }
-                                    });
-
-                                    statusMap.delete('all');
-                                    statusMap.delete('n/a leads');
-
-                                    const sorted = Array.from(statusMap.values()).sort((a, b) => {
-                                        const idxA = canonicalStatusesCE.indexOf(a);
-                                        const idxB = canonicalStatusesCE.indexOf(b);
-                                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                                        if (idxA !== -1) return -1;
-                                        if (idxB !== -1) return 1;
-                                        return a.localeCompare(b);
-                                    });
-                                    const statusOptions = ['All', 'N/A Leads', ...sorted];
-                                    return statusOptions.map(s => (
-                                        <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s}</option>
-                                    ));
-                                }
-
                                 const rawStatuses = leads.map(l => l.Status).filter(Boolean);
-                                const normalizedSet = new Set(rawStatuses.map(getCanonicalStatus));
-                                normalizedSet.add('Hold');
-                                normalizedSet.delete('All');
-                                normalizedSet.delete('N/A Leads');
-                                const sorted = Array.from(normalizedSet).sort((a, b) => {
-                                    const idxA = canonicalStatuses.indexOf(a);
-                                    const idxB = canonicalStatuses.indexOf(b);
+                                // Case-insensitive deduplication: ensures only one entry per status regardless of lower or upper char
+                                const statusMap = new Map();
+                                statusMap.set('hold', 'Hold');
+
+                                rawStatuses.forEach(raw => {
+                                    const canonical = getCanonicalStatus(raw);
+                                    if (!canonical) return;
+                                    const key = canonical.toLowerCase();
+                                    if (!statusMap.has(key)) {
+                                        statusMap.set(key, canonical);
+                                    }
+                                });
+
+                                statusMap.delete('all');
+                                statusMap.delete('n/a leads');
+
+                                const currentCanonicalList = isCE ? canonicalStatusesCE : canonicalStatuses;
+                                const sorted = Array.from(statusMap.values()).sort((a, b) => {
+                                    const idxA = currentCanonicalList.indexOf(a);
+                                    const idxB = currentCanonicalList.indexOf(b);
                                     if (idxA !== -1 && idxB !== -1) return idxA - idxB;
                                     if (idxA !== -1) return -1;
                                     if (idxB !== -1) return 1;
                                     return a.localeCompare(b);
                                 });
+
                                 const statusOptions = (isTL || isFE || isAdmin) ? ['All', ...sorted] : ['All', 'N/A Leads', ...sorted];
                                 return statusOptions.map(s => (
                                     <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s}</option>
