@@ -1725,7 +1725,11 @@ const LeadList = ({ user, isMyCreated }) => {
                                                         whiteSpace: 'normal', 
                                                         wordBreak: 'normal', 
                                                         overflowWrap: 'break-word', 
-                                                        lineHeight: '1.4' 
+                                                        lineHeight: '1.4',
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 3,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden'
                                                     }} 
                                                     title={lead.FullName || ''}
                                                 >
@@ -1743,7 +1747,11 @@ const LeadList = ({ user, isMyCreated }) => {
                                                         wordBreak: 'normal',
                                                         overflowWrap: 'break-word',
                                                         lineHeight: '1.45',
-                                                        fontSize: '0.85rem'
+                                                        fontSize: '0.85rem',
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 3,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden'
                                                     }}
                                                     title={lead.Address ? formatAddress(lead.Address) : ''}
                                                 >
