@@ -1616,7 +1616,7 @@ const LeadList = ({ user, isMyCreated }) => {
                             )}
                         </div>
                     ) : (
-                        <table style={{ width: '100%', minWidth: user?.role === 'Admin' ? '1750px' : '1250px', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto' }}>
+                        <table style={{ width: '100%', minWidth: user?.role === 'Admin' ? '1600px' : '1250px', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto' }}>
                             <thead style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
                                 <tr style={{ color: '#1e293b', fontSize: '0.85rem', fontWeight: '800', textTransform: 'uppercase' }}>
                                     {selectMode && (
@@ -1649,7 +1649,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>S.No</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Name</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Phone</th>
-                                    <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Location</th>
+                                    <th style={{ padding: '16px 14px', whiteSpace: 'nowrap', width: '130px', maxWidth: '150px' }}>Location</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Email</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Company</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Service</th>
@@ -1709,7 +1709,19 @@ const LeadList = ({ user, isMyCreated }) => {
                                             <td style={{ padding: '16px 20px', color: '#64748b', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{startIndex + i + 1}</td>
                                             <td style={{ padding: '16px 20px', fontWeight: '800', color: '#0f172a', whiteSpace: 'nowrap' }}>{lead.FullName}</td>
                                             <td style={{ padding: '16px 20px', color: '#64748b', whiteSpace: 'nowrap' }}>{lead.Phone || 'N/A'}</td>
-                                            <td style={{ padding: '16px 20px', color: '#64748b', whiteSpace: 'nowrap' }}>{lead.Address || 'N/A'}</td>
+                                            <td style={{ padding: '16px 14px', color: '#64748b', whiteSpace: 'nowrap', width: '130px', maxWidth: '150px' }}>
+                                                <div 
+                                                    style={{ 
+                                                        maxWidth: '130px', 
+                                                        overflow: 'hidden', 
+                                                        textOverflow: 'ellipsis', 
+                                                        whiteSpace: 'nowrap' 
+                                                    }} 
+                                                    title={lead.Address || ''}
+                                                >
+                                                    {lead.Address || 'N/A'}
+                                                </div>
+                                            </td>
                                             <td style={{ padding: '16px 20px', color: '#64748b', whiteSpace: 'nowrap' }}>{lead.Email || 'N/A'}</td>
                                             <td style={{ padding: '16px 20px', color: '#1e293b', fontWeight: '800', whiteSpace: 'nowrap' }}>{lead.CompanyName || 'N/A'}</td>
                                             <td style={{ padding: '16px 20px', color: '#4f46e5', fontWeight: '800', whiteSpace: 'nowrap' }}>{lead.ServiceInterested || 'N/A'}</td>
