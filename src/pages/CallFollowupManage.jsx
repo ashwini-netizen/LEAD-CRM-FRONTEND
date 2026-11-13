@@ -531,10 +531,16 @@ const CallFollowupManage = ({ user }) => {
                                     <input
                                         type="tel"
                                         maxLength={10}
+                                        name="crm_edit_client_phone"
                                         className="input-field"
                                         value={editPhone}
                                         onChange={e => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                                         placeholder="10-digit Primary Phone Number"
+                                        autoComplete="new-password"
+                                        autoCorrect="off"
+                                        autoCapitalize="off"
+                                        spellCheck="false"
+                                        data-lpignore="true"
                                         required
                                     />
                                 </div>
@@ -543,20 +549,32 @@ const CallFollowupManage = ({ user }) => {
                                     <input
                                         type="tel"
                                         maxLength={10}
+                                        name="crm_edit_alt_phone"
                                         className="input-field"
                                         value={editAlternatePhone}
                                         onChange={e => setEditAlternatePhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                                         placeholder="10-digit Alternate Phone (Optional)"
+                                        autoComplete="new-password"
+                                        autoCorrect="off"
+                                        autoCapitalize="off"
+                                        spellCheck="false"
+                                        data-lpignore="true"
                                     />
                                 </div>
                                 <div>
                                     <label style={labelStyle}><Mail size={14} style={{ marginRight: '5px' }} /> Email *</label>
                                     <input
                                         type="email"
+                                        name="crm_edit_email_addr"
                                         className="input-field"
                                         value={editEmail}
                                         onChange={e => setEditEmail(e.target.value)}
                                         placeholder="Email Address"
+                                        autoComplete="new-password"
+                                        autoCorrect="off"
+                                        autoCapitalize="off"
+                                        spellCheck="false"
+                                        data-lpignore="true"
                                         required
                                     />
                                 </div>
@@ -564,10 +582,16 @@ const CallFollowupManage = ({ user }) => {
                                     <label style={labelStyle}><Building size={14} style={{ marginRight: '5px' }} /> Company Type *</label>
                                     <input
                                         type="text"
+                                        name="crm_edit_co_type"
                                         className="input-field"
                                         value={editCompany}
                                         onChange={e => setEditCompany(e.target.value)}
                                         placeholder="e.g. Dental Clinic, Car Showroom"
+                                        autoComplete="new-password"
+                                        autoCorrect="off"
+                                        autoCapitalize="off"
+                                        spellCheck="false"
+                                        data-lpignore="true"
                                         required
                                     />
                                 </div>
@@ -575,10 +599,16 @@ const CallFollowupManage = ({ user }) => {
                                     <label style={labelStyle}><Building size={14} style={{ marginRight: '5px' }} /> Specific Company Name</label>
                                     <input
                                         type="text"
+                                        name="crm_edit_co_specific"
                                         className="input-field"
                                         value={editSpecificCompany}
                                         onChange={e => setEditSpecificCompany(e.target.value)}
                                         placeholder="e.g. ABC Motors, Smile Dental Care"
+                                        autoComplete="new-password"
+                                        autoCorrect="off"
+                                        autoCapitalize="off"
+                                        spellCheck="false"
+                                        data-lpignore="true"
                                     />
                                 </div>
                                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
@@ -653,17 +683,29 @@ const CallFollowupManage = ({ user }) => {
                         )}
                     </div>
 
-                    <form className="glass-card" style={{ padding: '30px' }} onSubmit={handleUpdate}>
+                    <form className="glass-card" style={{ padding: '30px' }} onSubmit={handleUpdate} autoComplete="off">
+                        {/* Chrome autofill decoy fields to absorb browser personal info injection */}
+                        <div style={{ position: 'absolute', opacity: 0, height: 0, width: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: -1 }} tabIndex="-1" aria-hidden="true">
+                            <input type="text" name="crm_dummy_prevent_user" tabIndex="-1" autoComplete="off" readOnly />
+                            <input type="password" name="crm_dummy_prevent_pass" tabIndex="-1" autoComplete="off" readOnly />
+                        </div>
+
                         <h3 style={{ marginBottom: '20px', fontSize: '1.1rem' }}>Updating Details</h3>
 
                         <div style={{ marginBottom: '20px' }}>
                             <label style={labelStyle}>New Call Note</label>
                             <textarea
+                                name="crm_followup_note"
                                 className="input-field"
                                 rows="4"
                                 value={callNote}
                                 onChange={e => setCallNote(e.target.value)}
                                 placeholder="Summary of the Follow-up call..."
+                                autoComplete="new-password"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck="false"
+                                data-lpignore="true"
                                 required
                             />
                             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
@@ -713,6 +755,7 @@ const CallFollowupManage = ({ user }) => {
                             <div style={{ marginBottom: '20px' }} className="fade-in">
                                 <label style={labelStyle}>Specific Lead Status *</label>
                                 <input 
+                                    name="crm_field_custom_status"
                                     className="input-field" 
                                     placeholder="Enter Lead Status" 
                                     value={customStatus} 
@@ -728,9 +771,11 @@ const CallFollowupManage = ({ user }) => {
                                             else setCustomStatus(raw.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '));
                                         }
                                     }}
-                                    autoComplete="off"
+                                    autoComplete="new-password"
                                     autoCorrect="off"
+                                    autoCapitalize="off"
                                     spellCheck="false"
+                                    data-lpignore="true"
                                     required 
                                 />
                             </div>
@@ -759,11 +804,17 @@ const CallFollowupManage = ({ user }) => {
                                             </select>
                                             {service.type === 'Other' && (
                                                 <input
+                                                    name="crm_field_service_other"
                                                     className="input-field"
                                                     style={{ flex: 1 }}
                                                     placeholder="Custom Service"
                                                     value={service.custom}
                                                     onChange={(e) => handleServiceChange(index, 'custom', e.target.value)}
+                                                    autoComplete="new-password"
+                                                    autoCorrect="off"
+                                                    autoCapitalize="off"
+                                                    spellCheck="false"
+                                                    data-lpignore="true"
                                                 />
                                             )}
                                             {services.length > 1 && (

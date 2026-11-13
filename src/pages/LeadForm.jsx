@@ -247,40 +247,41 @@ const LeadForm = ({ user }) => {
     };
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
+        const fieldName = e.target.getAttribute('data-field') || e.target.name;
+        const { value } = e.target;
         const cleanedValue = stripEmojis(value);
 
         // Real-time restriction for phone
-        if (name === 'phone') {
+        if (fieldName === 'phone') {
             const onlyNums = cleanedValue.replace(/[^0-9]/g, '');
             if (onlyNums.length <= 10) {
-                setFormData(prev => ({ ...prev, [name]: onlyNums }));
+                setFormData(prev => ({ ...prev, [fieldName]: onlyNums }));
             }
             return;
         }
 
         // Real-time restriction for name
-        if (name === 'fullName') {
+        if (fieldName === 'fullName') {
             const onlyLetters = cleanedValue.replace(/[^A-Za-z\s]/g, '');
-            setFormData(prev => ({ ...prev, [name]: onlyLetters }));
+            setFormData(prev => ({ ...prev, [fieldName]: onlyLetters }));
             return;
         }
 
         // Real-time restriction for company
-        if (name === 'company') {
+        if (fieldName === 'company') {
             const allowedCompanyChars = cleanedValue.replace(/[^A-Za-z0-9\s.,&()'-]/g, '');
-            setFormData(prev => ({ ...prev, [name]: allowedCompanyChars }));
+            setFormData(prev => ({ ...prev, [fieldName]: allowedCompanyChars }));
             return;
         }
 
         // Real-time restriction for email (strip spaces and convert to lowercase)
-        if (name === 'email') {
+        if (fieldName === 'email') {
             const cleanedEmail = cleanedValue.toLowerCase().replace(/\s/g, '');
-            setFormData(prev => ({ ...prev, [name]: cleanedEmail }));
+            setFormData(prev => ({ ...prev, [fieldName]: cleanedEmail }));
             return;
         }
 
-        setFormData(prev => ({ ...prev, [name]: cleanedValue }));
+        setFormData(prev => ({ ...prev, [fieldName]: cleanedValue }));
     };
 
     const handleServiceChange = (index, field, value) => {
@@ -382,26 +383,52 @@ const LeadForm = ({ user }) => {
                     </div>
                 )}
 
-                <form className="glass-card fade-in responsive-form-grid" onSubmit={handleSubmit}>
+                <form className="glass-card fade-in responsive-form-grid" onSubmit={handleSubmit} autoComplete="off">
+                    {/* Chrome autofill decoy fields to absorb browser personal info injection */}
+                    <div style={{ position: 'absolute', opacity: 0, height: 0, width: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: -1 }} tabIndex="-1" aria-hidden="true">
+                        <input type="text" name="crm_dummy_prevent_user" tabIndex="-1" autoComplete="off" readOnly />
+                        <input type="password" name="crm_dummy_prevent_pass" tabIndex="-1" autoComplete="off" readOnly />
+                    </div>
+
                     <div>
                         <label style={labelStyle}>Full Name *</label>
-                        <input name="fullName" className="input-field" placeholder="Client Name" value={formData.fullName} onChange={handleChange} required />
+                        <input 
+                            data-field="fullName"
+                            name="crm_field_client_entry" 
+                            className="input-field" 
+                            placeholder="Client Name" 
+                            value={formData.fullName} 
+                            onChange={handleChange} 
+                            autoComplete="new-password"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
+                            data-lpignore="true"
+                            required 
+                        />
                     </div>
                     <div>
                         <label style={labelStyle}>Phone Number {isFEorCE ? '' : '*'}</label>
                         <input 
-                            name="phone" 
+                            data-field="phone"
+                            name="crm_field_contact_entry" 
                             className="input-field" 
                             placeholder="10 Digit Number (starts with 6-9)" 
                             value={formData.phone} 
                             onChange={handleChange} 
+                            autoComplete="new-password"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
+                            data-lpignore="true"
                             required={!isFEorCE} 
                         />
                     </div>
                     <div>
                         <label style={labelStyle}>Email {isFEorCE ? '' : '*'}</label>
                         <input
-                            name="email"
+                            data-field="email"
+                            name="crm_field_mail_entry"
                             type="text"
                             className="input-field"
                             placeholder="email@example.com"
@@ -409,17 +436,49 @@ const LeadForm = ({ user }) => {
                             onChange={handleChange}
                             onKeyDown={e => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); }}
                             onBlur={() => setFormData(prev => ({ ...prev, email: prev.email.trim().replace(/\s/g, '') }))}
+                            autoComplete="new-password"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
+                            data-lpignore="true"
                             required={!isFEorCE}
                         />
                     </div>
                     <div>
                         <label style={labelStyle}>Company *</label>
-                        <input name="company" className="input-field" placeholder="Company Name" value={formData.company} onChange={handleChange} required />
+                        <input 
+                            data-field="company"
+                            name="crm_field_org_entry" 
+                            className="input-field" 
+                            placeholder="Company Name" 
+                            value={formData.company} 
+                            onChange={handleChange} 
+                            autoComplete="new-password"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
+                            data-lpignore="true"
+                            required 
+                        />
                     </div>
 
                     <div style={{ gridColumn: 'span 2' }}>
                         <label style={labelStyle}>Address *</label>
-                        <textarea name="address" className="input-field" rows="3" placeholder="Enter Full Address" value={formData.address} onChange={handleChange} required></textarea>
+                        <textarea 
+                            data-field="address"
+                            name="crm_field_loc_entry" 
+                            className="input-field" 
+                            rows="3" 
+                            placeholder="Enter Full Address" 
+                            value={formData.address} 
+                            onChange={handleChange} 
+                            autoComplete="new-password"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
+                            data-lpignore="true"
+                            required
+                        ></textarea>
                     </div>
 
                     <div style={isFE ? { gridColumn: 'span 2' } : {}}>
@@ -467,7 +526,8 @@ const LeadForm = ({ user }) => {
                         <div style={{ gridColumn: 'span 2' }} className="fade-in">
                             <label style={labelStyle}>Specific Lead Status *</label>
                             <input 
-                                name="customStatus" 
+                                data-field="customStatus"
+                                name="crm_field_custom_status" 
                                 className="input-field" 
                                 placeholder="Enter Lead Status" 
                                 value={formData.customStatus} 
@@ -478,9 +538,11 @@ const LeadForm = ({ user }) => {
                                         setFormData(prev => ({ ...prev, customStatus: norm }));
                                     }
                                 }}
-                                autoComplete="off"
+                                autoComplete="new-password"
                                 autoCorrect="off"
+                                autoCapitalize="off"
                                 spellCheck="false"
+                                data-lpignore="true"
                                 required 
                             />
                         </div>
@@ -514,10 +576,16 @@ const LeadForm = ({ user }) => {
                                     {service.type === 'Other' && (
                                         <div style={{ flex: 1 }}>
                                             <input
+                                                name="crm_field_service_other"
                                                 className="input-field"
                                                 placeholder="Enter Service Name"
                                                 value={service.custom}
                                                 onChange={(e) => handleServiceChange(index, 'custom', e.target.value)}
+                                                autoComplete="new-password"
+                                                autoCorrect="off"
+                                                autoCapitalize="off"
+                                                spellCheck="false"
+                                                data-lpignore="true"
                                                 required
                                             />
                                         </div>
@@ -555,7 +623,21 @@ const LeadForm = ({ user }) => {
                     {!isFE && !['Busy', 'Not Answering', 'Switch Off', 'Speaking with Someone Else', 'Incoming Not Available', 'Out of Service', 'Hold', 'Processing', 'Invalid', 'other'].includes(formData.status) && (
                         <div style={{ gridColumn: 'span 2' }}>
                             <label style={labelStyle}>Call Note *</label>
-                            <textarea name="callNote" className="input-field" rows="2" placeholder="Tell us more about the lead..." value={formData.callNote} onChange={handleChange} required></textarea>
+                            <textarea 
+                                data-field="callNote"
+                                name="crm_field_call_note" 
+                                className="input-field" 
+                                rows="2" 
+                                placeholder="Tell us more about the lead..." 
+                                value={formData.callNote} 
+                                onChange={handleChange} 
+                                autoComplete="new-password"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck="false"
+                                data-lpignore="true"
+                                required
+                            ></textarea>
                         </div>
                     )}
 
@@ -690,7 +772,21 @@ const LeadForm = ({ user }) => {
                     {formData.status === 'Not Interested' && (
                         <div style={{ gridColumn: 'span 2' }} className="fade-in">
                             <label style={labelStyle}>Reason</label>
-                            <textarea name="reason" className="input-field" rows="2" placeholder="Why not interested?" value={formData.reason} onChange={handleChange} required></textarea>
+                            <textarea 
+                                data-field="reason"
+                                name="crm_field_discard_reason" 
+                                className="input-field" 
+                                rows="2" 
+                                placeholder="Why not interested?" 
+                                value={formData.reason} 
+                                onChange={handleChange} 
+                                autoComplete="new-password"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck="false"
+                                data-lpignore="true"
+                                required
+                            ></textarea>
                         </div>
                     )}
 
