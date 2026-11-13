@@ -575,11 +575,9 @@ const Dashboard = ({ user, onLogout }) => {
     const isCallExecutive = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
 
     useEffect(() => {
-        if (isTL) {
-            if (adminCeFilter !== 'all') setAdminCeFilter('all');
-            if (callTrackingTab === 'comparison') setCallTrackingTab('overview');
-        }
-    }, [isTL, adminCeFilter, callTrackingTab]);
+        if (adminCeFilter !== 'all') setAdminCeFilter('all');
+        if (callTrackingTab === 'comparison') setCallTrackingTab('overview');
+    }, [adminCeFilter, callTrackingTab]);
 
     const standardStatusDefs = [
         { label: 'Interested', color: '#10b981', bg: '#ecfdf5', border: '#a7f3d0' },
@@ -2052,48 +2050,13 @@ const Dashboard = ({ user, onLogout }) => {
                                             </span>
                                         </div>
                                         <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
-                                            {adminCeFilter === 'all' || isTL
-                                                ? `Monitoring combined team call activity for ${adminCallDate.split('-').reverse().join('-')}`
-                                                : `Monitoring call performance for ${overview?.executivesList?.find(e => String(e.UserID) === String(adminCeFilter))?.FullName || 'selected executive'} on ${adminCallDate.split('-').reverse().join('-')}`
-                                            }
+                                            Monitoring combined team call activity for {adminCallDate.split('-').reverse().join('-')}
                                         </p>
                                     </div>
                                 </div>
 
                                 {/* Filter Controls */}
                                 <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                                    {/* Executive Selector - hidden for Team Lead */}
-                                    {!isTL && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Executive:</label>
-                                            <select
-                                                className="input-field"
-                                                value={adminCeFilter}
-                                                onChange={e => {
-                                                    setAdminCeFilter(e.target.value);
-                                                    setTeamCallPage(1);
-                                                }}
-                                                style={{
-                                                    padding: '8px 12px',
-                                                    borderRadius: '8px',
-                                                    border: '1px solid #cbd5e1',
-                                                    fontSize: '0.84rem',
-                                                    fontWeight: '600',
-                                                    color: '#1e293b',
-                                                    background: '#f8fafc',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                <option value="all">👥 All Call Executives (Team)</option>
-                                                {(overview?.executivesList || []).map(exec => (
-                                                    <option key={exec.UserID} value={exec.UserID}>
-                                                        👤 {exec.FullName} ({exec.EmployeeID || 'CE'})
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
-
                                     {/* Date Picker */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <label style={{ fontSize: '0.82rem', fontWeight: '600', color: '#475569' }}>Date:</label>
@@ -2175,28 +2138,7 @@ const Dashboard = ({ user, onLogout }) => {
                                     >
                                         <BarChart3 size={15} /> Call Status Breakdown
                                     </button>
-                                    {!isTL && (
-                                        <button
-                                            onClick={() => setCallTrackingTab('comparison')}
-                                            style={{
-                                                padding: '6px 14px',
-                                                borderRadius: '8px',
-                                                border: 'none',
-                                                background: callTrackingTab === 'comparison' ? 'white' : 'transparent',
-                                                color: callTrackingTab === 'comparison' ? '#4f46e5' : '#64748b',
-                                                fontWeight: '700',
-                                                fontSize: '0.82rem',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '6px',
-                                                boxShadow: callTrackingTab === 'comparison' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                        >
-                                            <Users size={15} /> Executive Comparison
-                                        </button>
-                                    )}
+
                                     <button
                                         onClick={() => setCallTrackingTab('activity')}
                                         style={{
