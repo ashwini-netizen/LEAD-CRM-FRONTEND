@@ -1316,7 +1316,7 @@ const Dashboard = ({ user, onLogout }) => {
                                                     <th style={{ padding: '10px 12px' }}>Company</th>
                                                     <th style={{ padding: '10px 12px' }}>Phone</th>
                                                     <th style={{ padding: '10px 12px' }}>Call Status</th>
-                                                    <th style={{ padding: '10px 12px' }}>Call Notes</th>
+                                                    <th style={{ padding: '10px 12px', minWidth: '220px' }}>Call Notes</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1346,8 +1346,8 @@ const Dashboard = ({ user, onLogout }) => {
                                                                 {r.Status || 'N/A'}
                                                             </span>
                                                         </td>
-                                                        <td style={{ padding: '10px 12px', color: '#64748b', maxWidth: '300px' }}>
-                                                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.CallNote}>
+                                                        <td style={{ padding: '10px 12px', color: '#64748b', minWidth: '220px', maxWidth: '450px' }}>
+                                                            <div style={{ whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word', lineHeight: '1.45' }} title={r.CallNote || ''}>
                                                                 {r.CallNote || 'No notes'}
                                                             </div>
                                                         </td>
@@ -2460,8 +2460,8 @@ const Dashboard = ({ user, onLogout }) => {
                                                                     {r.Status || 'N/A'}
                                                                 </span>
                                                             </td>
-                                                            <td style={{ padding: '10px 12px', color: '#64748b', maxWidth: '280px' }}>
-                                                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.CallNote}>
+                                                            <td style={{ padding: '10px 12px', color: '#64748b', minWidth: '220px', maxWidth: '450px' }}>
+                                                                <div style={{ whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'break-word', lineHeight: '1.45' }} title={r.CallNote || ''}>
                                                                     {r.CallNote || 'No notes'}
                                                                 </div>
                                                             </td>
