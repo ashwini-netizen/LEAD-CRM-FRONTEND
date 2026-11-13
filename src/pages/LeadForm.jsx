@@ -469,7 +469,7 @@ const LeadForm = ({ user }) => {
                             <input 
                                 name="customStatus" 
                                 className="input-field" 
-                                placeholder="Enter Lead Status (e.g. Direct Visit, Busy)" 
+                                placeholder="Enter Lead Status" 
                                 value={formData.customStatus} 
                                 onChange={handleChange} 
                                 onBlur={(e) => {
@@ -478,24 +478,11 @@ const LeadForm = ({ user }) => {
                                         setFormData(prev => ({ ...prev, customStatus: norm }));
                                     }
                                 }}
-                                list="ce-status-suggestions"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                spellCheck="false"
                                 required 
                             />
-                            <datalist id="ce-status-suggestions">
-                                <option value="Direct Visit" />
-                                <option value="Wrong Number" />
-                            </datalist>
-                            {isCE && formData.customStatus.trim() && (() => {
-                                const norm = normalizeCustomStatusCE(formData.customStatus);
-                                if (norm && norm.toLowerCase() !== formData.customStatus.trim().toLowerCase()) {
-                                    return (
-                                        <div style={{ fontSize: '0.8rem', color: '#6366f1', marginTop: '6px', fontWeight: '600' }}>
-                                            Standardized to: <strong>{norm}</strong> (avoids duplicates in Lead Database)
-                                        </div>
-                                    );
-                                }
-                                return null;
-                            })()}
                         </div>
                     )}
 

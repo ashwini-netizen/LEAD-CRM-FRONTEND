@@ -714,7 +714,7 @@ const CallFollowupManage = ({ user }) => {
                                 <label style={labelStyle}>Specific Lead Status *</label>
                                 <input 
                                     className="input-field" 
-                                    placeholder="Enter Lead Status (e.g. Direct Visit, Busy)" 
+                                    placeholder="Enter Lead Status" 
                                     value={customStatus} 
                                     onChange={e => setCustomStatus(e.target.value)} 
                                     onBlur={e => {
@@ -728,13 +728,11 @@ const CallFollowupManage = ({ user }) => {
                                             else setCustomStatus(raw.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '));
                                         }
                                     }}
-                                    list="cf-status-suggestions"
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    spellCheck="false"
                                     required 
                                 />
-                                <datalist id="cf-status-suggestions">
-                                    <option value="Direct Visit" />
-                                    <option value="Wrong Number" />
-                                </datalist>
                             </div>
                         )}
 
