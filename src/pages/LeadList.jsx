@@ -1625,7 +1625,7 @@ const LeadList = ({ user, isMyCreated }) => {
                             )}
                         </div>
                     ) : (
-                        <table style={{ width: '100%', minWidth: user?.role === 'Admin' ? '1600px' : '1250px', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto' }}>
+                        <table style={{ width: '100%', minWidth: user?.role === 'Admin' ? '1700px' : '1350px', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto' }}>
                             <thead style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
                                 <tr style={{ color: '#1e293b', fontSize: '0.85rem', fontWeight: '800', textTransform: 'uppercase' }}>
                                     {selectMode && (
@@ -1658,7 +1658,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', width: '60px' }}>S.No</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', width: '200px', minWidth: '180px', maxWidth: '240px' }}>Name</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', width: '140px', minWidth: '130px' }}>Phone</th>
-                                    <th style={{ padding: '16px 16px', whiteSpace: 'nowrap', width: '280px', minWidth: '260px', maxWidth: '340px' }}>Location</th>
+                                    <th style={{ padding: '16px 16px', whiteSpace: 'nowrap', width: '360px', minWidth: '340px', maxWidth: '420px' }}>Location</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Email</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Company</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Service</th>
@@ -1737,21 +1737,17 @@ const LeadList = ({ user, isMyCreated }) => {
                                                 </div>
                                             </td>
                                             <td style={{ padding: '16px 20px', color: '#64748b', whiteSpace: 'nowrap', width: '140px', minWidth: '130px' }}>{lead.Phone || 'N/A'}</td>
-                                            <td style={{ padding: '14px 16px', color: '#64748b', width: '280px', minWidth: '260px', maxWidth: '340px', verticalAlign: 'middle' }}>
+                                            <td style={{ padding: '14px 16px', color: '#64748b', width: '360px', minWidth: '340px', maxWidth: '420px', verticalAlign: 'middle' }}>
                                                 <div
                                                     style={{
                                                         width: '100%',
-                                                        minWidth: '260px',
-                                                        maxWidth: '340px',
+                                                        minWidth: '340px',
+                                                        maxWidth: '420px',
                                                         whiteSpace: 'normal',
                                                         wordBreak: 'normal',
                                                         overflowWrap: 'break-word',
                                                         lineHeight: '1.45',
-                                                        fontSize: '0.85rem',
-                                                        display: '-webkit-box',
-                                                        WebkitLineClamp: 3,
-                                                        WebkitBoxOrient: 'vertical',
-                                                        overflow: 'hidden'
+                                                        fontSize: '0.85rem'
                                                     }}
                                                     title={lead.Address ? formatAddress(lead.Address) : ''}
                                                 >
