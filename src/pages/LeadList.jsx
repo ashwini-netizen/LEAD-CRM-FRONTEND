@@ -529,11 +529,11 @@ const LeadList = ({ user, isMyCreated }) => {
             const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
             const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-            const filePrefix = isMyCreated 
-                ? 'My_Created_Leads' 
+            const filePrefix = isMyCreated
+                ? 'My_Created_Leads'
                 : (isFE ? 'Assigned_Meetings_Leads' : 'Leads');
-            const reportTitle = isMyCreated 
-                ? 'My Created Leads Report' 
+            const reportTitle = isMyCreated
+                ? 'My Created Leads Report'
                 : (isFE ? 'Assigned Meetings Leads Report' : 'Lead Database Report');
 
             if (exportFormat === 'excel') {
@@ -604,8 +604,8 @@ const LeadList = ({ user, isMyCreated }) => {
                     lead.SpecificCompanyName || '-',
                     (isCE ? getCanonicalStatusCE(lead.Status) : getCanonicalStatus(lead.Status)) || lead.Status || '-',
                     lead.ServiceInterested || '-',
-                    lead.MeetingDate 
-                        ? new Date(lead.MeetingDate).toLocaleDateString('en-GB') 
+                    lead.MeetingDate
+                        ? new Date(lead.MeetingDate).toLocaleDateString('en-GB')
                         : (lead.FollowupDate ? new Date(lead.FollowupDate).toLocaleDateString('en-GB') : '-')
                 ]);
 
@@ -764,8 +764,8 @@ const LeadList = ({ user, isMyCreated }) => {
         }
     };
 
-    useEffect(() => { 
-        fetchLeads(); 
+    useEffect(() => {
+        fetchLeads();
         const handleLeadUpdate = () => {
             leadsCache.data = null;
             fetchLeads(true);
@@ -987,9 +987,9 @@ const LeadList = ({ user, isMyCreated }) => {
             <UserHeader user={user} title={isMyCreated ? 'My Created Leads' : 'Lead Management'} />
 
             <div className="page-main-container" style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
-                <button 
-                    onClick={() => navigate('/dashboard')} 
-                    className="btn-secondary" 
+                <button
+                    onClick={() => navigate('/dashboard')}
+                    className="btn-secondary"
                     style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '20px', width: 'fit-content' }}
                 >
                     <ArrowLeft size={18} /> Back to Dashboard
@@ -1576,13 +1576,13 @@ const LeadList = ({ user, isMyCreated }) => {
                     <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', padding: '14px 18px', borderRadius: '10px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                         <span>⚠️ {error.toLowerCase().includes('token') || error.includes('401') ? 'Your session has expired. Please log in again.' : error}</span>
                         {error.toLowerCase().includes('token') || error.includes('401') ? (
-                            <button 
+                            <button
                                 onClick={() => {
                                     localStorage.removeItem('crm_token');
                                     localStorage.removeItem('crm_user');
                                     const currentRole = localStorage.getItem('selected_role');
                                     navigate(currentRole ? '/login' : '/', { replace: true });
-                                }} 
+                                }}
                                 style={{ color: '#fff', background: '#ef4444', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
                             >
                                 Log In Again
@@ -1593,15 +1593,15 @@ const LeadList = ({ user, isMyCreated }) => {
                     </div>
                 )}
 
-                <div 
+                <div
                     ref={tableContainerRef}
-                    className="glass-card responsive-table-container hide-scrollbar" 
-                    style={{ 
-                        padding: '0', 
-                        overflowX: 'auto', 
-                        width: '100%', 
-                        maxWidth: '100%', 
-                        cursor: isDragging ? 'grabbing' : 'grab' 
+                    className="glass-card responsive-table-container hide-scrollbar"
+                    style={{
+                        padding: '0',
+                        overflowX: 'auto',
+                        width: '100%',
+                        maxWidth: '100%',
+                        cursor: isDragging ? 'grabbing' : 'grab'
                     }}
                     onMouseDown={handleMouseDown}
                     onMouseLeave={handleMouseLeave}
@@ -1615,8 +1615,8 @@ const LeadList = ({ user, isMyCreated }) => {
                     ) : filtered.length === 0 ? (
                         <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
                             {search ? `No leads matching "${search}"` : (
-                                isFE && !isMyCreated 
-                                    ? 'No assigned meeting leads yet.' 
+                                isFE && !isMyCreated
+                                    ? 'No assigned meeting leads yet.'
                                     : (categoryFilter === 'conversions'
                                         ? 'No converted leads yet.'
                                         : (categoryFilter === 'pending'
@@ -1656,7 +1656,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                         </th>
                                     )}
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', width: '60px' }}>S.No</th>
-                                    <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', minWidth: '160px' }}>Name</th>
+                                    <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', width: '200px', minWidth: '180px', maxWidth: '240px' }}>Name</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', width: '140px', minWidth: '130px' }}>Phone</th>
                                     <th style={{ padding: '16px 16px', whiteSpace: 'nowrap', width: '280px', minWidth: '260px', maxWidth: '340px' }}>Location</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Email</th>
@@ -1716,20 +1716,35 @@ const LeadList = ({ user, isMyCreated }) => {
                                                 );
                                             })()}
                                             <td style={{ padding: '16px 20px', color: '#64748b', fontSize: '0.85rem', whiteSpace: 'nowrap', width: '60px' }}>{startIndex + i + 1}</td>
-                                            <td style={{ padding: '16px 20px', fontWeight: '800', color: '#0f172a', whiteSpace: 'nowrap', minWidth: '160px' }}>{lead.FullName}</td>
-                                            <td style={{ padding: '16px 20px', color: '#64748b', whiteSpace: 'nowrap', width: '140px', minWidth: '130px' }}>{lead.Phone || 'N/A'}</td>
-                                            <td style={{ padding: '14px 16px', color: '#64748b', width: '280px', minWidth: '260px', maxWidth: '340px', verticalAlign: 'middle' }}>
+                                            <td style={{ padding: '14px 20px', fontWeight: '800', color: '#0f172a', width: '200px', minWidth: '180px', maxWidth: '240px', verticalAlign: 'middle' }}>
                                                 <div 
                                                     style={{ 
                                                         width: '100%',
-                                                        minWidth: '260px',
-                                                        maxWidth: '340px', 
+                                                        minWidth: '180px',
+                                                        maxWidth: '240px', 
                                                         whiteSpace: 'normal', 
                                                         wordBreak: 'normal', 
                                                         overflowWrap: 'break-word', 
+                                                        lineHeight: '1.4' 
+                                                    }} 
+                                                    title={lead.FullName || ''}
+                                                >
+                                                    {lead.FullName}
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '16px 20px', color: '#64748b', whiteSpace: 'nowrap', width: '140px', minWidth: '130px' }}>{lead.Phone || 'N/A'}</td>
+                                            <td style={{ padding: '14px 16px', color: '#64748b', width: '280px', minWidth: '260px', maxWidth: '340px', verticalAlign: 'middle' }}>
+                                                <div
+                                                    style={{
+                                                        width: '100%',
+                                                        minWidth: '260px',
+                                                        maxWidth: '340px',
+                                                        whiteSpace: 'normal',
+                                                        wordBreak: 'normal',
+                                                        overflowWrap: 'break-word',
                                                         lineHeight: '1.45',
                                                         fontSize: '0.85rem'
-                                                    }} 
+                                                    }}
                                                     title={lead.Address ? formatAddress(lead.Address) : ''}
                                                 >
                                                     {formatAddress(lead.Address)}
@@ -1785,11 +1800,11 @@ const LeadList = ({ user, isMyCreated }) => {
                                                     <Eye
                                                         size={17}
                                                         style={{ cursor: 'pointer', color: '#6366f1' }}
-                                                        onClick={() => navigate(`/leads/${lead.LeadID}`, { 
-                                                            state: { 
-                                                                from: isMyCreated ? '/leads/my-created' : '/leads', 
+                                                        onClick={() => navigate(`/leads/${lead.LeadID}`, {
+                                                            state: {
+                                                                from: isMyCreated ? '/leads/my-created' : '/leads',
                                                                 label: isMyCreated ? 'My Created Leads' : 'Leads'
-                                                            } 
+                                                            }
                                                         })}
                                                         title="View Details"
                                                     />
@@ -1797,11 +1812,11 @@ const LeadList = ({ user, isMyCreated }) => {
                                                         <FileText
                                                             size={17}
                                                             style={{ cursor: 'pointer', color: '#10b981' }}
-                                                            onClick={() => navigate(`/leads/manage/${lead.LeadID}`, { 
-                                                                state: { 
-                                                                    from: isMyCreated ? '/leads/my-created' : '/leads', 
+                                                            onClick={() => navigate(`/leads/manage/${lead.LeadID}`, {
+                                                                state: {
+                                                                    from: isMyCreated ? '/leads/my-created' : '/leads',
                                                                     label: isMyCreated ? 'My Created Leads' : 'Leads'
-                                                                } 
+                                                                }
                                                             })}
                                                             title="Manage Lead"
                                                         />
@@ -1811,11 +1826,11 @@ const LeadList = ({ user, isMyCreated }) => {
                                                             <FileText
                                                                 size={17}
                                                                 style={{ cursor: 'pointer', color: '#10b981' }}
-                                                                onClick={() => navigate(`/leads/manage/${lead.LeadID}`, { 
-                                                                    state: { 
-                                                                        from: isMyCreated ? '/leads/my-created' : '/leads', 
+                                                                onClick={() => navigate(`/leads/manage/${lead.LeadID}`, {
+                                                                    state: {
+                                                                        from: isMyCreated ? '/leads/my-created' : '/leads',
                                                                         label: isMyCreated ? 'My Created Leads' : (user?.role === 'Field Executive' ? 'Assigned Meetings Leads' : 'Leads')
-                                                                    } 
+                                                                    }
                                                                 })}
                                                                 title="Manage Lead"
                                                             />
