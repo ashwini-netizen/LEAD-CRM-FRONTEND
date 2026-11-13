@@ -1625,7 +1625,7 @@ const LeadList = ({ user, isMyCreated }) => {
                             )}
                         </div>
                     ) : (
-                        <table style={{ width: '100%', minWidth: user?.role === 'Admin' ? '1700px' : '1350px', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto' }}>
+                        <table style={{ width: '100%', minWidth: user?.role === 'Admin' ? '1750px' : '1400px', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto' }}>
                             <thead style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
                                 <tr style={{ color: '#1e293b', fontSize: '0.85rem', fontWeight: '800', textTransform: 'uppercase' }}>
                                     {selectMode && (
@@ -1656,7 +1656,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                         </th>
                                     )}
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', width: '60px' }}>S.No</th>
-                                    <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', width: '200px', minWidth: '180px', maxWidth: '240px' }}>Name</th>
+                                    <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', width: '260px', minWidth: '240px', maxWidth: '320px' }}>Name</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap', width: '140px', minWidth: '130px' }}>Phone</th>
                                     <th style={{ padding: '16px 16px', whiteSpace: 'nowrap', width: '360px', minWidth: '340px', maxWidth: '420px' }}>Location</th>
                                     <th style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>Email</th>
@@ -1716,20 +1716,16 @@ const LeadList = ({ user, isMyCreated }) => {
                                                 );
                                             })()}
                                             <td style={{ padding: '16px 20px', color: '#64748b', fontSize: '0.85rem', whiteSpace: 'nowrap', width: '60px' }}>{startIndex + i + 1}</td>
-                                            <td style={{ padding: '14px 20px', fontWeight: '800', color: '#0f172a', width: '200px', minWidth: '180px', maxWidth: '240px', verticalAlign: 'middle' }}>
+                                            <td style={{ padding: '14px 20px', fontWeight: '800', color: '#0f172a', width: '260px', minWidth: '240px', maxWidth: '320px', verticalAlign: 'middle' }}>
                                                 <div 
                                                     style={{ 
                                                         width: '100%',
-                                                        minWidth: '180px',
-                                                        maxWidth: '240px', 
+                                                        minWidth: '240px',
+                                                        maxWidth: '320px', 
                                                         whiteSpace: 'normal', 
                                                         wordBreak: 'normal', 
                                                         overflowWrap: 'break-word', 
-                                                        lineHeight: '1.4',
-                                                        display: '-webkit-box',
-                                                        WebkitLineClamp: 3,
-                                                        WebkitBoxOrient: 'vertical',
-                                                        overflow: 'hidden'
+                                                        lineHeight: '1.4' 
                                                     }} 
                                                     title={lead.FullName || ''}
                                                 >
