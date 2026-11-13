@@ -299,6 +299,12 @@ const LeadForm = ({ user }) => {
         setFormData(prev => ({ ...prev, services: newServices }));
     };
 
+    const makeEditable = (e) => {
+        if (e && e.target) {
+            e.target.readOnly = false;
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if ((user?.role === 'Call Executive' || user?.role === 'Field Executive') && !user?.IsOnline) {
@@ -391,7 +397,7 @@ const LeadForm = ({ user }) => {
                     </div>
 
                     <div>
-                        <label style={labelStyle}>Full Name *</label>
+                        <div style={labelStyle}>Full Name *</div>
                         <input 
                             data-field="fullName"
                             name="crm_field_client_entry" 
@@ -399,7 +405,11 @@ const LeadForm = ({ user }) => {
                             placeholder="Client Name" 
                             value={formData.fullName} 
                             onChange={handleChange} 
-                            autoComplete="new-password"
+                            readOnly
+                            onFocus={makeEditable}
+                            onMouseDown={makeEditable}
+                            onTouchStart={makeEditable}
+                            autoComplete="off"
                             autoCorrect="off"
                             autoCapitalize="off"
                             spellCheck="false"
@@ -408,7 +418,7 @@ const LeadForm = ({ user }) => {
                         />
                     </div>
                     <div>
-                        <label style={labelStyle}>Phone Number {isFEorCE ? '' : '*'}</label>
+                        <div style={labelStyle}>Phone Number {isFEorCE ? '' : '*'}</div>
                         <input 
                             data-field="phone"
                             name="crm_field_contact_entry" 
@@ -416,7 +426,11 @@ const LeadForm = ({ user }) => {
                             placeholder="10 Digit Number (starts with 6-9)" 
                             value={formData.phone} 
                             onChange={handleChange} 
-                            autoComplete="new-password"
+                            readOnly
+                            onFocus={makeEditable}
+                            onMouseDown={makeEditable}
+                            onTouchStart={makeEditable}
+                            autoComplete="off"
                             autoCorrect="off"
                             autoCapitalize="off"
                             spellCheck="false"
@@ -425,7 +439,7 @@ const LeadForm = ({ user }) => {
                         />
                     </div>
                     <div>
-                        <label style={labelStyle}>Email {isFEorCE ? '' : '*'}</label>
+                        <div style={labelStyle}>Email {isFEorCE ? '' : '*'}</div>
                         <input
                             data-field="email"
                             name="crm_field_mail_entry"
@@ -434,9 +448,13 @@ const LeadForm = ({ user }) => {
                             placeholder="email@example.com"
                             value={formData.email}
                             onChange={handleChange}
+                            readOnly
+                            onFocus={makeEditable}
+                            onMouseDown={makeEditable}
+                            onTouchStart={makeEditable}
                             onKeyDown={e => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); }}
                             onBlur={() => setFormData(prev => ({ ...prev, email: prev.email.trim().replace(/\s/g, '') }))}
-                            autoComplete="new-password"
+                            autoComplete="off"
                             autoCorrect="off"
                             autoCapitalize="off"
                             spellCheck="false"
@@ -445,7 +463,7 @@ const LeadForm = ({ user }) => {
                         />
                     </div>
                     <div>
-                        <label style={labelStyle}>Company *</label>
+                        <div style={labelStyle}>Company *</div>
                         <input 
                             data-field="company"
                             name="crm_field_org_entry" 
@@ -453,7 +471,11 @@ const LeadForm = ({ user }) => {
                             placeholder="Company Name" 
                             value={formData.company} 
                             onChange={handleChange} 
-                            autoComplete="new-password"
+                            readOnly
+                            onFocus={makeEditable}
+                            onMouseDown={makeEditable}
+                            onTouchStart={makeEditable}
+                            autoComplete="off"
                             autoCorrect="off"
                             autoCapitalize="off"
                             spellCheck="false"
@@ -463,7 +485,7 @@ const LeadForm = ({ user }) => {
                     </div>
 
                     <div style={{ gridColumn: 'span 2' }}>
-                        <label style={labelStyle}>Address *</label>
+                        <div style={labelStyle}>Address *</div>
                         <textarea 
                             data-field="address"
                             name="crm_field_loc_entry" 
@@ -472,7 +494,11 @@ const LeadForm = ({ user }) => {
                             placeholder="Enter Full Address" 
                             value={formData.address} 
                             onChange={handleChange} 
-                            autoComplete="new-password"
+                            readOnly
+                            onFocus={makeEditable}
+                            onMouseDown={makeEditable}
+                            onTouchStart={makeEditable}
+                            autoComplete="off"
                             autoCorrect="off"
                             autoCapitalize="off"
                             spellCheck="false"
@@ -482,7 +508,7 @@ const LeadForm = ({ user }) => {
                     </div>
 
                     <div style={isFE ? { gridColumn: 'span 2' } : {}}>
-                        <label style={labelStyle}>Call Date *</label>
+                        <div style={labelStyle}>Call Date *</div>
                         <div style={{ position: 'relative' }}>
                             <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
                             <input type="date" name="callDate" className="input-field" style={{ paddingLeft: '36px' }} value={formData.callDate} onChange={handleChange} min={isFE ? undefined : new Date().toISOString().split('T')[0]} required />
@@ -490,7 +516,7 @@ const LeadForm = ({ user }) => {
                     </div>
 
                     <div style={{ gridColumn: 'span 2' }}>
-                        <label style={labelStyle}>Lead Status *</label>
+                        <div style={labelStyle}>Lead Status *</div>
                         <select name="status" className="input-field" value={formData.status} onChange={handleChange} required>
                             <option value="" disabled hidden>Select Status</option>
                             {isFE ? (
@@ -524,7 +550,7 @@ const LeadForm = ({ user }) => {
 
                     {formData.status === 'other' && (
                         <div style={{ gridColumn: 'span 2' }} className="fade-in">
-                            <label style={labelStyle}>Specific Lead Status *</label>
+                            <div style={labelStyle}>Specific Lead Status *</div>
                             <input 
                                 data-field="customStatus"
                                 name="crm_field_custom_status" 
@@ -532,13 +558,17 @@ const LeadForm = ({ user }) => {
                                 placeholder="Enter Lead Status" 
                                 value={formData.customStatus} 
                                 onChange={handleChange} 
+                                readOnly
+                                onFocus={makeEditable}
+                                onMouseDown={makeEditable}
+                                onTouchStart={makeEditable}
                                 onBlur={(e) => {
                                     if (isCE && e.target.value.trim()) {
                                         const norm = normalizeCustomStatusCE(e.target.value);
                                         setFormData(prev => ({ ...prev, customStatus: norm }));
                                     }
                                 }}
-                                autoComplete="new-password"
+                                autoComplete="off"
                                 autoCorrect="off"
                                 autoCapitalize="off"
                                 spellCheck="false"
@@ -551,7 +581,7 @@ const LeadForm = ({ user }) => {
                     {formData.status === 'Interested' && (
                         <div style={{ gridColumn: 'span 2' }} className="fade-in">
                             <div style={{ marginBottom: '15px' }}>
-                                <label style={labelStyle}>Services Interested</label>
+                                <div style={labelStyle}>Services Interested</div>
                             </div>
                             {formData.services.map((service, index) => (
                                 <div key={index} style={{ display: 'flex', gap: '15px', marginBottom: '15px', alignItems: 'flex-start' }}>
@@ -581,7 +611,11 @@ const LeadForm = ({ user }) => {
                                                 placeholder="Enter Service Name"
                                                 value={service.custom}
                                                 onChange={(e) => handleServiceChange(index, 'custom', e.target.value)}
-                                                autoComplete="new-password"
+                                                readOnly
+                                                onFocus={makeEditable}
+                                                onMouseDown={makeEditable}
+                                                onTouchStart={makeEditable}
+                                                autoComplete="off"
                                                 autoCorrect="off"
                                                 autoCapitalize="off"
                                                 spellCheck="false"
@@ -622,7 +656,7 @@ const LeadForm = ({ user }) => {
 
                     {!isFE && !['Busy', 'Not Answering', 'Switch Off', 'Speaking with Someone Else', 'Incoming Not Available', 'Out of Service', 'Hold', 'Processing', 'Invalid', 'other'].includes(formData.status) && (
                         <div style={{ gridColumn: 'span 2' }}>
-                            <label style={labelStyle}>Call Note *</label>
+                            <div style={labelStyle}>Call Note *</div>
                             <textarea 
                                 data-field="callNote"
                                 name="crm_field_call_note" 
@@ -631,7 +665,11 @@ const LeadForm = ({ user }) => {
                                 placeholder="Tell us more about the lead..." 
                                 value={formData.callNote} 
                                 onChange={handleChange} 
-                                autoComplete="new-password"
+                                readOnly
+                                onFocus={makeEditable}
+                                onMouseDown={makeEditable}
+                                onTouchStart={makeEditable}
+                                autoComplete="off"
                                 autoCorrect="off"
                                 autoCapitalize="off"
                                 spellCheck="false"
@@ -644,14 +682,14 @@ const LeadForm = ({ user }) => {
                     {formData.status === 'Interested' && (
                         <>
                             <div className="fade-in">
-                                <label style={labelStyle}>Meeting Date *</label>
+                                <div style={labelStyle}>Meeting Date *</div>
                                 <div style={{ position: 'relative' }}>
                                     <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
                                     <input type="date" name="meetingDate" className="input-field" style={{ paddingLeft: '36px' }} value={formData.meetingDate} onChange={handleChange} min={new Date().toISOString().split('T')[0]} required />
                                 </div>
                             </div>
                             <div className="fade-in">
-                                <label style={labelStyle}>Meeting Time *</label>
+                                <div style={labelStyle}>Meeting Time *</div>
                                 {(() => {
                                     const { hour12, minute, ampm } = parseTime24(formData.meetingTime);
                                     return (
@@ -708,14 +746,14 @@ const LeadForm = ({ user }) => {
                     {formData.status === 'Follow-up' && (
                         <>
                             <div className="fade-in">
-                                <label style={labelStyle}>Next Date and Time *</label>
+                                <div style={labelStyle}>Next Date and Time *</div>
                                 <div style={{ position: 'relative' }}>
                                     <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
                                     <input type="date" name="followupDate" className="input-field" style={{ paddingLeft: '36px' }} value={formData.followupDate} onChange={handleChange} min={new Date().toISOString().split('T')[0]} required />
                                 </div>
                             </div>
                             <div className="fade-in">
-                                <label style={labelStyle}>PREF. Time *</label>
+                                <div style={labelStyle}>PREF. Time *</div>
                                 {(() => {
                                     const { hour12, minute, ampm } = parseTime24(formData.followupTime);
                                     return (
@@ -771,7 +809,7 @@ const LeadForm = ({ user }) => {
 
                     {formData.status === 'Not Interested' && (
                         <div style={{ gridColumn: 'span 2' }} className="fade-in">
-                            <label style={labelStyle}>Reason</label>
+                            <div style={labelStyle}>Reason</div>
                             <textarea 
                                 data-field="reason"
                                 name="crm_field_discard_reason" 
@@ -780,7 +818,11 @@ const LeadForm = ({ user }) => {
                                 placeholder="Why not interested?" 
                                 value={formData.reason} 
                                 onChange={handleChange} 
-                                autoComplete="new-password"
+                                readOnly
+                                onFocus={makeEditable}
+                                onMouseDown={makeEditable}
+                                onTouchStart={makeEditable}
+                                autoComplete="off"
                                 autoCorrect="off"
                                 autoCapitalize="off"
                                 spellCheck="false"

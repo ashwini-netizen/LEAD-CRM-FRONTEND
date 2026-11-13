@@ -268,6 +268,12 @@ const CallFollowupManage = ({ user }) => {
         }
     };
 
+    const makeEditable = (e) => {
+        if (e && e.target) {
+            e.target.readOnly = false;
+        }
+    };
+
     const handleSaveClient = async () => {
         if (!editPhone || !editEmail || !editCompany) {
             return alert('Please fill all required fields (Primary Phone, Email, Company Type).');
@@ -527,7 +533,7 @@ const CallFollowupManage = ({ user }) => {
                         {isEditingClient ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                 <div>
-                                    <label style={labelStyle}><Phone size={14} style={{ marginRight: '5px' }} /> Primary Phone *</label>
+                                    <div style={labelStyle}><Phone size={14} style={{ marginRight: '5px' }} /> Primary Phone *</div>
                                     <input
                                         type="tel"
                                         maxLength={10}
@@ -536,7 +542,11 @@ const CallFollowupManage = ({ user }) => {
                                         value={editPhone}
                                         onChange={e => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                                         placeholder="10-digit Primary Phone Number"
-                                        autoComplete="new-password"
+                                        readOnly
+                                        onFocus={makeEditable}
+                                        onMouseDown={makeEditable}
+                                        onTouchStart={makeEditable}
+                                        autoComplete="off"
                                         autoCorrect="off"
                                         autoCapitalize="off"
                                         spellCheck="false"
@@ -545,7 +555,7 @@ const CallFollowupManage = ({ user }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label style={labelStyle}><Phone size={14} style={{ marginRight: '5px' }} /> Alternate Phone Number</label>
+                                    <div style={labelStyle}><Phone size={14} style={{ marginRight: '5px' }} /> Alternate Phone Number</div>
                                     <input
                                         type="tel"
                                         maxLength={10}
@@ -554,7 +564,11 @@ const CallFollowupManage = ({ user }) => {
                                         value={editAlternatePhone}
                                         onChange={e => setEditAlternatePhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                                         placeholder="10-digit Alternate Phone (Optional)"
-                                        autoComplete="new-password"
+                                        readOnly
+                                        onFocus={makeEditable}
+                                        onMouseDown={makeEditable}
+                                        onTouchStart={makeEditable}
+                                        autoComplete="off"
                                         autoCorrect="off"
                                         autoCapitalize="off"
                                         spellCheck="false"
@@ -562,7 +576,7 @@ const CallFollowupManage = ({ user }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label style={labelStyle}><Mail size={14} style={{ marginRight: '5px' }} /> Email *</label>
+                                    <div style={labelStyle}><Mail size={14} style={{ marginRight: '5px' }} /> Email *</div>
                                     <input
                                         type="email"
                                         name="crm_edit_email_addr"
@@ -570,7 +584,11 @@ const CallFollowupManage = ({ user }) => {
                                         value={editEmail}
                                         onChange={e => setEditEmail(e.target.value)}
                                         placeholder="Email Address"
-                                        autoComplete="new-password"
+                                        readOnly
+                                        onFocus={makeEditable}
+                                        onMouseDown={makeEditable}
+                                        onTouchStart={makeEditable}
+                                        autoComplete="off"
                                         autoCorrect="off"
                                         autoCapitalize="off"
                                         spellCheck="false"
@@ -579,7 +597,7 @@ const CallFollowupManage = ({ user }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label style={labelStyle}><Building size={14} style={{ marginRight: '5px' }} /> Company Type *</label>
+                                    <div style={labelStyle}><Building size={14} style={{ marginRight: '5px' }} /> Company Type *</div>
                                     <input
                                         type="text"
                                         name="crm_edit_co_type"
@@ -587,7 +605,11 @@ const CallFollowupManage = ({ user }) => {
                                         value={editCompany}
                                         onChange={e => setEditCompany(e.target.value)}
                                         placeholder="e.g. Dental Clinic, Car Showroom"
-                                        autoComplete="new-password"
+                                        readOnly
+                                        onFocus={makeEditable}
+                                        onMouseDown={makeEditable}
+                                        onTouchStart={makeEditable}
+                                        autoComplete="off"
                                         autoCorrect="off"
                                         autoCapitalize="off"
                                         spellCheck="false"
@@ -596,7 +618,7 @@ const CallFollowupManage = ({ user }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label style={labelStyle}><Building size={14} style={{ marginRight: '5px' }} /> Specific Company Name</label>
+                                    <div style={labelStyle}><Building size={14} style={{ marginRight: '5px' }} /> Specific Company Name</div>
                                     <input
                                         type="text"
                                         name="crm_edit_co_specific"
@@ -604,7 +626,11 @@ const CallFollowupManage = ({ user }) => {
                                         value={editSpecificCompany}
                                         onChange={e => setEditSpecificCompany(e.target.value)}
                                         placeholder="e.g. ABC Motors, Smile Dental Care"
-                                        autoComplete="new-password"
+                                        readOnly
+                                        onFocus={makeEditable}
+                                        onMouseDown={makeEditable}
+                                        onTouchStart={makeEditable}
+                                        autoComplete="off"
                                         autoCorrect="off"
                                         autoCapitalize="off"
                                         spellCheck="false"
@@ -693,7 +719,7 @@ const CallFollowupManage = ({ user }) => {
                         <h3 style={{ marginBottom: '20px', fontSize: '1.1rem' }}>Updating Details</h3>
 
                         <div style={{ marginBottom: '20px' }}>
-                            <label style={labelStyle}>New Call Note</label>
+                            <div style={labelStyle}>New Call Note</div>
                             <textarea
                                 name="crm_followup_note"
                                 className="input-field"
@@ -701,7 +727,11 @@ const CallFollowupManage = ({ user }) => {
                                 value={callNote}
                                 onChange={e => setCallNote(e.target.value)}
                                 placeholder="Summary of the Follow-up call..."
-                                autoComplete="new-password"
+                                readOnly
+                                onFocus={makeEditable}
+                                onMouseDown={makeEditable}
+                                onTouchStart={makeEditable}
+                                autoComplete="off"
                                 autoCorrect="off"
                                 autoCapitalize="off"
                                 spellCheck="false"
@@ -733,7 +763,7 @@ const CallFollowupManage = ({ user }) => {
                         </div>
 
                         <div style={{ marginBottom: '20px' }}>
-                            <label style={labelStyle}>Lead Status</label>
+                            <div style={labelStyle}>Lead Status</div>
                             <select className="input-field" value={status} onChange={e => setStatus(e.target.value)}>
                                 <option value="Interested">Interested (Schedule Meeting)</option>
                                 <option value="Follow-up">Follow-up</option>
@@ -753,13 +783,17 @@ const CallFollowupManage = ({ user }) => {
 
                         {status === 'other' && (
                             <div style={{ marginBottom: '20px' }} className="fade-in">
-                                <label style={labelStyle}>Specific Lead Status *</label>
+                                <div style={labelStyle}>Specific Lead Status *</div>
                                 <input 
                                     name="crm_field_custom_status"
                                     className="input-field" 
                                     placeholder="Enter Lead Status" 
                                     value={customStatus} 
                                     onChange={e => setCustomStatus(e.target.value)} 
+                                    readOnly
+                                    onFocus={makeEditable}
+                                    onMouseDown={makeEditable}
+                                    onTouchStart={makeEditable}
                                     onBlur={e => {
                                         const raw = e.target.value.trim();
                                         if (raw) {
@@ -771,7 +805,7 @@ const CallFollowupManage = ({ user }) => {
                                             else setCustomStatus(raw.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '));
                                         }
                                     }}
-                                    autoComplete="new-password"
+                                    autoComplete="off"
                                     autoCorrect="off"
                                     autoCapitalize="off"
                                     spellCheck="false"
@@ -784,7 +818,7 @@ const CallFollowupManage = ({ user }) => {
                         {status === 'Interested' && (
                             <>
                                 <div style={{ marginBottom: '20px' }} className="fade-in">
-                                    <label style={labelStyle}>Services Interested</label>
+                                    <div style={labelStyle}>Services Interested</div>
                                     {services.map((service, index) => (
                                         <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                                             <select
@@ -810,7 +844,11 @@ const CallFollowupManage = ({ user }) => {
                                                     placeholder="Custom Service"
                                                     value={service.custom}
                                                     onChange={(e) => handleServiceChange(index, 'custom', e.target.value)}
-                                                    autoComplete="new-password"
+                                                    readOnly
+                                                    onFocus={makeEditable}
+                                                    onMouseDown={makeEditable}
+                                                    onTouchStart={makeEditable}
+                                                    autoComplete="off"
                                                     autoCorrect="off"
                                                     autoCapitalize="off"
                                                     spellCheck="false"
@@ -827,14 +865,14 @@ const CallFollowupManage = ({ user }) => {
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }} className="fade-in">
                                     <div>
-                                        <label style={labelStyle}><Calendar size={14} style={{ marginRight: '5px' }} /> Meeting Date *</label>
+                                        <div style={labelStyle}><Calendar size={14} style={{ marginRight: '5px' }} /> Meeting Date *</div>
                                         <div style={{ position: 'relative' }}>
                                             <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
                                             <input type="date" className="input-field" style={{ paddingLeft: '36px' }} value={meetingDate} onChange={e => setMeetingDate(e.target.value)} min={new Date().toISOString().split('T')[0]} required={status === 'Interested'} />
                                         </div>
                                     </div>
                                     <div>
-                                        <label style={labelStyle}><Clock size={14} style={{ marginRight: '5px' }} /> Meeting Time *</label>
+                                        <div style={labelStyle}><Clock size={14} style={{ marginRight: '5px' }} /> Meeting Time *</div>
                                         {(() => {
                                             const { hour12, minute, ampm } = parseTime24(meetingTime);
                                             return (
@@ -892,14 +930,14 @@ const CallFollowupManage = ({ user }) => {
                         {status === 'Follow-up' && (
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }} className="fade-in">
                                 <div>
-                                    <label style={labelStyle}><Calendar size={14} style={{ marginRight: '5px' }} /> Next Date and Time *</label>
+                                    <div style={labelStyle}><Calendar size={14} style={{ marginRight: '5px' }} /> Next Date and Time *</div>
                                     <div style={{ position: 'relative' }}>
                                         <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
                                         <input type="date" className="input-field" style={{ paddingLeft: '36px' }} value={followupDate} onChange={e => setFollowupDate(e.target.value)} min={new Date().toISOString().split('T')[0]} required />
                                     </div>
                                 </div>
                                 <div>
-                                    <label style={labelStyle}><Clock size={14} style={{ marginRight: '5px' }} /> PREF. Time *</label>
+                                    <div style={labelStyle}><Clock size={14} style={{ marginRight: '5px' }} /> PREF. Time *</div>
                                     {(() => {
                                         const { hour12, minute, ampm } = parseTime24(followupTime);
                                         return (
