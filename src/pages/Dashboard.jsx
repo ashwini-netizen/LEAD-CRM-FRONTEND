@@ -9,7 +9,6 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { savePDF } from '../utils/pdfDownload';
 import { Browser } from '@capacitor/browser';
-import toast from 'react-hot-toast';
 import UserHeader from '../components/UserHeader';
 import { formatCleanTime } from '../utils/notificationSync';
 
@@ -23,7 +22,7 @@ const getTodayDateStr = () => {
             month: '2-digit',
             day: '2-digit'
         }).format(new Date());
-    } catch {}
+    } catch { }
     const pad = (n) => String(n).padStart(2, '0');
     const d = new Date();
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -51,7 +50,7 @@ const getLocalDateStr = (dateVal) => {
                 day: '2-digit'
             }).format(d);
         }
-    } catch {}
+    } catch { }
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return '';
     const pad = (n) => String(n).padStart(2, '0');
@@ -102,7 +101,7 @@ const formatLeadCreationDate = (createdAt, callDate) => {
             const year = parts.find(p => p.type === 'year')?.value;
             if (day && month && year) return `${day}-${month}-${year}`;
         }
-    } catch {}
+    } catch { }
     const d = new Date(raw);
     if (isNaN(d.getTime())) return '-';
     const pad = (n) => String(n).padStart(2, '0');
@@ -345,8 +344,8 @@ const Dashboard = ({ user, onLogout }) => {
 
         if (restricted) {
             return (
-                <div 
-                    style={{ ...navStyle, opacity: 0.5, cursor: 'not-allowed' }} 
+                <div
+                    style={{ ...navStyle, opacity: 0.5, cursor: 'not-allowed' }}
                     title="Please turn on online status to perform the activities"
                 >
                     {children}
@@ -439,7 +438,7 @@ const Dashboard = ({ user, onLogout }) => {
             if (!token) return;
             const res = await fetch(`${API_URL}/api/leads?_t=${Date.now()}`, {
                 cache: 'no-store',
-                headers: { 
+                headers: {
                     Authorization: `Bearer ${token}`,
                     'Cache-Control': 'no-cache',
                     Pragma: 'no-cache'
@@ -460,15 +459,8 @@ const Dashboard = ({ user, onLogout }) => {
 
             // Also refresh overview stats so Total Leads, Conversions, and Pending counts stay in sync
             fetchOverview(callDate, adminCallDate, adminCeFilter, startDate, endDate);
-
-            if (isManualRefresh) {
-                toast.success("Today's leads refreshed successfully");
-            }
         } catch (err) {
             console.error('Failed to fetch CE leads:', err);
-            if (isManualRefresh) {
-                toast.error(err.message || 'Failed to refresh leads');
-            }
         } finally {
             setLoadingCeLeads(false);
         }
@@ -607,8 +599,8 @@ const Dashboard = ({ user, onLogout }) => {
                     if (uploadRes.ok) {
                         const uploadData = await uploadRes.json();
                         if (uploadData.success && uploadData.url) {
-                            const absoluteUrl = uploadData.url.startsWith('http') 
-                                ? uploadData.url 
+                            const absoluteUrl = uploadData.url.startsWith('http')
+                                ? uploadData.url
                                 : `${API_URL}${uploadData.url}`;
                             setPdfPreviewUrl(absoluteUrl);
                         }
@@ -822,11 +814,11 @@ const Dashboard = ({ user, onLogout }) => {
 
     // Filter active category leads by search
     const activeCategoryLeads = useMemo(() => {
-        const sourceList = ceLeadsCategory === 'total' 
-            ? ceTotalLeads 
+        const sourceList = ceLeadsCategory === 'total'
+            ? ceTotalLeads
             : (ceLeadsCategory === 'new' ? ceNewLeads : ceFollowupLeads);
         if (!ceLeadsSearch.trim()) return sourceList;
-        return sourceList.filter(l => 
+        return sourceList.filter(l =>
             matchesQuery(l.FullName, ceLeadsSearch) ||
             matchesQuery(l.Phone, ceLeadsSearch) ||
             matchesQuery(l.CompanyName, ceLeadsSearch) ||
@@ -898,7 +890,7 @@ const Dashboard = ({ user, onLogout }) => {
     const filteredTeamCallRecords = useMemo(() => {
         if (!teamCallSearch.trim()) return teamCallRecords;
         const q = teamCallSearch.toLowerCase();
-        return teamCallRecords.filter(r => 
+        return teamCallRecords.filter(r =>
             (r.FullName && r.FullName.toLowerCase().includes(q)) ||
             (r.CompanyName && r.CompanyName.toLowerCase().includes(q)) ||
             (r.Phone && String(r.Phone).toLowerCase().includes(q)) ||
@@ -969,7 +961,7 @@ const Dashboard = ({ user, onLogout }) => {
     return (
         <div style={{ display: 'flex', minHeight: '100vh', width: '100vw', overflow: 'hidden', background: '#f8fafc', position: 'relative' }}>
             {isMobile && isSidebarOpen && (
-                <div 
+                <div
                     style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 999 }}
                     onClick={() => setIsSidebarOpen(false)}
                 />
@@ -1014,7 +1006,7 @@ const Dashboard = ({ user, onLogout }) => {
                                     <NavItem to="/leads/quotation-needed" active={location.pathname === '/leads/quotation-needed'}><FileText size={20} /> Quotation Requests</NavItem>
                                     <NavItem to="/leads/payment-pending" active={location.pathname === '/leads/payment-pending'}><CreditCard size={20} /> Payments</NavItem>
                                     <NavItem to="/tracking" active={location.pathname === '/tracking'}><Navigation size={20} /> Live Tracking</NavItem>
-                                
+
                                 </>
                             )}
                         </>
@@ -1033,7 +1025,7 @@ const Dashboard = ({ user, onLogout }) => {
                     )}
                 </nav>
                 <div style={{ marginTop: 'auto', borderTop: '1px solid #f1f5f9', paddingTop: '10px' }}>
-                    <button 
+                    <button
                         className="logout-btn"
                         onClick={handleLogoutClick}
                     >
@@ -1192,8 +1184,8 @@ const Dashboard = ({ user, onLogout }) => {
                                     </div>
 
                                     {/* Total Leads */}
-                                    <div 
-                                        className="glass-card" 
+                                    <div
+                                        className="glass-card"
                                         onClick={() => navigate('/leads', { state: { categoryFilter: 'all' } })}
                                         style={{ ...convCardStyle('#3b82f6', '#eff6ff', '#bfdbfe'), cursor: 'pointer' }}
                                     >
@@ -1214,8 +1206,8 @@ const Dashboard = ({ user, onLogout }) => {
                                     </div>
 
                                     {/* Pending Leads */}
-                                    <div 
-                                        className="glass-card" 
+                                    <div
+                                        className="glass-card"
                                         onClick={() => navigate('/leads', { state: { categoryFilter: 'pending' } })}
                                         style={{ ...convCardStyle('#f59e0b', '#fffbeb', '#fde68a'), cursor: 'pointer' }}
                                     >
@@ -1276,8 +1268,8 @@ const Dashboard = ({ user, onLogout }) => {
                                                 </span>
                                             </div>
                                             <p style={{ margin: 0, fontSize: '0.76rem', color: '#64748b' }}>
-                                                {callDate === new Date().toISOString().split('T')[0] 
-                                                    ? "Showing today's call records and status counts" 
+                                                {callDate === new Date().toISOString().split('T')[0]
+                                                    ? "Showing today's call records and status counts"
                                                     : `Showing records for ${callDate.split('-').reverse().join('-')}`}
                                             </p>
                                         </div>
@@ -1829,7 +1821,7 @@ const Dashboard = ({ user, onLogout }) => {
                                             <tbody>
                                                 {paginatedCeLeads.map((lead, idx) => {
                                                     const badge = getBadgeColor(lead.Status);
-                                                    const fDateStr = ceLeadsCategory === 'followup' 
+                                                    const fDateStr = ceLeadsCategory === 'followup'
                                                         ? (getLocalDateStr(lead.FollowupDate) || getLocalDateStr(lead.MeetingFollowupDate) || getLocalDateStr(lead.UpdatedAt))
                                                         : '';
                                                     const isOverdue = ceLeadsCategory === 'followup' && Boolean(fDateStr && fDateStr < todayStr);
@@ -1837,9 +1829,9 @@ const Dashboard = ({ user, onLogout }) => {
                                                     const isUpcoming = ceLeadsCategory === 'followup' && Boolean(fDateStr && fDateStr > todayStr);
 
                                                     return (
-                                                        <tr 
-                                                            key={lead.LeadID || idx} 
-                                                            style={{ 
+                                                        <tr
+                                                            key={lead.LeadID || idx}
+                                                            style={{
                                                                 borderBottom: '1px solid #f1f5f9',
                                                                 background: isOverdue ? 'rgba(254, 242, 242, 0.45)' : (isToday ? 'rgba(240, 253, 244, 0.35)' : 'transparent'),
                                                                 transition: 'background 0.2s ease'
@@ -2070,31 +2062,31 @@ const Dashboard = ({ user, onLogout }) => {
                                 const isClickable = Boolean(stat.filter && !isTL);
                                 const isCallTrackingClickable = stat.isCallCard && (user?.role === 'Admin' || user?.role === 'Team Lead');
                                 return (
-                                    <div 
-                                        key={i} 
-                                        className="glass-card" 
+                                    <div
+                                        key={i}
+                                        className="glass-card"
                                         onClick={() => {
                                             if (isClickable) {
                                                 const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
                                                 const targetPath = isFE ? '/leads/my-created' : '/leads';
-                                                navigate(targetPath, { 
-                                                    state: { 
+                                                navigate(targetPath, {
+                                                    state: {
                                                         categoryFilter: stat.filter
-                                                    } 
+                                                    }
                                                 });
                                             } else if (isCallTrackingClickable) {
                                                 const el = document.getElementById('team-call-tracking-section');
                                                 if (el) el.scrollIntoView({ behavior: 'smooth' });
                                             }
                                         }}
-                                        style={{ 
-                                            background: 'white', 
-                                            padding: '24px', 
-                                            borderRadius: '16px', 
-                                            border: '1px solid #e2e8f0', 
-                                            display: 'flex', 
-                                            flexDirection: 'column', 
-                                            justifyContent: 'space-between', 
+                                        style={{
+                                            background: 'white',
+                                            padding: '24px',
+                                            borderRadius: '16px',
+                                            border: '1px solid #e2e8f0',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            justifyContent: 'space-between',
                                             position: 'relative',
                                             cursor: (isClickable || isCallTrackingClickable) ? 'pointer' : 'default',
                                             transition: 'all 0.2s ease',
@@ -2126,21 +2118,21 @@ const Dashboard = ({ user, onLogout }) => {
                                                 </span>
                                             )}
                                         </div>
-                                    <h2 style={{ fontSize: '2.2rem', marginTop: '12px', color: stat.color, marginBottom: 0 }}>
-                                        {loading ? '...' : (stat.isCurrency ? `₹${(overview?.stats?.[stat.key] || 0).toLocaleString()}` : (overview?.stats?.[stat.key] || 0))}
-                                    </h2>
-                                    {stat.isCallCard && !loading && (
-                                        <div style={{ display: 'flex', gap: '12px', marginTop: '10px', flexWrap: 'wrap' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', borderRadius: '8px', padding: '4px 10px' }}>
-                                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', flexShrink: 0 }}></span>
-                                                <span style={{ fontSize: '0.75rem', color: '#065f46', fontWeight: '600' }}>CE: {overview?.stats?.ceCallsToday ?? 0}</span>
+                                        <h2 style={{ fontSize: '2.2rem', marginTop: '12px', color: stat.color, marginBottom: 0 }}>
+                                            {loading ? '...' : (stat.isCurrency ? `₹${(overview?.stats?.[stat.key] || 0).toLocaleString()}` : (overview?.stats?.[stat.key] || 0))}
+                                        </h2>
+                                        {stat.isCallCard && !loading && (
+                                            <div style={{ display: 'flex', gap: '12px', marginTop: '10px', flexWrap: 'wrap' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', borderRadius: '8px', padding: '4px 10px' }}>
+                                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', flexShrink: 0 }}></span>
+                                                    <span style={{ fontSize: '0.75rem', color: '#065f46', fontWeight: '600' }}>CE: {overview?.stats?.ceCallsToday ?? 0}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#eff6ff', borderRadius: '8px', padding: '4px 10px' }}>
+                                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366f1', display: 'inline-block', flexShrink: 0 }}></span>
+                                                    <span style={{ fontSize: '0.75rem', color: '#3730a3', fontWeight: '600' }}>TL: {overview?.stats?.tlCallsToday ?? 0}</span>
+                                                </div>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#eff6ff', borderRadius: '8px', padding: '4px 10px' }}>
-                                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366f1', display: 'inline-block', flexShrink: 0 }}></span>
-                                                <span style={{ fontSize: '0.75rem', color: '#3730a3', fontWeight: '600' }}>TL: {overview?.stats?.tlCallsToday ?? 0}</span>
-                                            </div>
-                                        </div>
-                                    )}
+                                        )}
                                     </div>
                                 );
                             })}
@@ -2640,38 +2632,38 @@ const Dashboard = ({ user, onLogout }) => {
 
                     {(user?.role === 'Admin' || user?.role === 'Team Lead') && (
                         <div style={{ marginTop: '0px', flex: 1, display: 'flex', flexDirection: 'column' }} className="fade-in">                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '25px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <TrendingUp size={24} color="#6366f1" />
-                                    <h2 style={{ fontSize: '1.5rem', margin: 0 }}>Analytics & Trends</h2>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-                                    <span style={{ fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic', marginRight: '10px' }}>
-                                        Range: {startDate.split('-').reverse().join('-')} to {endDate.split('-').reverse().join('-')}
-                                    </span>
-                                    <button
-                                        onClick={handleDownloadPDF}
-                                        disabled={exporting || loadingCharts || timeData.length === 0}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            padding: '8px 16px',
-                                            background: '#10b981',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            fontWeight: '600',
-                                            fontSize: '0.85rem',
-                                            opacity: (exporting || loadingCharts || timeData.length === 0) ? 0.6 : 1
-                                        }}
-                                    >
-                                        {exporting ? <Loader className="spin" size={16} /> : <FileDown size={16} />}
-                                        Download Report
-                                    </button>
-                                </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <TrendingUp size={24} color="#6366f1" />
+                                <h2 style={{ fontSize: '1.5rem', margin: 0 }}>Analytics & Trends</h2>
                             </div>
- 
+                            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                                <span style={{ fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic', marginRight: '10px' }}>
+                                    Range: {startDate.split('-').reverse().join('-')} to {endDate.split('-').reverse().join('-')}
+                                </span>
+                                <button
+                                    onClick={handleDownloadPDF}
+                                    disabled={exporting || loadingCharts || timeData.length === 0}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '8px 16px',
+                                        background: '#10b981',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontWeight: '600',
+                                        fontSize: '0.85rem',
+                                        opacity: (exporting || loadingCharts || timeData.length === 0) ? 0.6 : 1
+                                    }}
+                                >
+                                    {exporting ? <Loader className="spin" size={16} /> : <FileDown size={16} />}
+                                    Download Report
+                                </button>
+                            </div>
+                        </div>
+
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 500px), 1fr))', gap: '30px', flex: 1 }}>
                                 {/* Leads Distribution Chart */}
                                 <div id="lead-chart-export" className="glass-card" style={{ padding: '25px', minHeight: '300px', background: 'white', display: 'flex', flexDirection: 'column' }}>
@@ -2686,14 +2678,14 @@ const Dashboard = ({ user, onLogout }) => {
                                                 <ReBarChart data={timeData}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                                     <XAxis
-                                                          dataKey="label"
-                                                          axisLine={false}
-                                                          tickLine={false}
-                                                          tick={{ fontSize: 11, fill: '#94a3b8' }}
-                                                          tickFormatter={(val) => val ? val.split('-').reverse().slice(0, 2).join('/') : ''}
-                                                          padding={{ left: 20, right: 20 }}
-                                                          interval="preserveStartEnd"
-                                                      />
+                                                        dataKey="label"
+                                                        axisLine={false}
+                                                        tickLine={false}
+                                                        tick={{ fontSize: 11, fill: '#94a3b8' }}
+                                                        tickFormatter={(val) => val ? val.split('-').reverse().slice(0, 2).join('/') : ''}
+                                                        padding={{ left: 20, right: 20 }}
+                                                        interval="preserveStartEnd"
+                                                    />
                                                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} tickMargin={10} />
                                                     <ReTooltip
                                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
@@ -2704,7 +2696,7 @@ const Dashboard = ({ user, onLogout }) => {
                                                     <Bar dataKey="converted" name="Converted" fill="#10b981" radius={[4, 4, 0, 0]} />
                                                     <Bar dataKey="followups" name="Follow-ups" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                                                     <Bar dataKey="notInterested" name="Not Interested" fill="#f87171" radius={[4, 4, 0, 0]} />
-                                                     <Bar dataKey="pending" name="Pending" fill="#a855f7" radius={[4, 4, 0, 0]} />
+                                                    <Bar dataKey="pending" name="Pending" fill="#a855f7" radius={[4, 4, 0, 0]} />
                                                 </ReBarChart>
                                             </ResponsiveContainer>
                                         </div>
@@ -2734,14 +2726,14 @@ const Dashboard = ({ user, onLogout }) => {
                                                     </defs>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                                     <XAxis
-                                                          dataKey="label"
-                                                          axisLine={false}
-                                                          tickLine={false}
-                                                          tick={{ fontSize: 11, fill: '#94a3b8' }}
-                                                          tickFormatter={(val) => val ? val.split('-').reverse().slice(0, 2).join('/') : ''}
-                                                          padding={{ left: 20, right: 20 }}
-                                                          interval="preserveStartEnd"
-                                                      />
+                                                        dataKey="label"
+                                                        axisLine={false}
+                                                        tickLine={false}
+                                                        tick={{ fontSize: 11, fill: '#94a3b8' }}
+                                                        tickFormatter={(val) => val ? val.split('-').reverse().slice(0, 2).join('/') : ''}
+                                                        padding={{ left: 20, right: 20 }}
+                                                        interval="preserveStartEnd"
+                                                    />
                                                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} tickMargin={10} />
                                                     <ReTooltip
                                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
@@ -2778,7 +2770,7 @@ const Dashboard = ({ user, onLogout }) => {
                             </div>
                             <h2 style={{ fontSize: '1.4rem', color: '#0f172a', margin: 0 }}>Log Out</h2>
                         </div>
-                        
+
                         {logoutWarning ? (
                             <>
                                 <p style={{ color: '#475569', fontSize: '1rem', lineHeight: '1.5', marginBottom: '24px' }}>
@@ -2854,7 +2846,7 @@ const Dashboard = ({ user, onLogout }) => {
                                 &times;
                             </button>
                         </div>
-                        
+
                         <div style={{ flex: 1, width: '100%', borderRadius: '12px', overflow: 'hidden', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                             <iframe
                                 src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfPreviewUrl)}`}
