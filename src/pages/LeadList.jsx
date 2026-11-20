@@ -976,13 +976,70 @@ const LeadList = ({ user, isMyCreated }) => {
         return { conversionsCount: conv, pendingCount: pend, allLeadsCount: total };
     }, [leads, baseLeads, isMyCreated, isTL, isCE, isDateFilterActiveForCE, dateFilterMode, singleDate, fromDate, toDate, checkDateInRange]);
 
+    const { statusCountsMap, naCount, totalStatusCount } = useMemo(() => {
+        const counts = new Map();
+        let na = 0;
+        let total = 0;
+        const targetList = isMyCreated ? baseLeads : leads;
+        const seen = new Set();
+
+        for (let i = 0; i < targetList.length; i++) {
+            const l = targetList[i];
+            if (!l || !l.LeadID || seen.has(l.LeadID)) continue;
+            seen.add(l.LeadID);
+
+            let inDate = true;
+            if (isTL && singleDate) {
+                const leadDateObj = l.CreatedAt ? new Date(l.CreatedAt) : null;
+                if (!leadDateObj) {
+                    inDate = false;
+                } else {
+                    const offset = leadDateObj.getTimezoneOffset();
+                    const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
+                    const localDateStr = localDateObj.toISOString().split('T')[0];
+                    inDate = (localDateStr === singleDate);
+                }
+            } else if (isTL && (fromDate || toDate)) {
+                inDate = checkDateInRange(l.CreatedAt, fromDate, toDate);
+            } else if (isCE && isDateFilterActiveForCE) {
+                inDate = isLeadInDateRange(l, { isCE, dateFilterMode, singleDate, fromDate, toDate });
+            } else if ((isFE || isAdmin) && singleDate) {
+                if (!l.CreatedAt) {
+                    inDate = false;
+                } else {
+                    const leadDateObj = new Date(l.CreatedAt);
+                    const offset = leadDateObj.getTimezoneOffset();
+                    const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
+                    const localDateStr = localDateObj.toISOString().split('T')[0];
+                    inDate = (localDateStr === singleDate);
+                }
+            } else if (!isCE && !isTL && (fromDate || toDate)) {
+                inDate = checkDateInRange(l.CallDate || l.CreatedAt, fromDate, toDate);
+            }
+
+            if (!inDate) continue;
+
+            total++;
+            if (!hasValidPhone(l.Phone)) {
+                na++;
+            }
+
+            const canonical = (isCE ? getCanonicalStatusCE(l.Status) : getCanonicalStatus(l.Status)) || (l.Status ? l.Status.trim() : '');
+            if (canonical) {
+                const key = canonical.toLowerCase();
+                counts.set(key, (counts.get(key) || 0) + 1);
+            }
+        }
+
+        return { statusCountsMap: counts, naCount: na, totalStatusCount: total };
+    }, [leads, baseLeads, isMyCreated, isCE, isTL, isFE, isAdmin, isDateFilterActiveForCE, dateFilterMode, singleDate, fromDate, toDate, checkDateInRange]);
+
     const filtered = useMemo(() => {
         const searchLower = search.trim().toLowerCase();
         const hasSearch = searchLower.length > 0;
         const hasStatus = statusFilter !== 'All';
         const statusLower = statusFilter.trim().toLowerCase();
         const isNAFilter = statusFilter === 'N/A Leads';
-        const isInterestedFilter = statusLower === 'interested';
         const currentUserIdStr = String(currentUserId || '');
         const seenLeadIds = new Set();
 
@@ -1067,8 +1124,6 @@ const LeadList = ({ user, isMyCreated }) => {
                     ? (getCanonicalStatusCE(l.Status).toLowerCase() === statusLower || (l.Status && l.Status.trim().toLowerCase() === statusLower))
                     : (getCanonicalStatus(l.Status).toLowerCase() === statusLower || (l.Status && l.Status.trim().toLowerCase() === statusLower));
                 if (!matchesStatus) return false;
-
-                if (isInterestedFilter && !hasValidPhone(l.Phone)) return false;
             }
 
             return true;
@@ -1336,9 +1391,16 @@ const LeadList = ({ user, isMyCreated }) => {
                                 });
 
                                 const statusOptions = (isTL || isFE || isAdmin) ? ['All', ...sorted] : ['All', 'N/A Leads', ...sorted];
-                                return statusOptions.map(s => (
-                                    <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s}</option>
-                                ));
+                                return statusOptions.map(s => {
+                                    if (s === 'All') {
+                                        return <option key={s} value={s}>All Statuses ({totalStatusCount})</option>;
+                                    }
+                                    if (s === 'N/A Leads') {
+                                        return <option key={s} value={s}>N/A Leads ({naCount})</option>;
+                                    }
+                                    const count = statusCountsMap.get(s.toLowerCase()) || 0;
+                                    return <option key={s} value={s}>{s} ({count})</option>;
+                                });
                             })()}
                         </select>
                     </div>
