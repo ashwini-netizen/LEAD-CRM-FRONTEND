@@ -1820,11 +1820,6 @@ const LeadList = ({ user, isMyCreated }) => {
                                                     : 'No leads yet. Create your first lead!')))
                                 )}
                             </div>
-                            {isCE && isDateFilterActiveForCE && !search && (
-                                <p style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: '8px', maxWidth: '540px', margin: '8px auto 0' }}>
-                                    No leads were created on this date. In the Lead Database, dates filter by <strong>Lead Creation Date</strong>.
-                                </p>
-                            )}
                         </div>
                     ) : (
                         <table style={{ width: '100%', minWidth: user?.role === 'Admin' ? '1750px' : '1400px', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto' }}>
