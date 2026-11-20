@@ -9,12 +9,21 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { savePDF } from '../utils/pdfDownload';
 import { Browser } from '@capacitor/browser';
+import toast from 'react-hot-toast';
 import UserHeader from '../components/UserHeader';
 import { formatCleanTime } from '../utils/notificationSync';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
 const getTodayDateStr = () => {
+    try {
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(new Date());
+    } catch {}
     const pad = (n) => String(n).padStart(2, '0');
     const d = new Date();
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -24,12 +33,25 @@ const getLocalDateStr = (dateVal) => {
     if (!dateVal) return '';
     if (typeof dateVal === 'string') {
         const trimmed = dateVal.trim();
-        if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+        const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+            const y = match[1], m = match[2], d = match[3];
             if (trimmed.length === 10 || trimmed.includes('T00:00:00')) {
-                return trimmed.substring(0, 10);
+                return `${y}-${m}-${d}`;
             }
         }
     }
+    try {
+        const d = new Date(dateVal);
+        if (!isNaN(d.getTime())) {
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).format(d);
+        }
+    } catch {}
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return '';
     const pad = (n) => String(n).padStart(2, '0');
@@ -392,12 +414,14 @@ const Dashboard = ({ user, onLogout }) => {
             }
         };
 
+        window.addEventListener('lead_created', handleAutoRefresh);
         window.addEventListener('lead_updated', handleAutoRefresh);
         window.addEventListener('call_logged', handleAutoRefresh);
         window.addEventListener('focus', handleAutoRefresh);
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
+            window.removeEventListener('lead_created', handleAutoRefresh);
             window.removeEventListener('lead_updated', handleAutoRefresh);
             window.removeEventListener('call_logged', handleAutoRefresh);
             window.removeEventListener('focus', handleAutoRefresh);
@@ -405,26 +429,50 @@ const Dashboard = ({ user, onLogout }) => {
         };
     }, [fetchOverview, callDate, adminCallDate, adminCeFilter, startDate, endDate]);
 
-    // Fetch Call Executive leads for New Leads & Follow-up Leads categories
-    const fetchCeLeads = useCallback(async () => {
+    // Fetch Call Executive leads for Today's Leads, Follow-up Leads & Total Leads categories
+    const fetchCeLeads = useCallback(async (isManualRefresh = false) => {
         const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
         if (!isCE) return;
         setLoadingCeLeads(true);
         try {
             const token = localStorage.getItem('crm_token');
-            const res = await fetch(`${API_URL}/api/leads`, {
-                headers: { Authorization: `Bearer ${token || ''}` }
+            if (!token) return;
+            const res = await fetch(`${API_URL}/api/leads?_t=${Date.now()}`, {
+                cache: 'no-store',
+                headers: { 
+                    Authorization: `Bearer ${token}`,
+                    'Cache-Control': 'no-cache',
+                    Pragma: 'no-cache'
+                }
             });
-            if (res.ok) {
-                const data = await res.json();
-                setCeLeads(Array.isArray(data) ? data : []);
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`Failed to fetch leads (${res.status})`);
+            }
+            const data = await res.json();
+            const seen = new Set();
+            const uniqueLeads = (Array.isArray(data) ? data : []).filter(l => {
+                if (!l || !l.LeadID || seen.has(l.LeadID)) return false;
+                seen.add(l.LeadID);
+                return true;
+            });
+            setCeLeads(uniqueLeads);
+
+            // Also refresh overview stats so Total Leads, Conversions, and Pending counts stay in sync
+            fetchOverview(callDate, adminCallDate, adminCeFilter, startDate, endDate);
+
+            if (isManualRefresh) {
+                toast.success("Today's leads refreshed successfully");
             }
         } catch (err) {
             console.error('Failed to fetch CE leads:', err);
+            if (isManualRefresh) {
+                toast.error(err.message || 'Failed to refresh leads');
+            }
         } finally {
             setLoadingCeLeads(false);
         }
-    }, [user?.role, user?.Role]);
+    }, [user?.role, user?.Role, fetchOverview, callDate, adminCallDate, adminCeFilter, startDate, endDate]);
 
     useEffect(() => {
         fetchCeLeads();
