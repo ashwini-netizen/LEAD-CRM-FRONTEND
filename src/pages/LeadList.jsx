@@ -249,13 +249,28 @@ const getLeadDateYMD = (dateVal) => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-const isLeadInDateRange = (l, filterOpts = {}) => {
-    // Support legacy positional arguments (l, fromDate, toDate)
-    const isCE = filterOpts?.isCE || false;
-    const dateFilterMode = filterOpts?.dateFilterMode || 'range';
-    const singleDate = filterOpts?.singleDate || '';
-    const fromDate = typeof filterOpts === 'string' ? filterOpts : (filterOpts?.fromDate || '');
-    const toDate = typeof arguments[2] === 'string' ? arguments[2] : (filterOpts?.toDate || '');
+const formatDateBadge = (d) => {
+    if (!d || typeof d !== 'string') return '';
+    return d.split('-').reverse().join('-');
+};
+
+const isLeadInDateRange = (l, filterOpts, legacyToDate) => {
+    let isCE = false;
+    let dateFilterMode = 'range';
+    let singleDate = '';
+    let fromDate = '';
+    let toDate = '';
+
+    if (typeof filterOpts === 'string') {
+        fromDate = filterOpts;
+        toDate = typeof legacyToDate === 'string' ? legacyToDate : '';
+    } else if (filterOpts && typeof filterOpts === 'object') {
+        isCE = !!filterOpts.isCE;
+        dateFilterMode = filterOpts.dateFilterMode || 'range';
+        singleDate = filterOpts.singleDate || '';
+        fromDate = filterOpts.fromDate || '';
+        toDate = filterOpts.toDate || '';
+    }
 
     if (isCE) {
         if (dateFilterMode === 'single') {
@@ -1791,12 +1806,12 @@ const LeadList = ({ user, isMyCreated }) => {
                                 (isDateFilterActiveForCE || fromDate || toDate || (isTL && singleDate))
                                     ? (isCE && isDateFilterActiveForCE
                                         ? (dateFilterMode === 'single'
-                                            ? `No leads found for ${singleDate ? singleDate.split('-').reverse().join('-') : 'the selected date'}.`
+                                            ? `No leads found for ${formatDateBadge(singleDate) || 'the selected date'}.`
                                             : (fromDate && toDate
                                                 ? (fromDate === toDate
-                                                    ? `No leads found for ${fromDate.split('-').reverse().join('-')}.`
-                                                    : `No leads found for the date range ${fromDate.split('-').reverse().join('-')} to ${toDate.split('-').reverse().join('-')}.`)
-                                                : `No leads found for ${(fromDate || toDate).split('-').reverse().join('-')}.`))
+                                                    ? `No leads found for ${formatDateBadge(fromDate)}.`
+                                                    : `No leads found for the date range ${formatDateBadge(fromDate)} to ${formatDateBadge(toDate)}.`)
+                                                : `No leads found for ${formatDateBadge(fromDate || toDate)}.`))
                                         : (categoryFilter === 'conversions'
                                             ? 'No converted leads found for the selected date range.'
                                             : (categoryFilter === 'pending'
