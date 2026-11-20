@@ -284,26 +284,17 @@ const isLeadInDateRange = (l, filterOpts, legacyToDate) => {
         } else {
             // Range mode
             if (!fromDate && !toDate) return true;
-            // If only one date is specified in range mode, treat it as that specific single date!
-            if (fromDate && !toDate) {
-                const testMatch = (ymd) => ymd === fromDate;
-                const primaryYMD = getLeadDateYMD(l.CallDate || l.CreatedAt);
-                if (testMatch(primaryYMD)) return true;
-                if (l.CreatedAt && testMatch(getLeadDateYMD(l.CreatedAt))) return true;
-                if (l.CallDate && testMatch(getLeadDateYMD(l.CallDate))) return true;
-                return false;
-            }
-            if (!fromDate && toDate) {
-                const testMatch = (ymd) => ymd === toDate;
-                const primaryYMD = getLeadDateYMD(l.CallDate || l.CreatedAt);
-                if (testMatch(primaryYMD)) return true;
-                if (l.CreatedAt && testMatch(getLeadDateYMD(l.CreatedAt))) return true;
-                if (l.CallDate && testMatch(getLeadDateYMD(l.CallDate))) return true;
-                return false;
-            }
-            const start = fromDate <= toDate ? fromDate : toDate;
-            const end = fromDate <= toDate ? toDate : fromDate;
-            const testMatch = (ymd) => ymd && ymd >= start && ymd <= end;
+            const testMatch = (ymd) => {
+                if (!ymd) return false;
+                if (fromDate && toDate) {
+                    const start = fromDate <= toDate ? fromDate : toDate;
+                    const end = fromDate <= toDate ? toDate : fromDate;
+                    return ymd >= start && ymd <= end;
+                }
+                if (fromDate) return ymd >= fromDate;
+                if (toDate) return ymd <= toDate;
+                return true;
+            };
             const primaryYMD = getLeadDateYMD(l.CallDate || l.CreatedAt);
             if (testMatch(primaryYMD)) return true;
             if (l.CreatedAt && testMatch(getLeadDateYMD(l.CreatedAt))) return true;
@@ -1802,28 +1793,37 @@ const LeadList = ({ user, isMyCreated }) => {
                         </div>
                     ) : filtered.length === 0 ? (
                         <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
-                            {search ? `No leads matching "${search}"` : (
-                                (isDateFilterActiveForCE || fromDate || toDate || (isTL && singleDate))
-                                    ? (isCE && isDateFilterActiveForCE
-                                        ? (dateFilterMode === 'single'
-                                            ? `No leads found for ${formatDateBadge(singleDate) || 'the selected date'}.`
-                                            : (fromDate && toDate
-                                                ? (fromDate === toDate
-                                                    ? `No leads found for ${formatDateBadge(fromDate)}.`
-                                                    : `No leads found for the date range ${formatDateBadge(fromDate)} to ${formatDateBadge(toDate)}.`)
-                                                : `No leads found for ${formatDateBadge(fromDate || toDate)}.`))
-                                        : (categoryFilter === 'conversions'
-                                            ? 'No converted leads found for the selected date range.'
-                                            : (categoryFilter === 'pending'
-                                                ? 'No pending leads found for the selected date range.'
-                                                : 'No leads found for the selected date range.')))
-                                    : (isFE && !isMyCreated
-                                        ? 'No assigned meeting leads yet.'
-                                        : (categoryFilter === 'conversions'
-                                            ? 'No converted leads yet.'
-                                            : (categoryFilter === 'pending'
-                                                ? 'No pending leads yet.'
-                                                : 'No leads yet. Create your first lead!')))
+                            <div style={{ fontSize: '0.95rem', fontWeight: '600', color: '#64748b' }}>
+                                {search ? `No leads matching "${search}"` : (
+                                    (isDateFilterActiveForCE || fromDate || toDate || (isTL && singleDate))
+                                        ? (isCE && isDateFilterActiveForCE
+                                            ? (dateFilterMode === 'single'
+                                                ? `No leads found for ${formatDateBadge(singleDate) || 'the selected date'}.`
+                                                : (fromDate && toDate
+                                                    ? (fromDate === toDate
+                                                        ? `No leads found for ${formatDateBadge(fromDate)}.`
+                                                        : `No leads found for the date range ${formatDateBadge(fromDate)} to ${formatDateBadge(toDate)}.`)
+                                                    : (fromDate
+                                                        ? `No leads found from ${formatDateBadge(fromDate)} onwards.`
+                                                        : `No leads found up to ${formatDateBadge(toDate)}.`)))
+                                            : (categoryFilter === 'conversions'
+                                                ? 'No converted leads found for the selected date range.'
+                                                : (categoryFilter === 'pending'
+                                                    ? 'No pending leads found for the selected date range.'
+                                                    : 'No leads found for the selected date range.')))
+                                        : (isFE && !isMyCreated
+                                            ? 'No assigned meeting leads yet.'
+                                            : (categoryFilter === 'conversions'
+                                                ? 'No converted leads yet.'
+                                                : (categoryFilter === 'pending'
+                                                    ? 'No pending leads yet.'
+                                                    : 'No leads yet. Create your first lead!')))
+                                )}
+                            </div>
+                            {isCE && isDateFilterActiveForCE && !search && (
+                                <p style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: '8px', maxWidth: '540px', margin: '8px auto 0' }}>
+                                    No leads were created on this date. In the Lead Database, dates filter by <strong>Lead Creation Date</strong>.
+                                </p>
                             )}
                         </div>
                     ) : (
