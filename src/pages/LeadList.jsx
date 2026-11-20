@@ -220,54 +220,49 @@ const getTodayDateStr = () => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-const getLocalDateStr = (dateVal) => {
+const getLeadDateYMD = (dateVal) => {
     if (!dateVal) return '';
     if (typeof dateVal === 'string') {
         const trimmed = dateVal.trim();
-        if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+        const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+            const y = match[1], m = match[2], d = match[3];
             if (trimmed.length === 10 || trimmed.includes('T00:00:00')) {
-                return trimmed.substring(0, 10);
+                return `${y}-${m}-${d}`;
             }
         }
     }
+    try {
+        const d = new Date(dateVal);
+        if (!isNaN(d.getTime())) {
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).format(d);
+        }
+    } catch {}
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return '';
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-const addDaysToDate = (dateStr, days) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr + 'T00:00:00');
-    d.setDate(d.getDate() + days);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-
-const getDaysDifference = (fromStr, toStr) => {
-    if (!fromStr || !toStr) return 0;
-    const fromTime = new Date(fromStr + 'T00:00:00').getTime();
-    const toTime = new Date(toStr + 'T00:00:00').getTime();
-    return Math.round((toTime - fromTime) / (1000 * 60 * 60 * 24));
-};
-
-const isRecordInDateRange = (recordDateStr, customFrom, customTo, todayStr) => {
-    if (!recordDateStr) return false;
-    // Default view: if both From and To are empty, show today's records only
-    if (!customFrom && !customTo) {
-        return recordDateStr === todayStr;
-    }
-    // Manual date selection overrides default today's filtering (up to 1 month)
-    if (customFrom && customTo) {
-        return recordDateStr >= customFrom && recordDateStr <= customTo;
-    }
-    if (customFrom) {
-        return recordDateStr >= customFrom;
-    }
-    if (customTo) {
-        return recordDateStr <= customTo;
-    }
-    return true;
+const isLeadInDateRange = (l, fromDate, toDate) => {
+    if (!fromDate && !toDate) return true;
+    const testMatch = (ymd) => {
+        if (!ymd) return false;
+        if (fromDate && toDate) return ymd >= fromDate && ymd <= toDate;
+        if (fromDate) return ymd >= fromDate;
+        if (toDate) return ymd <= toDate;
+        return true;
+    };
+    const primaryYMD = getLeadDateYMD(l.CallDate || l.CreatedAt);
+    if (testMatch(primaryYMD)) return true;
+    if (l.CreatedAt && testMatch(getLeadDateYMD(l.CreatedAt))) return true;
+    if (l.CallDate && testMatch(getLeadDateYMD(l.CallDate))) return true;
+    return false;
 };
 
 // Formats creation date for Call Executive leads ensuring no timezone shifting to previous day
@@ -359,10 +354,10 @@ const LeadList = ({ user, isMyCreated }) => {
     };
 
     const handleToDateChange = (val) => {
-        if (val && fromDate && val < fromDate) {
-            return;
-        }
         setToDate(val);
+        if (val && fromDate && val < fromDate) {
+            setFromDate(val);
+        }
     };
     const [statusFilter, setStatusFilter] = useState('All');
     const [importing, setImporting] = useState(false);
@@ -879,6 +874,9 @@ const LeadList = ({ user, isMyCreated }) => {
             } else if (isTL && (fromDate || toDate)) {
                 inDate = checkDateInRange(l.CreatedAt, fromDate, toDate);
                 inDateConv = inDate || checkDateInRange(l.UpdatedAt, fromDate, toDate);
+            } else if (isCE && (fromDate || toDate)) {
+                inDate = isLeadInDateRange(l, fromDate, toDate);
+                inDateConv = inDate;
             }
 
             if (inDate) {
@@ -890,7 +888,7 @@ const LeadList = ({ user, isMyCreated }) => {
             }
         }
         return { conversionsCount: conv, pendingCount: pend, allLeadsCount: total };
-    }, [leads, baseLeads, isMyCreated, isTL, singleDate, fromDate, toDate, checkDateInRange]);
+    }, [leads, baseLeads, isMyCreated, isTL, isCE, singleDate, fromDate, toDate, checkDateInRange]);
 
     const filtered = useMemo(() => {
         const searchLower = search.trim().toLowerCase();
@@ -958,6 +956,10 @@ const LeadList = ({ user, isMyCreated }) => {
                     const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
                     const localDateStr = localDateObj.toISOString().split('T')[0];
                     if (localDateStr !== singleDate) return false;
+                }
+            } else if (isCE) {
+                if (fromDate || toDate) {
+                    if (!isLeadInDateRange(l, fromDate, toDate)) return false;
                 }
             } else {
                 if (fromDate || toDate) {
@@ -1149,7 +1151,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                 transition: 'all 0.15s ease'
                             }}
                         >
-                            All Leads ({isMyCreated ? baseLeads.length : (isTL ? allLeadsCount : leads.length)})
+                            All Leads ({isMyCreated ? baseLeads.length : ((isTL || isCE) ? allLeadsCount : leads.length)})
                         </button>
                         <button
                             type="button"
@@ -1367,7 +1369,6 @@ const LeadList = ({ user, isMyCreated }) => {
                                     className="input-field"
                                     title="From Date"
                                     placeholder="From Date"
-                                    max={toDate || undefined}
                                     style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '40px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
                                     value={fromDate}
                                     onChange={e => handleFromDateChange(e.target.value)}
@@ -1381,7 +1382,6 @@ const LeadList = ({ user, isMyCreated }) => {
                                     className="input-field"
                                     title="To Date"
                                     placeholder="To Date"
-                                    min={fromDate || undefined}
                                     style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '40px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
                                     value={toDate}
                                     onChange={e => handleToDateChange(e.target.value)}
@@ -1649,13 +1649,19 @@ const LeadList = ({ user, isMyCreated }) => {
                     ) : filtered.length === 0 ? (
                         <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
                             {search ? `No leads matching "${search}"` : (
-                                isFE && !isMyCreated
-                                    ? 'No assigned meeting leads yet.'
-                                    : (categoryFilter === 'conversions'
-                                        ? 'No converted leads yet.'
+                                (fromDate || toDate)
+                                    ? (categoryFilter === 'conversions'
+                                        ? 'No converted leads found for the selected date range.'
                                         : (categoryFilter === 'pending'
-                                            ? 'No pending leads yet.'
-                                            : 'No leads yet. Create your first lead!'))
+                                            ? 'No pending leads found for the selected date range.'
+                                            : 'No leads found for the selected date range.'))
+                                    : (isFE && !isMyCreated
+                                        ? 'No assigned meeting leads yet.'
+                                        : (categoryFilter === 'conversions'
+                                            ? 'No converted leads yet.'
+                                            : (categoryFilter === 'pending'
+                                                ? 'No pending leads yet.'
+                                                : 'No leads yet. Create your first lead!')))
                             )}
                         </div>
                     ) : (
