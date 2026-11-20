@@ -1251,8 +1251,8 @@ const LeadList = ({ user, isMyCreated }) => {
                 )}
 
                 {/* Search Bar, Date Filter, Status Filter, and Custom Record Range Selection */}
-                <div className="responsive-filter-bar" style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', flex: '1 1 240px', minWidth: '220px' }}>
+                <div className="responsive-filter-bar" style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '180px' }}>
                         <Search size={16} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
                         <input
                             className="search-input"
@@ -1262,7 +1262,7 @@ const LeadList = ({ user, isMyCreated }) => {
                             autoComplete="off"
                         />
                     </div>
-                    <div style={{ minWidth: '150px', flex: '0 1 auto' }}>
+                    <div style={{ minWidth: '135px', flex: '0 1 auto' }}>
                         <select
                             className="input-field"
                             style={{ width: '100%', boxSizing: 'border-box', cursor: 'pointer', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}
@@ -1419,64 +1419,51 @@ const LeadList = ({ user, isMyCreated }) => {
                         </button>
                     )}
 
-                    {/* Call Executive Date Filter: Single Date & Date Range Toggle */}
+                    {/* Call Executive Date Filter: Dropdown Mode (Single Date / Date Range) */}
                     {!isTL && !isFE && !isAdmin && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '0 1 auto' }}>
-                            {/* Mode Pill Toggle */}
-                            <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: '3px', borderRadius: '10px', border: '1px solid #e2e8f0', gap: '2px' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setDateFilterMode('single');
-                                        if (fromDate && !singleDate) setSingleDate(fromDate);
-                                    }}
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flex: '0 0 auto' }}>
+                            {/* Mode Dropdown */}
+                            <div style={{ minWidth: '125px', flex: '0 0 auto' }}>
+                                <select
+                                    className="input-field"
                                     style={{
-                                        padding: '5px 12px',
-                                        borderRadius: '7px',
-                                        border: 'none',
-                                        background: dateFilterMode === 'single' ? '#6366f1' : 'transparent',
-                                        color: dateFilterMode === 'single' ? 'white' : '#64748b',
+                                        width: '100%',
+                                        boxSizing: 'border-box',
                                         cursor: 'pointer',
-                                        fontSize: '0.8rem',
-                                        fontWeight: '700',
-                                        transition: 'all 0.15s ease'
+                                        background: 'white',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                        fontSize: '0.85rem',
+                                        fontWeight: '600',
+                                        color: '#334155',
+                                        padding: '9px 12px'
+                                    }}
+                                    value={dateFilterMode}
+                                    onChange={e => {
+                                        const newMode = e.target.value;
+                                        setDateFilterMode(newMode);
+                                        if (newMode === 'single') {
+                                            if (fromDate && !singleDate) setSingleDate(fromDate);
+                                        } else {
+                                            if (singleDate && !fromDate) setFromDate(singleDate);
+                                        }
                                     }}
                                 >
-                                    Single Date
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setDateFilterMode('range');
-                                        if (singleDate && !fromDate) setFromDate(singleDate);
-                                    }}
-                                    style={{
-                                        padding: '5px 12px',
-                                        borderRadius: '7px',
-                                        border: 'none',
-                                        background: dateFilterMode === 'range' ? '#6366f1' : 'transparent',
-                                        color: dateFilterMode === 'range' ? 'white' : '#64748b',
-                                        cursor: 'pointer',
-                                        fontSize: '0.8rem',
-                                        fontWeight: '700',
-                                        transition: 'all 0.15s ease'
-                                    }}
-                                >
-                                    Date Range
-                                </button>
+                                    <option value="single">Single Date</option>
+                                    <option value="range">Date Range</option>
+                                </select>
                             </div>
 
                             {/* Single Date Picker */}
                             {dateFilterMode === 'single' && (
-                                <div style={{ position: 'relative', minWidth: '160px', flex: '0 1 auto', display: 'flex', alignItems: 'center' }}>
+                                <div style={{ position: 'relative', width: '150px', flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>
                                     <div style={{ position: 'relative', width: '100%' }}>
-                                        <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                        <Calendar size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
                                         <input
                                             type="date"
                                             className="input-field"
                                             title="Filter by Specific Date"
                                             placeholder="Select Date"
-                                            style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '40px', paddingRight: singleDate ? '34px' : '14px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
+                                            style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '34px', paddingRight: singleDate ? '30px' : '10px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
                                             value={singleDate}
                                             onChange={e => setSingleDate(e.target.value)}
                                         />
@@ -1487,7 +1474,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                                 title="Clear date filter"
                                                 style={{
                                                     position: 'absolute',
-                                                    right: '10px',
+                                                    right: '8px',
                                                     top: '50%',
                                                     transform: 'translateY(-50%)',
                                                     background: 'none',
@@ -1502,7 +1489,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                                 onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
                                                 onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; }}
                                             >
-                                                <X size={15} />
+                                                <X size={14} />
                                             </button>
                                         )}
                                     </div>
@@ -1511,28 +1498,28 @@ const LeadList = ({ user, isMyCreated }) => {
 
                             {/* Date Range Picker */}
                             {dateFilterMode === 'range' && (
-                                <>
-                                    <div style={{ position: 'relative', minWidth: '150px', flex: '1 1 auto' }}>
-                                        <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flex: '0 0 auto' }}>
+                                    <div style={{ position: 'relative', width: '135px' }}>
+                                        <Calendar size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
                                         <input
                                             type="date"
                                             className="input-field"
                                             title="From Date"
                                             placeholder="From Date"
-                                            style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '40px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
+                                            style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '30px', paddingRight: '6px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.82rem' }}
                                             value={fromDate}
                                             onChange={e => handleFromDateChange(e.target.value)}
                                         />
                                     </div>
-                                    <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: '700' }}>–</span>
-                                    <div style={{ position: 'relative', minWidth: '150px', flex: '1 1 auto' }}>
-                                        <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                    <span style={{ color: '#94a3b8', fontSize: '0.82rem', fontWeight: '700' }}>–</span>
+                                    <div style={{ position: 'relative', width: '135px' }}>
+                                        <Calendar size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
                                         <input
                                             type="date"
                                             className="input-field"
                                             title="To Date"
                                             placeholder="To Date"
-                                            style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '40px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
+                                            style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '30px', paddingRight: '6px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.82rem' }}
                                             value={toDate}
                                             onChange={e => handleToDateChange(e.target.value)}
                                         />
@@ -1546,31 +1533,31 @@ const LeadList = ({ user, isMyCreated }) => {
                                                 background: '#f1f5f9',
                                                 border: '1px solid #cbd5e1',
                                                 borderRadius: '8px',
-                                                padding: '8px 10px',
+                                                padding: '6px 8px',
                                                 cursor: 'pointer',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                gap: '4px',
+                                                gap: '3px',
                                                 color: '#64748b',
-                                                fontSize: '0.8rem',
+                                                fontSize: '0.78rem',
                                                 fontWeight: '600',
                                                 transition: 'all 0.15s ease'
                                             }}
                                             onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#ef4444'; }}
                                             onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
                                         >
-                                            <X size={14} /> Clear
+                                            <X size={13} /> Clear
                                         </button>
                                     )}
-                                </>
+                                </div>
                             )}
                         </div>
                     )}
 
                     {/* Custom Record Range Selection (Call Executive, etc.) */}
                     {!isTL && !isFE && !isAdmin && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '240px', flex: '0 1 auto' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '160px', flex: '0 1 auto' }}>
                             <input
                                 type="text"
                                 className="input-field"
@@ -1585,7 +1572,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                 }}
                                 style={{
                                     width: '100%',
-                                    minWidth: '150px',
+                                    minWidth: '110px',
                                     boxSizing: 'border-box',
                                     background: 'white',
                                     boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
