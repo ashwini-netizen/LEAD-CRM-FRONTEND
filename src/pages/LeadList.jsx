@@ -666,7 +666,7 @@ const LeadList = ({ user, isMyCreated }) => {
                     "Meeting Time": formatCleanTime(lead.MeetingTime) || '',
                     "Address": lead.Address || '',
                     "Call Note": lead.CallNote || '',
-                    "Created Date": isCE ? formatLeadCreationDate(lead.CreatedAt, lead.CallDate) : (lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB') : ''),
+                    "Created Date": (isCE || isTL || lead.CreatorRole === 'Team Lead' || lead.CreatorRole === 'Call Executive') ? formatLeadCreationDate(lead.CreatedAt, lead.CallDate) : (lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB') : ''),
                     "Updated Date": lead.UpdatedAt ? new Date(lead.UpdatedAt).toLocaleDateString('en-GB') : ''
                 }));
 
@@ -946,19 +946,14 @@ const LeadList = ({ user, isMyCreated }) => {
             let inDateConv = true;
 
             if (isTL && singleDate) {
-                const leadDateObj = l.CreatedAt ? new Date(l.CreatedAt) : null;
-                if (!leadDateObj) {
-                    inDate = false;
-                    inDateConv = false;
-                } else {
-                    const offset = leadDateObj.getTimezoneOffset();
-                    const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
-                    const localDateStr = localDateObj.toISOString().split('T')[0];
-                    inDate = (localDateStr === singleDate);
-                    inDateConv = inDate;
-                }
+                const primaryYMD = getLeadDateYMD(l.CallDate || l.CreatedAt);
+                const createdYMD = l.CreatedAt ? getLeadDateYMD(l.CreatedAt) : '';
+                const callYMD = l.CallDate ? getLeadDateYMD(l.CallDate) : '';
+                inDate = (primaryYMD === singleDate || createdYMD === singleDate || callYMD === singleDate);
+                inDateConv = inDate;
             } else if (isTL && (fromDate || toDate)) {
-                inDate = checkDateInRange(l.CreatedAt, fromDate, toDate);
+                const primaryYMD = getLeadDateYMD(l.CallDate || l.CreatedAt);
+                inDate = checkDateInRange(primaryYMD || l.CreatedAt, fromDate, toDate);
                 inDateConv = inDate || checkDateInRange(l.UpdatedAt, fromDate, toDate);
             } else if (isCE && isDateFilterActiveForCE) {
                 inDate = isLeadInDateRange(l, { isCE, dateFilterMode, singleDate, fromDate, toDate });
@@ -1025,19 +1020,18 @@ const LeadList = ({ user, isMyCreated }) => {
 
             if (isTL) {
                 if (singleDate) {
-                    if (!l.CreatedAt) return false;
-                    const leadDateObj = new Date(l.CreatedAt);
-                    const offset = leadDateObj.getTimezoneOffset();
-                    const localDateObj = new Date(leadDateObj.getTime() - (offset * 60 * 1000));
-                    const localDateStr = localDateObj.toISOString().split('T')[0];
-                    if (localDateStr !== singleDate) return false;
+                    const primaryYMD = getLeadDateYMD(l.CallDate || l.CreatedAt);
+                    const createdYMD = l.CreatedAt ? getLeadDateYMD(l.CreatedAt) : '';
+                    const callYMD = l.CallDate ? getLeadDateYMD(l.CallDate) : '';
+                    if (primaryYMD !== singleDate && createdYMD !== singleDate && callYMD !== singleDate) return false;
                 } else if (fromDate || toDate) {
+                    const primaryYMD = getLeadDateYMD(l.CallDate || l.CreatedAt);
+                    const inCreated = checkDateInRange(primaryYMD || l.CreatedAt, fromDate, toDate);
                     if (categoryFilter === 'conversions') {
-                        const inCreated = checkDateInRange(l.CreatedAt, fromDate, toDate);
                         const inUpdated = checkDateInRange(l.UpdatedAt, fromDate, toDate);
                         if (!inCreated && !inUpdated) return false;
                     } else {
-                        if (!checkDateInRange(l.CreatedAt, fromDate, toDate)) return false;
+                        if (!inCreated) return false;
                     }
                 }
             } else if (isFE || isAdmin) {
@@ -2009,7 +2003,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                                 </span>
                                             </td>
                                             <td style={{ padding: '16px 20px', color: '#334155', fontWeight: '700', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
-                                                {isCE
+                                                {(isCE || isTL || lead.CreatorRole === 'Team Lead' || lead.CreatorRole === 'Call Executive')
                                                     ? formatLeadCreationDate(lead.CreatedAt, lead.CallDate)
                                                     : (lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB') : 'N/A')
                                                 }
