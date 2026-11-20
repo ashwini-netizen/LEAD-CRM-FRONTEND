@@ -1557,11 +1557,9 @@ const Dashboard = ({ user, onLogout }) => {
                                                 </span>
                                             </div>
                                             <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
-                                                {ceLeadsCategory === 'total'
-                                                    ? 'All created leads regardless of current status, including Hold leads'
-                                                    : (ceLeadsCategory === 'new'
-                                                        ? 'Newly created and assigned leads available for outreach'
-                                                        : 'Leads scheduled for follow-up based on interaction history')}
+                                                {ceLeadsCategory === 'new'
+                                                    ? 'Newly created and assigned leads available for outreach'
+                                                    : 'Leads scheduled for follow-up based on interaction history'}
                                             </p>
                                         </div>
                                     </div>
@@ -1574,42 +1572,6 @@ const Dashboard = ({ user, onLogout }) => {
                                         borderRadius: '12px',
                                         gap: '6px'
                                     }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setCeLeadsCategory('total');
-                                                setCeLeadsPage(1);
-                                            }}
-                                            style={{
-                                                padding: '8px 18px',
-                                                borderRadius: '9px',
-                                                border: 'none',
-                                                background: ceLeadsCategory === 'total' ? 'white' : 'transparent',
-                                                color: ceLeadsCategory === 'total' ? '#2563eb' : '#64748b',
-                                                fontWeight: '800',
-                                                fontSize: '0.84rem',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px',
-                                                boxShadow: ceLeadsCategory === 'total' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                        >
-                                            <Users size={16} />
-                                            <span>Total Leads</span>
-                                            <span style={{
-                                                fontSize: '0.72rem',
-                                                fontWeight: '700',
-                                                padding: '2px 7px',
-                                                borderRadius: '10px',
-                                                background: ceLeadsCategory === 'total' ? '#dbeafe' : '#e2e8f0',
-                                                color: ceLeadsCategory === 'total' ? '#1d4ed8' : '#64748b'
-                                            }}>
-                                                {ceTotalLeads.length}
-                                            </span>
-                                        </button>
-
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -1699,13 +1661,13 @@ const Dashboard = ({ user, onLogout }) => {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', fontSize: '0.8rem', fontWeight: '700' }}>
                                             <Calendar size={14} color="#6366f1" />
-                                            <span>{ceLeadsCategory === 'total' ? 'Creation Date (Optional):' : (ceLeadsCategory === 'new' ? 'Creation Date:' : 'Follow-up Date:')}</span>
+                                            <span>{ceLeadsCategory === 'new' ? 'Creation Date:' : 'Follow-up Date:'}</span>
                                         </div>
                                         <div style={{ position: 'relative' }}>
                                             <input
                                                 type="date"
                                                 className="input-field"
-                                                title={`From Date (${ceLeadsCategory === 'total' ? 'Total Leads' : (ceLeadsCategory === 'new' ? 'New Leads' : 'Follow-up Leads')})`}
+                                                title={`From Date (${ceLeadsCategory === 'new' ? 'New Leads' : 'Follow-up Leads'})`}
                                                 placeholder="From Date"
                                                 max={activeCeRange.to || undefined}
                                                 style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white' }}
@@ -1718,7 +1680,7 @@ const Dashboard = ({ user, onLogout }) => {
                                             <input
                                                 type="date"
                                                 className="input-field"
-                                                title={`To Date (${ceLeadsCategory === 'total' ? 'Total Leads' : (ceLeadsCategory === 'new' ? 'New Leads' : 'Follow-up Leads')})`}
+                                                title={`To Date (${ceLeadsCategory === 'new' ? 'New Leads' : 'Follow-up Leads'})`}
                                                 placeholder="To Date"
                                                 min={activeCeRange.from || undefined}
                                                 max={activeCeRange.from ? addDaysToDate(activeCeRange.from, 31) : undefined}
@@ -1731,7 +1693,7 @@ const Dashboard = ({ user, onLogout }) => {
                                             <button
                                                 type="button"
                                                 onClick={handleCeClearDates}
-                                                title={ceLeadsCategory === 'total' ? 'Clear date filter to show all leads' : "Remove custom date range and return to today's records"}
+                                                title="Remove custom date range and return to today's records"
                                                 style={{
                                                     padding: '6px 12px',
                                                     borderRadius: '8px',
@@ -1785,7 +1747,7 @@ const Dashboard = ({ user, onLogout }) => {
                                         <input
                                             type="text"
                                             className="input-field"
-                                            placeholder={`Search ${ceLeadsCategory === 'total' ? 'Total Leads' : (ceLeadsCategory === 'new' ? 'New Leads' : 'Follow-up Leads')} by name, phone, company, status...`}
+                                            placeholder={`Search ${ceLeadsCategory === 'new' ? 'New Leads' : 'Follow-up Leads'} by name, phone, company, status...`}
                                             style={{ padding: '8px 10px 8px 34px', width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.82rem' }}
                                             value={ceLeadsSearch}
                                             onChange={e => {
@@ -1797,11 +1759,11 @@ const Dashboard = ({ user, onLogout }) => {
 
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '600' }}>
-                                            Showing {activeCategoryLeads.length} {ceLeadsCategory === 'total' ? 'total leads' : (ceLeadsCategory === 'new' ? 'new leads' : 'follow-up leads')}
+                                            Showing {activeCategoryLeads.length} {ceLeadsCategory === 'new' ? 'new leads' : 'follow-up leads'}
                                         </span>
                                         <button
                                             type="button"
-                                            onClick={() => fetchCeLeads()}
+                                            onClick={() => fetchCeLeads(true)}
                                             disabled={loadingCeLeads}
                                             style={{
                                                 padding: '6px 12px',
@@ -1809,15 +1771,17 @@ const Dashboard = ({ user, onLogout }) => {
                                                 fontWeight: '600',
                                                 borderRadius: '8px',
                                                 border: '1px solid #cbd5e1',
-                                                background: 'white',
-                                                color: '#475569',
-                                                cursor: 'pointer',
+                                                background: loadingCeLeads ? '#f8fafc' : 'white',
+                                                color: loadingCeLeads ? '#94a3b8' : '#475569',
+                                                cursor: loadingCeLeads ? 'not-allowed' : 'pointer',
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: '5px'
+                                                gap: '5px',
+                                                transition: 'all 0.2s ease'
                                             }}
+                                            title="Refresh leads"
                                         >
-                                            <RefreshCw size={13} className={loadingCeLeads ? 'spin' : ''} /> Refresh
+                                            <RefreshCw size={13} className={loadingCeLeads ? 'spin' : ''} /> {loadingCeLeads ? 'Refreshing...' : 'Refresh'}
                                         </button>
                                     </div>
                                 </div>
@@ -1831,10 +1795,10 @@ const Dashboard = ({ user, onLogout }) => {
                                 ) : activeCategoryLeads.length === 0 ? (
                                     <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
                                         <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: '600', color: '#64748b' }}>
-                                            {ceLeadsCategory === 'total' ? 'No leads found in Total Leads.' : (ceLeadsCategory === 'new' ? 'No new leads found.' : 'No follow-up leads scheduled.')}
+                                            {ceLeadsCategory === 'new' ? 'No new leads found.' : 'No follow-up leads scheduled.'}
                                         </p>
                                         <p style={{ margin: '6px 0 0 0', fontSize: '0.78rem' }}>
-                                            {ceLeadsSearch ? 'Try adjusting your search criteria.' : (ceLeadsCategory === 'total' ? 'All created leads will appear here automatically.' : (ceLeadsCategory === 'new' ? 'Newly created or assigned leads will appear here automatically.' : 'Leads marked with Follow-up status will appear here automatically.'))}
+                                            {ceLeadsSearch ? 'Try adjusting your search criteria.' : (ceLeadsCategory === 'new' ? 'Newly created or assigned leads will appear here automatically.' : 'Leads marked with Follow-up status will appear here automatically.')}
                                         </p>
                                     </div>
                                 ) : (
