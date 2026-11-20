@@ -98,6 +98,15 @@ const LeadForm = ({ user }) => {
     const isFEorCE = isFE || isCE;
     const navigate = useNavigate();
     const location = useLocation();
+    const getTodayDateStr = () => {
+        try {
+            return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        } catch {
+            const d = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        }
+    };
     const getRedirectPath = () => {
         const params = new URLSearchParams(location.search);
         const fromParam = params.get('from');
@@ -112,7 +121,7 @@ const LeadForm = ({ user }) => {
         company: '',
         services: [{ type: '', custom: '' }],
         address: '',
-        callDate: new Date().toISOString().split('T')[0],
+        callDate: getTodayDateStr(),
         callNote: '',
         status: 'Interested',
         customStatus: '',
@@ -511,7 +520,7 @@ const LeadForm = ({ user }) => {
                         <div style={labelStyle}>Call Date *</div>
                         <div style={{ position: 'relative' }}>
                             <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
-                            <input type="date" name="callDate" className="input-field" style={{ paddingLeft: '36px' }} value={formData.callDate} onChange={handleChange} min={isFE ? undefined : new Date().toISOString().split('T')[0]} required />
+                            <input type="date" name="callDate" className="input-field" style={{ paddingLeft: '36px' }} value={formData.callDate} onChange={handleChange} min={isFE ? undefined : getTodayDateStr()} required />
                         </div>
                     </div>
 
@@ -685,7 +694,7 @@ const LeadForm = ({ user }) => {
                                 <div style={labelStyle}>Meeting Date *</div>
                                 <div style={{ position: 'relative' }}>
                                     <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
-                                    <input type="date" name="meetingDate" className="input-field" style={{ paddingLeft: '36px' }} value={formData.meetingDate} onChange={handleChange} min={new Date().toISOString().split('T')[0]} required />
+                                    <input type="date" name="meetingDate" className="input-field" style={{ paddingLeft: '36px' }} value={formData.meetingDate} onChange={handleChange} min={getTodayDateStr()} required />
                                 </div>
                             </div>
                             <div className="fade-in">
@@ -749,7 +758,7 @@ const LeadForm = ({ user }) => {
                                 <div style={labelStyle}>Next Date and Time *</div>
                                 <div style={{ position: 'relative' }}>
                                     <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
-                                    <input type="date" name="followupDate" className="input-field" style={{ paddingLeft: '36px' }} value={formData.followupDate} onChange={handleChange} min={new Date().toISOString().split('T')[0]} required />
+                                    <input type="date" name="followupDate" className="input-field" style={{ paddingLeft: '36px' }} value={formData.followupDate} onChange={handleChange} min={getTodayDateStr()} required />
                                 </div>
                             </div>
                             <div className="fade-in">

@@ -6,6 +6,40 @@ import UserHeader from '../components/UserHeader';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
+// Formats creation date for Call Executive leads ensuring no timezone shifting to previous day
+const formatLeadCreationDate = (createdAt, callDate) => {
+    const raw = callDate || createdAt;
+    if (!raw) return 'N/A';
+    if (typeof raw === 'string') {
+        const match = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+            const y = match[1], m = match[2], d = match[3];
+            if (raw.trim().length === 10 || raw.includes('T00:00:00')) {
+                return `${d}-${m}-${y}`;
+            }
+        }
+    }
+    try {
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) {
+            const parts = new Intl.DateTimeFormat('en-GB', {
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            }).formatToParts(d);
+            const day = parts.find(p => p.type === 'day')?.value;
+            const month = parts.find(p => p.type === 'month')?.value;
+            const year = parts.find(p => p.type === 'year')?.value;
+            if (day && month && year) return `${day}-${month}-${year}`;
+        }
+    } catch {}
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return 'N/A';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
+};
+
 const LeadDetail = ({ user }) => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -165,7 +199,12 @@ const LeadDetail = ({ user }) => {
                                     </div>
                                     <div>
                                         <label style={LBL}>Date</label>
-                                        <span style={{ fontWeight: '600', fontSize: '0.88rem' }}>{new Date(lead.CreatedAt).toLocaleDateString('en-GB')}</span>
+                                        <span style={{ fontWeight: '600', fontSize: '0.88rem' }}>
+                                            {(lead.CreatorRole === 'Call Executive' || user?.role === 'Call Executive')
+                                                ? formatLeadCreationDate(lead.CreatedAt, lead.CallDate)
+                                                : (lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB') : 'N/A')
+                                            }
+                                        </span>
                                     </div>
                                 </div>
                             </div>

@@ -270,6 +270,40 @@ const isRecordInDateRange = (recordDateStr, customFrom, customTo, todayStr) => {
     return true;
 };
 
+// Formats creation date for Call Executive leads ensuring no timezone shifting to previous day
+const formatLeadCreationDate = (createdAt, callDate) => {
+    const raw = callDate || createdAt;
+    if (!raw) return 'N/A';
+    if (typeof raw === 'string') {
+        const match = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+            const y = match[1], m = match[2], d = match[3];
+            if (raw.trim().length === 10 || raw.includes('T00:00:00')) {
+                return `${d}-${m}-${y}`;
+            }
+        }
+    }
+    try {
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) {
+            const parts = new Intl.DateTimeFormat('en-GB', {
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            }).formatToParts(d);
+            const day = parts.find(p => p.type === 'day')?.value;
+            const month = parts.find(p => p.type === 'month')?.value;
+            const year = parts.find(p => p.type === 'year')?.value;
+            if (day && month && year) return `${day}-${month}-${year}`;
+        }
+    } catch {}
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return 'N/A';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
+};
+
 // In-memory module cache for instant perceived page loads
 let leadsCache = {
     data: null,
@@ -554,7 +588,7 @@ const LeadList = ({ user, isMyCreated }) => {
                     "Meeting Time": formatCleanTime(lead.MeetingTime) || '',
                     "Address": lead.Address || '',
                     "Call Note": lead.CallNote || '',
-                    "Created Date": lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB') : '',
+                    "Created Date": isCE ? formatLeadCreationDate(lead.CreatedAt, lead.CallDate) : (lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB') : ''),
                     "Updated Date": lead.UpdatedAt ? new Date(lead.UpdatedAt).toLocaleDateString('en-GB') : ''
                 }));
 
@@ -927,7 +961,7 @@ const LeadList = ({ user, isMyCreated }) => {
                 }
             } else {
                 if (fromDate || toDate) {
-                    if (!checkDateInRange(l.CreatedAt, fromDate, toDate)) return false;
+                    if (!checkDateInRange(l.CallDate || l.CreatedAt, fromDate, toDate)) return false;
                 }
             }
 
@@ -1788,7 +1822,10 @@ const LeadList = ({ user, isMyCreated }) => {
                                                 </span>
                                             </td>
                                             <td style={{ padding: '16px 20px', color: '#334155', fontWeight: '700', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
-                                                {lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB') : 'N/A'}
+                                                {isCE
+                                                    ? formatLeadCreationDate(lead.CreatedAt, lead.CallDate)
+                                                    : (lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB') : 'N/A')
+                                                }
                                             </td>
                                             {!isTL && (
                                                 <td style={{ padding: '16px 20px', color: '#334155', fontWeight: '700', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>

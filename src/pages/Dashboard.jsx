@@ -36,6 +36,40 @@ const getLocalDateStr = (dateVal) => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
+// Formats creation date for Call Executive leads ensuring no timezone shifting to previous day
+const formatLeadCreationDate = (createdAt, callDate) => {
+    const raw = callDate || createdAt;
+    if (!raw) return '-';
+    if (typeof raw === 'string') {
+        const match = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+            const y = match[1], m = match[2], d = match[3];
+            if (raw.trim().length === 10 || raw.includes('T00:00:00')) {
+                return `${d}-${m}-${y}`;
+            }
+        }
+    }
+    try {
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) {
+            const parts = new Intl.DateTimeFormat('en-GB', {
+                timeZone: 'Asia/Kolkata',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            }).formatToParts(d);
+            const day = parts.find(p => p.type === 'day')?.value;
+            const month = parts.find(p => p.type === 'month')?.value;
+            const year = parts.find(p => p.type === 'year')?.value;
+            if (day && month && year) return `${day}-${month}-${year}`;
+        }
+    } catch {}
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return '-';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
+};
+
 const addDaysToDate = (dateStr, days) => {
     if (!dateStr) return '';
     const d = new Date(dateStr + 'T00:00:00');
@@ -667,7 +701,7 @@ const Dashboard = ({ user, onLogout }) => {
     const ceNewLeads = useMemo(() => {
         return ceLeads.filter(l => {
             if (isFollowupLead(l)) return false;
-            const cDate = getLocalDateStr(l.CreatedAt);
+            const cDate = getLocalDateStr(l.CallDate || l.CreatedAt);
             return isRecordInDateRange(cDate, ceNewDateRange.from, ceNewDateRange.to, todayStr);
         });
     }, [ceLeads, isFollowupLead, ceNewDateRange, todayStr]);
@@ -1864,7 +1898,7 @@ const Dashboard = ({ user, onLogout }) => {
                                                                         {lead.ServiceInterested || '-'}
                                                                     </td>
                                                                     <td style={{ padding: '10px 12px', color: '#64748b', whiteSpace: 'nowrap' }}>
-                                                                        {lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                                                                        {formatLeadCreationDate(lead.CreatedAt, lead.CallDate)}
                                                                     </td>
                                                                 </>
                                                             )}
