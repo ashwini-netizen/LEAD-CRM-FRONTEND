@@ -214,6 +214,23 @@ const hasValidPhone = (phone) => {
     return /\d/.test(str);
 };
 
+const normalizeCitySynonyms = (str) => {
+    if (!str) return '';
+    return String(str).toLowerCase().replace(/\bmysore\b/gi, 'mysuru');
+};
+
+const matchesQuery = (targetStr, queryStr) => {
+    if (!targetStr || !queryStr) return false;
+    const normTarget = normalizeCitySynonyms(targetStr);
+    const normQuery = normalizeCitySynonyms(queryStr).trim();
+    if (normTarget.includes(normQuery)) return true;
+    const tokens = normQuery.split(/\s+/).filter(Boolean);
+    if (tokens.length > 1) {
+        return tokens.every(token => normTarget.includes(token));
+    }
+    return false;
+};
+
 const getTodayDateStr = () => {
     const pad = (n) => String(n).padStart(2, '0');
     const d = new Date();
@@ -918,8 +935,11 @@ const LeadList = ({ user, isMyCreated }) => {
         let pend = 0;
         let total = 0;
         const targetList = isMyCreated ? baseLeads : leads;
+        const seenIds = new Set();
         for (let i = 0; i < targetList.length; i++) {
             const l = targetList[i];
+            if (!l || !l.LeadID || seenIds.has(l.LeadID)) continue;
+            seenIds.add(l.LeadID);
             const s = l.Status;
 
             let inDate = true;
@@ -964,18 +984,25 @@ const LeadList = ({ user, isMyCreated }) => {
         const isNAFilter = statusFilter === 'N/A Leads';
         const isInterestedFilter = statusLower === 'interested';
         const currentUserIdStr = String(currentUserId || '');
+        const seenLeadIds = new Set();
 
         return leads.filter(l => {
+            if (!l || !l.LeadID || seenLeadIds.has(l.LeadID)) return false;
+            seenLeadIds.add(l.LeadID);
+
             if (!hasStatus) {
                 if (categoryFilter === 'conversions' && !isConvertedStatus(l.Status)) return false;
                 if (categoryFilter === 'pending' && !isPendingStatus(l.Status)) return false;
             }
 
             if (hasSearch) {
-                const matchesSearch = (l.FullName && l.FullName.toLowerCase().includes(searchLower)) ||
-                    (l.Phone && String(l.Phone).toLowerCase().includes(searchLower)) ||
-                    (l.CompanyName && l.CompanyName.toLowerCase().includes(searchLower)) ||
-                    (l.ServiceInterested && l.ServiceInterested.toLowerCase().includes(searchLower));
+                const matchesSearch = matchesQuery(l.FullName, searchLower) ||
+                    matchesQuery(l.Phone, searchLower) ||
+                    matchesQuery(l.CompanyName, searchLower) ||
+                    matchesQuery(l.Address, searchLower) ||
+                    matchesQuery(l.Status, searchLower) ||
+                    matchesQuery(l.ServiceInterested, searchLower) ||
+                    matchesQuery(l.CallNote, searchLower);
                 if (!matchesSearch) return false;
             }
 
@@ -1217,7 +1244,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                 transition: 'all 0.15s ease'
                             }}
                         >
-                            All Leads ({isMyCreated ? baseLeads.length : (isTL ? allLeadsCount : (isCE ? (isDateFilterActiveForCE ? allLeadsCount : leads.length) : leads.length))})
+                            {isCE ? 'Total Leads' : 'All Leads'} ({isMyCreated ? baseLeads.length : (isTL ? allLeadsCount : (isCE ? (isDateFilterActiveForCE ? allLeadsCount : leads.length) : leads.length))})
                         </button>
                         <button
                             type="button"
