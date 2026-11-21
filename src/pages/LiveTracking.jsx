@@ -337,15 +337,32 @@ const LiveTracking = ({ user }) => {
         }
     }, [selectedId, selectedDate, fetchRouteHistory]);
 
-    // Compute route path coordinates
+    // Compute clean route path coordinates without jitter
     const routeCoords = useMemo(() => {
         if (!routePoints || routePoints.length === 0) {
             const exec = executives[selectedId];
             return exec?.pos ? [exec.pos] : [];
         }
-        return routePoints
+        const raw = routePoints
             .filter(p => p.Latitude && p.Longitude && !isNaN(p.Latitude) && !isNaN(p.Longitude))
             .map(p => [parseFloat(p.Latitude), parseFloat(p.Longitude)]);
+
+        if (raw.length <= 2) return raw;
+
+        // Clean path filter: eliminate stationary GPS jitter (< 6 meters)
+        const clean = [raw[0]];
+        let lastPt = raw[0];
+        for (let i = 1; i < raw.length; i++) {
+            const pt = raw[i];
+            const dLat = (pt[0] - lastPt[0]) * 111320;
+            const dLng = (pt[1] - lastPt[1]) * 111320 * Math.cos(lastPt[0] * Math.PI / 180);
+            const distMeters = Math.sqrt(dLat * dLat + dLng * dLng);
+            if (distMeters >= 6 || i === raw.length - 1) {
+                clean.push(pt);
+                lastPt = pt;
+            }
+        }
+        return clean;
     }, [routePoints, executives, selectedId]);
 
     // Route Metrics
@@ -576,7 +593,7 @@ const LiveTracking = ({ user }) => {
                                 </div>
 
                                 {/* Metrics Badges */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
                                     <div style={{ background: '#f8fafc', padding: '8px 10px', borderRadius: '10px', textAlign: 'center' }}>
                                         <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block', fontWeight: '600' }}>Distance</span>
                                         <b style={{ fontSize: '0.95rem', color: '#4f46e5' }}>{totalDistance.toFixed(2)} km</b>
@@ -584,12 +601,6 @@ const LiveTracking = ({ user }) => {
                                     <div style={{ background: '#f8fafc', padding: '8px 10px', borderRadius: '10px', textAlign: 'center' }}>
                                         <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block', fontWeight: '600' }}>Location Points</span>
                                         <b style={{ fontSize: '0.95rem', color: '#059669' }}>{routePoints.length}</b>
-                                    </div>
-                                    <div style={{ background: '#f8fafc', padding: '8px 10px', borderRadius: '10px', textAlign: 'center' }}>
-                                        <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block', fontWeight: '600' }}>Duration</span>
-                                        <b style={{ fontSize: '0.8rem', color: '#0f172a' }}>
-                                            {startPoint && endPoint ? `${formatTimeOnly(startPoint.Timestamp).split(' ')[0]} - ${formatTimeOnly(endPoint.Timestamp).split(' ')[0]}` : 'N/A'}
-                                        </b>
                                     </div>
                                 </div>
 
@@ -646,24 +657,15 @@ const LiveTracking = ({ user }) => {
                                             attribution='&copy; OpenStreetMap contributors'
                                         />
 
-                                        {/* Travel Route Polyline */}
+                                        {/* Travel Route Polyline - Clean Dashed Line */}
                                         {routeCoords.length > 1 && (
-                                            <>
-                                                {/* Route glow/shadow */}
-                                                <Polyline
-                                                    positions={routeCoords}
-                                                    color="#6366f1"
-                                                    weight={8}
-                                                    opacity={0.3}
-                                                />
-                                                {/* Primary solid travel route */}
-                                                <Polyline
-                                                    positions={routeCoords}
-                                                    color="#4338ca"
-                                                    weight={4}
-                                                    opacity={0.9}
-                                                />
-                                            </>
+                                            <Polyline
+                                                positions={routeCoords}
+                                                color="#4f46e5"
+                                                weight={4}
+                                                opacity={0.9}
+                                                dashArray="8, 10"
+                                            />
                                         )}
 
                                         {/* Route Origin Marker (Green) */}
