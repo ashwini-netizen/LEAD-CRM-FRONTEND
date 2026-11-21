@@ -105,13 +105,13 @@ const LeadDetail = ({ user }) => {
 
     const steps = [
         { label: 'Created',           done: !!lead.CreatedAt },
-        { label: 'Interested',        done: lead.Status !== 'Not Interested' && lead.Status !== 'Busy' && lead.Status !== 'Invalid' },
+        { label: 'Interested',        done: lead.Status !== 'Not Interested' && lead.Status !== 'Busy' && lead.Status !== 'Invalid' && lead.Status !== 'Decision-maker Unavailable' && lead.Status !== 'No Meeting / Contact Unavailable' },
         { label: 'Meeting Scheduled', done: lead.Status === 'Meeting Scheduled' || lead.Status === 'Meeting Done' || lead.Status === 'Meeting Attended' || lead.meetings?.length > 0 },
         { label: 'Quotation Sent',    done: lead.Status === 'Quotation Sent' || lead.Status === 'Quotation' || lead.Status === 'Due Payment' || lead.Status === 'Paid' || !!lead.QuotationPDF },
-        { label: 'Converted',         done: lead.Status === 'Converted' || lead.Status === 'Paid' || lead.Status === 'Due Payment' }
+        { label: 'Converted',         done: lead.Status === 'Converted' || lead.Status === 'Conversion / Deal Closed' || lead.Status === 'Paid' || lead.Status === 'Due Payment' }
     ];
 
-    const statusIsPaid = lead.Status === 'Meeting Done';
+    const statusIsPaid = lead.Status === 'Meeting Done' || lead.Status === 'Converted' || lead.Status === 'Conversion / Deal Closed';
 
     return (
         <div style={{ background: '#f8fafc', minHeight: '100vh', display: 'flex', flexDirection: 'column', width: '100vw', overflowX: 'hidden' }}>
@@ -268,7 +268,7 @@ const LeadDetail = ({ user }) => {
                                 <div style={{ display: 'grid', gap: '10px' }}>
                                     <IconItem icon={<CheckCircle2 size={15} />} text="Meeting Attained"    done={lead.meetings?.length > 0} />
                                     <IconItem icon={<FileText size={15} />}     text="Quotation Requested" done={lead.meetings?.some(m => m.MeetingOutcome === 'quotation') || !!lead.QuotationPDF || lead.Status === 'Quotation Needed' || lead.Status === 'Quotation'} />
-                                    <IconItem icon={<CheckCircle2 size={15} />} text="Deal Closed"         done={lead.Status === 'Converted' || lead.Status === 'Paid' || lead.Status === 'Due Payment'} />
+                                    <IconItem icon={<CheckCircle2 size={15} />} text="Deal Closed"         done={lead.Status === 'Converted' || lead.Status === 'Conversion / Deal Closed' || lead.Status === 'Paid' || lead.Status === 'Due Payment'} />
                                 </div>
                             </div>
                         )}

@@ -13,6 +13,14 @@ import { useDraggableScroll } from '../hooks/useDraggableScroll';
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
 const statusColors = {
+    'Interested – Follow-up Required': { bg: 'rgba(99,102,241,0.12)', color: '#6366f1' },
+    'Interested - Follow-up Required': { bg: 'rgba(99,102,241,0.12)', color: '#6366f1' },
+    'Decision-maker Unavailable': { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
+    'No Meeting / Contact Unavailable': { bg: 'rgba(100,116,139,0.12)', color: '#64748b' },
+    'Requirement Identified': { bg: 'rgba(59,130,246,0.12)', color: '#2563eb' },
+    'Technical Discussion Required': { bg: 'rgba(139,92,246,0.12)', color: '#7c3aed' },
+    'Commercial Discussion / Negotiation': { bg: 'rgba(234,88,12,0.12)', color: '#c2410c' },
+    'Conversion / Deal Closed': { bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
     'Converted': { bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
     'Interested': { bg: 'rgba(99,102,241,0.12)', color: '#6366f1' },
     'Not Interested': { bg: 'rgba(239,68,68,0.12)', color: '#f87171' },
@@ -98,6 +106,13 @@ const getCanonicalStatusCE = (status) => {
     if (!s) return '';
 
     // Standard conversions & common CRM statuses
+    if (s === 'interested – follow-up required' || s === 'interested - follow-up required') return 'Interested – Follow-up Required';
+    if (s === 'decision-maker unavailable' || s === 'decision maker unavailable') return 'Decision-maker Unavailable';
+    if (s === 'no meeting / contact unavailable' || s === 'no meeting/contact unavailable') return 'No Meeting / Contact Unavailable';
+    if (s === 'requirement identified') return 'Requirement Identified';
+    if (s === 'technical discussion required') return 'Technical Discussion Required';
+    if (s === 'commercial discussion / negotiation' || s === 'commercial discussion/negotiation') return 'Commercial Discussion / Negotiation';
+    if (s === 'conversion / deal closed' || s === 'conversion/deal closed') return 'Conversion / Deal Closed';
     if (s === 'converted' || s === 'conversion') return 'Converted';
     if (s === 'interested' || s === 'intrested') return 'Interested';
     if (s === 'not interested' || s === 'not intrested' || s === 'not intrest') return 'Not Interested';
@@ -187,7 +202,7 @@ const getCanonicalStatus = (status) => {
     return getCanonicalStatusCE(status);
 };
 
-const CONVERTED_STATUSES = ['converted', 'conversion', 'completed', 'paid', 'quotation', 'quotation done', 'quotation needed', 'due payment'];
+const CONVERTED_STATUSES = ['converted', 'conversion', 'completed', 'paid', 'quotation', 'quotation done', 'quotation needed', 'due payment', 'conversion / deal closed', 'deal closed'];
 const isConvertedStatus = (status) => {
     if (!status) return false;
     return CONVERTED_STATUSES.includes(status.trim().toLowerCase());
@@ -195,7 +210,8 @@ const isConvertedStatus = (status) => {
 
 const NON_PENDING_STATUSES = [
     'not interested', 'invalid', 'rejected', 'canceled', 'removed',
-    'converted', 'conversion', 'completed', 'paid', 'quotation', 'quotation done', 'quotation needed', 'due payment'
+    'converted', 'conversion', 'completed', 'paid', 'quotation', 'quotation done', 'quotation needed', 'due payment',
+    'conversion / deal closed', 'deal closed'
 ];
 const isPendingStatus = (status) => {
     if (!status) return false;
@@ -205,7 +221,8 @@ const isPendingStatus = (status) => {
 
 const isInterestedStatus = (status) => {
     if (!status) return false;
-    return status.trim().toLowerCase() === 'interested';
+    const s = status.trim().toLowerCase();
+    return s === 'interested' || s.includes('interested') || s === 'requirement identified' || s === 'technical discussion required' || s === 'commercial discussion / negotiation';
 };
 
 const hasValidPhone = (phone) => {
@@ -2066,7 +2083,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                                         />
                                                     )}
                                                     {user?.role === 'Field Executive' && (
-                                                        ['Interested', 'Meeting Follow-up', 'Meeting Followup', 'meetingFollowup'].includes(lead.Status) ? (
+                                                        ['Interested', 'Meeting Follow-up', 'Meeting Followup', 'meetingFollowup', 'Interested – Follow-up Required', 'Requirement Identified', 'Technical Discussion Required', 'Commercial Discussion / Negotiation'].includes(lead.Status) ? (
                                                             <FileText
                                                                 size={17}
                                                                 style={{ cursor: 'pointer', color: '#10b981' }}
@@ -2079,7 +2096,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                                                 title="Manage Lead"
                                                             />
                                                         ) : (
-                                                            !['Paid'].includes(lead.Status) && (
+                                                            !['Paid', 'Converted', 'Conversion / Deal Closed'].includes(lead.Status) && (
                                                                 <Edit
                                                                     size={17}
                                                                     style={{ cursor: 'pointer', color: '#f59e0b' }}

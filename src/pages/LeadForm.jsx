@@ -123,7 +123,7 @@ const LeadForm = ({ user }) => {
         address: '',
         callDate: getTodayDateStr(),
         callNote: '',
-        status: 'Interested',
+        status: isFE ? 'Interested – Follow-up Required' : 'Interested',
         customStatus: '',
         followupDate: '',
         followupTime: '',
@@ -216,7 +216,7 @@ const LeadForm = ({ user }) => {
             return false;
         }
 
-        if (formData.status === 'Interested') {
+        if (!isFE && formData.status === 'Interested') {
             if (!formData.meetingDate) {
                 setSubmitError('Meeting Date is required.');
                 return false;
@@ -238,7 +238,7 @@ const LeadForm = ({ user }) => {
             }
         }
 
-        if (formData.status === 'Follow-up') {
+        if (!isFE && formData.status === 'Follow-up') {
             if (!formData.followupDate) {
                 setSubmitError('Next Date is required.');
                 return false;
@@ -249,7 +249,7 @@ const LeadForm = ({ user }) => {
             }
         }
 
-        if (formData.status === 'Not Interested' && !formData.reason.trim()) {
+        if (!isFE && formData.status === 'Not Interested' && !formData.reason.trim()) {
             setSubmitError('Reason is required.');
             return false;
         }
@@ -354,11 +354,12 @@ const LeadForm = ({ user }) => {
                 serviceInterested: serviceSummary,
                 address: formData.address,
                 callDate: formData.callDate || getTodayDateStr(),
-                callNote: isFE ? null : (isFollowupStatus && formData.status !== 'Follow-up' ? (isOther ? resolvedStatus : formData.status) : formData.callNote),
-                followupDate: formData.status === 'Follow-up' ? formData.followupDate : null,
-                followupTime: formData.status === 'Follow-up' ? formatTo12Hr(formData.followupTime) : null,
+                callNote: isFE ? (formData.callNote || `Walk-in Lead: ${resolvedStatus}`) : (isFollowupStatus && formData.status !== 'Follow-up' ? (isOther ? resolvedStatus : formData.status) : formData.callNote),
+                followupDate: (formData.status === 'Follow-up' || formData.status === 'Interested – Follow-up Required') ? (formData.followupDate || null) : null,
+                followupTime: (formData.status === 'Follow-up' || formData.status === 'Interested – Follow-up Required') ? formatTo12Hr(formData.followupTime) : null,
                 meetingDate: formData.meetingDate || null,
                 meetingTime: formData.status === 'Interested' ? formatTo12Hr(formData.meetingTime) : null,
+                reason: formData.reason || null,
                 status: resolvedStatus,
                 createdBy: user?.id || user?.UserID || null
             };
@@ -536,15 +537,19 @@ const LeadForm = ({ user }) => {
                     </div>
 
                     <div style={{ gridColumn: 'span 2' }}>
-                        <div style={labelStyle}>Lead Status *</div>
+                        <div style={labelStyle}>{isFE ? 'Visit Outcome *' : 'Lead Status *'}</div>
                         <select name="status" className="input-field" value={formData.status} onChange={handleChange} required>
-                            <option value="" disabled hidden>Select Status</option>
+                            <option value="" disabled hidden>{isFE ? 'Select Visit Outcome' : 'Select Status'}</option>
                             {isFE ? (
                                 <>
-                                    <option value="Interested">Interested</option>
-                                    <option value="Follow-up">Follow-up</option>
-                                    <option value="Converted">Converted</option>
-                                    <option value="Busy">Busy</option>
+                                    <option value="Interested – Follow-up Required">Interested – Follow-up Required</option>
+                                    <option value="Decision-maker Unavailable">Decision-maker Unavailable</option>
+                                    <option value="No Meeting / Contact Unavailable">No Meeting / Contact Unavailable</option>
+                                    <option value="Not Interested">Not Interested</option>
+                                    <option value="Requirement Identified">Requirement Identified</option>
+                                    <option value="Technical Discussion Required">Technical Discussion Required</option>
+                                    <option value="Commercial Discussion / Negotiation">Commercial Discussion / Negotiation</option>
+                                    <option value="Conversion / Deal Closed">Conversion / Deal Closed</option>
                                     <option value="other">Other</option>
                                 </>
                             ) : (
@@ -599,7 +604,7 @@ const LeadForm = ({ user }) => {
                         </div>
                     )}
 
-                    {formData.status === 'Interested' && (
+                    {((!isFE && formData.status === 'Interested') || (isFE && ['Interested – Follow-up Required', 'Requirement Identified', 'Technical Discussion Required', 'Commercial Discussion / Negotiation', 'Conversion / Deal Closed'].includes(formData.status))) && (
                         <div style={{ gridColumn: 'span 2' }} className="fade-in">
                             <div style={{ marginBottom: '15px' }}>
                                 <div style={labelStyle}>Services Interested</div>
@@ -701,7 +706,7 @@ const LeadForm = ({ user }) => {
                         </div>
                     )}
 
-                    {formData.status === 'Interested' && (
+                    {!isFE && formData.status === 'Interested' && (
                         <>
                             <div className="fade-in">
                                 <div style={labelStyle}>Meeting Date *</div>
@@ -765,7 +770,7 @@ const LeadForm = ({ user }) => {
                         </>
                     )}
 
-                    {formData.status === 'Follow-up' && (
+                    {((!isFE && formData.status === 'Follow-up') || (isFE && formData.status === 'Interested – Follow-up Required')) && (
                         <>
                             <div className="fade-in">
                                 <div style={labelStyle}>Next Date and Time *</div>
