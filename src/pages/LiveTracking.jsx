@@ -365,8 +365,59 @@ const LiveTracking = ({ user }) => {
         return clean;
     }, [routePoints, executives, selectedId]);
 
+    // Road network snapping: follow actual roads and streets route-wise
+    const [snappedRoute, setSnappedRoute] = useState([]);
+
+    useEffect(() => {
+        let isMounted = true;
+        if (!routePoints || routePoints.length < 2) {
+            setSnappedRoute([]);
+            return;
+        }
+
+        const validPoints = routePoints.filter(p => p.Latitude && p.Longitude && !isNaN(p.Latitude) && !isNaN(p.Longitude));
+        if (validPoints.length < 2) {
+            setSnappedRoute([]);
+            return;
+        }
+
+        // Sample up to 15 key checkpoints along the journey to query turn-by-turn road geometry
+        const maxSample = 15;
+        const sampled = [];
+        if (validPoints.length <= maxSample) {
+            sampled.push(...validPoints);
+        } else {
+            const step = (validPoints.length - 1) / (maxSample - 1);
+            for (let i = 0; i < maxSample; i++) {
+                sampled.push(validPoints[Math.min(Math.round(i * step), validPoints.length - 1)]);
+            }
+        }
+
+        const coordsStr = sampled.map(p => `${parseFloat(p.Longitude).toFixed(6)},${parseFloat(p.Latitude).toFixed(6)}`).join(';');
+        const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
+
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                if (isMounted && data.code === 'Ok' && data.routes?.[0]?.geometry?.coordinates) {
+                    const roadCoords = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+                    setSnappedRoute(roadCoords);
+                }
+            })
+            .catch(() => {
+                // Fallback gracefully to routeCoords if network unavailable
+            });
+
+        return () => { isMounted = false; };
+    }, [routePoints]);
+
+    const displayRoute = useMemo(() => {
+        if (snappedRoute && snappedRoute.length > 0) return snappedRoute;
+        return routeCoords;
+    }, [snappedRoute, routeCoords]);
+
     // Route Metrics
-    const totalDistance = useMemo(() => calculateDistanceKm(routeCoords), [routeCoords]);
+    const totalDistance = useMemo(() => calculateDistanceKm(displayRoute), [displayRoute]);
     const startPoint = routePoints.length > 0 ? routePoints[0] : null;
     const endPoint = routePoints.length > 0 ? routePoints[routePoints.length - 1] : null;
     const startCoords = startPoint ? [parseFloat(startPoint.Latitude), parseFloat(startPoint.Longitude)] : null;
@@ -583,6 +634,17 @@ const LiveTracking = ({ user }) => {
                                             }}>
                                                 {selectedData.isOnline ? 'LIVE' : 'OFFLINE'}
                                             </span>
+                                            <span style={{
+                                                padding: '2px 8px',
+                                                borderRadius: '10px',
+                                                fontSize: '0.65rem',
+                                                fontWeight: '700',
+                                                background: '#eff6ff',
+                                                color: '#2563eb',
+                                                border: '1px solid #bfdbfe'
+                                            }}>
+                                                Route-wise Track
+                                            </span>
                                         </div>
                                         <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
                                             Date: <b>{selectedDate.split('-').reverse().join('-')}</b> {isToday && '(Today)'}
@@ -619,7 +681,7 @@ const LiveTracking = ({ user }) => {
                             </div>
 
                             {/* Map View */}
-                            {routeCoords.length === 0 ? (
+                            {displayRoute.length === 0 ? (
                                 <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                                     <MapPin size={48} color="#cbd5e1" style={{ marginBottom: '14px' }} />
                                     <h3 style={{ color: '#475569', margin: '0 0 6px 0' }}>No Route Recorded</h3>
@@ -657,10 +719,10 @@ const LiveTracking = ({ user }) => {
                                             attribution='&copy; OpenStreetMap contributors'
                                         />
 
-                                        {/* Travel Route Polyline - Clean Dashed Line */}
-                                        {routeCoords.length > 1 && (
+                                        {/* Travel Route Polyline - Clean Dashed Line Following Roads */}
+                                        {displayRoute.length > 1 && (
                                             <Polyline
-                                                positions={routeCoords}
+                                                positions={displayRoute}
                                                 color="#4f46e5"
                                                 weight={4}
                                                 opacity={0.9}
@@ -690,7 +752,7 @@ const LiveTracking = ({ user }) => {
                                             />
                                         )}
 
-                                        <MapFocus position={latestCoords} path={routeCoords} />
+                                        <MapFocus position={latestCoords} path={displayRoute} />
                                     </MapContainer>
 
                                     {/* Bottom Right Info Card */}
