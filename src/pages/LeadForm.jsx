@@ -420,11 +420,12 @@ const LeadForm = ({ user }) => {
                             onFocus={makeEditable}
                             onMouseDown={makeEditable}
                             onTouchStart={makeEditable}
-                            autoComplete="off"
+                            autoComplete="one-time-code"
                             autoCorrect="off"
                             autoCapitalize="off"
                             spellCheck="false"
                             data-lpignore="true"
+                            data-form-type="other"
                             required 
                         />
                     </div>
@@ -432,8 +433,9 @@ const LeadForm = ({ user }) => {
                         <div style={labelStyle}>Phone Number {isFEorCE ? '' : '*'}</div>
                         <input 
                             data-field="phone"
-                            type="tel"
-                            name="phone" 
+                            type="text"
+                            inputMode="numeric"
+                            name="crm_field_contact_entry" 
                             className="input-field" 
                             placeholder="10 Digit Number (starts with 6-9)" 
                             value={formData.phone} 
@@ -442,11 +444,12 @@ const LeadForm = ({ user }) => {
                             onFocus={makeEditable}
                             onMouseDown={makeEditable}
                             onTouchStart={makeEditable}
-                            autoComplete="off"
+                            autoComplete="one-time-code"
                             autoCorrect="off"
                             autoCapitalize="off"
                             spellCheck="false"
                             data-lpignore="true"
+                            data-form-type="other"
                             required={!isFEorCE} 
                         />
                     </div>
@@ -466,11 +469,12 @@ const LeadForm = ({ user }) => {
                             onTouchStart={makeEditable}
                             onKeyDown={e => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); }}
                             onBlur={() => setFormData(prev => ({ ...prev, email: prev.email.trim().replace(/\s/g, '') }))}
-                            autoComplete="off"
+                            autoComplete="one-time-code"
                             autoCorrect="off"
                             autoCapitalize="off"
                             spellCheck="false"
                             data-lpignore="true"
+                            data-form-type="other"
                             required={!isFEorCE}
                         />
                     </div>
@@ -487,11 +491,12 @@ const LeadForm = ({ user }) => {
                             onFocus={makeEditable}
                             onMouseDown={makeEditable}
                             onTouchStart={makeEditable}
-                            autoComplete="off"
+                            autoComplete="one-time-code"
                             autoCorrect="off"
                             autoCapitalize="off"
                             spellCheck="false"
                             data-lpignore="true"
+                            data-form-type="other"
                             required 
                         />
                     </div>
@@ -510,11 +515,12 @@ const LeadForm = ({ user }) => {
                             onFocus={makeEditable}
                             onMouseDown={makeEditable}
                             onTouchStart={makeEditable}
-                            autoComplete="off"
+                            autoComplete="one-time-code"
                             autoCorrect="off"
                             autoCapitalize="off"
                             spellCheck="false"
                             data-lpignore="true"
+                            data-form-type="other"
                             required
                         ></textarea>
                     </div>
@@ -580,11 +586,12 @@ const LeadForm = ({ user }) => {
                                         setFormData(prev => ({ ...prev, customStatus: norm }));
                                     }
                                 }}
-                                autoComplete="off"
+                                autoComplete="one-time-code"
                                 autoCorrect="off"
                                 autoCapitalize="off"
                                 spellCheck="false"
                                 data-lpignore="true"
+                                data-form-type="other"
                                 required 
                             />
                         </div>
@@ -681,11 +688,12 @@ const LeadForm = ({ user }) => {
                                 onFocus={makeEditable}
                                 onMouseDown={makeEditable}
                                 onTouchStart={makeEditable}
-                                autoComplete="off"
+                                autoComplete="one-time-code"
                                 autoCorrect="off"
                                 autoCapitalize="off"
                                 spellCheck="false"
                                 data-lpignore="true"
+                                data-form-type="other"
                                 required
                             ></textarea>
                         </div>
@@ -834,11 +842,12 @@ const LeadForm = ({ user }) => {
                                 onFocus={makeEditable}
                                 onMouseDown={makeEditable}
                                 onTouchStart={makeEditable}
-                                autoComplete="off"
+                                autoComplete="one-time-code"
                                 autoCorrect="off"
                                 autoCapitalize="off"
                                 spellCheck="false"
                                 data-lpignore="true"
+                                data-form-type="other"
                                 required
                             ></textarea>
                         </div>
