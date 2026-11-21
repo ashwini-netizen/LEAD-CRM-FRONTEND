@@ -222,7 +222,7 @@ const LeadHistory = ({ user }) => {
                         <thead style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
                             <tr style={{ textAlign: 'left' }}>
                                 <th style={thStyle}>S.No</th>
-                                <th style={{ ...thStyle, padding: '16px 12px', width: '220px', minWidth: '170px', maxWidth: '240px' }}>Lead Name</th>
+                                <th style={{ ...thStyle, padding: '16px 14px', width: '280px', minWidth: '240px', maxWidth: '320px' }}>Lead Name</th>
                                 <th style={{ ...thStyle, padding: '16px 12px', width: '190px', minWidth: '150px', maxWidth: '210px' }}>Company</th>
                                 <th style={thStyle}>Final Status</th>
                                 <th style={thStyle}>Contact</th>
@@ -235,7 +235,7 @@ const LeadHistory = ({ user }) => {
                             {filteredLeads.map((l, index) => (
                                 <tr key={l.LeadID} style={{ borderBottom: '1px solid #f1f5f9' }} className="row-hover">
                                     <td style={{ ...tdStyle, fontWeight: '800', color: '#64748b' }}>{index + 1}</td>
-                                    <td style={{ ...tdStyle, padding: '14px 12px', width: '220px', minWidth: '170px', maxWidth: '240px', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
+                                    <td style={{ ...tdStyle, padding: '14px 14px', width: '280px', minWidth: '240px', maxWidth: '320px', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
                                         <p style={{ fontWeight: '800', margin: 0, color: '#0f172a', fontSize: '0.95rem', lineHeight: '1.35', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>{l.FullName}</p>
                                         <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '2px 0 0 0', fontWeight: '800' }}>ID: {l.LeadID}</p>
                                     </td>
