@@ -50,12 +50,50 @@ const LeadHistory = ({ user }) => {
         }
     };
 
+    const getLeadHistoryDateYMD = (dateVal) => {
+        if (!dateVal) return '';
+        if (typeof dateVal === 'string') {
+            const trimmed = dateVal.trim();
+            const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match && (trimmed.length === 10 || trimmed.includes('T00:00:00'))) {
+                return `${match[1]}-${match[2]}-${match[3]}`;
+            }
+        }
+        try {
+            const d = new Date(dateVal);
+            if (!isNaN(d.getTime())) {
+                return new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'Asia/Kolkata',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }).format(d);
+            }
+        } catch {}
+        const d = new Date(dateVal);
+        if (!isNaN(d.getTime())) {
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        }
+        return '';
+    };
+
+    const formatLeadHistoryDate = (dateVal) => {
+        const ymd = getLeadHistoryDateYMD(dateVal);
+        if (!ymd) return 'N/A';
+        const parts = ymd.split('-');
+        if (parts.length === 3) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return 'N/A';
+    };
+
     const filteredLeads = leads.filter(l => {
         const matchesSearch = l.FullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             l.Phone.includes(searchTerm);
         const matchesFilter = filterStatus === 'All' || l.Status === filterStatus;
 
-        const leadDate = l.UpdatedAt ? new Date(l.UpdatedAt).toISOString().split('T')[0] : '';
+        const leadDate = getLeadHistoryDateYMD(l.UpdatedAt || l.CreatedAt);
         const matchesDate = !selectedDate || leadDate === selectedDate;
 
         return matchesSearch && matchesFilter && matchesDate;
@@ -77,7 +115,8 @@ const LeadHistory = ({ user }) => {
         const dateStr = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}`;
         const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
         doc.text(`Generated on: ${dateStr} ${timeStr}`, 14, 30);
-        doc.text(`Filter Status: ${filterStatus} | Total Records: ${filteredLeads.length}`, 14, 37);
+        const dateFilterStr = selectedDate ? ` | Date: ${formatLeadHistoryDate(selectedDate)}` : '';
+        doc.text(`Filter Status: ${filterStatus}${dateFilterStr} | Total Records: ${filteredLeads.length}`, 14, 37);
 
         const tableColumn = ["S.No", "Lead Name", "Company", "ID", "Status", "Contact", "Invoice", "Executive", "Date"];
         const tableRows = [];
@@ -93,7 +132,7 @@ const LeadHistory = ({ user }) => {
                 l.Phone,
                 invoiceNumbers || 'N/A',
                 l.AssignedToName || 'Unassigned',
-                new Date(l.UpdatedAt).toLocaleDateString('en-GB')
+                formatLeadHistoryDate(l.UpdatedAt || l.CreatedAt)
             ];
             tableRows.push(leadData);
         });
@@ -181,10 +220,36 @@ const LeadHistory = ({ user }) => {
                         <input
                             type="date"
                             className="input-field"
-                            style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '44px', background: 'white' }}
+                            style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '44px', paddingRight: selectedDate ? '34px' : '12px', background: 'white' }}
                             value={selectedDate}
                             onChange={e => setSelectedDate(e.target.value)}
+                            title="Filter by Date"
                         />
+                        {selectedDate && (
+                            <button
+                                type="button"
+                                onClick={() => setSelectedDate('')}
+                                title="Clear date filter"
+                                style={{
+                                    position: 'absolute',
+                                    right: '10px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: '2px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#94a3b8'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}
+                            >
+                                <XCircle size={16} />
+                            </button>
+                        )}
                     </div>
                     <div style={{ position: 'relative', minWidth: '180px' }}>
                         <Filter size={16} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
@@ -287,7 +352,7 @@ const LeadHistory = ({ user }) => {
                                     </td>
                                     <td style={tdStyle}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem', color: '#1e293b', fontWeight: '800' }}>
-                                            <Calendar size={14} /> {new Date(l.UpdatedAt).toLocaleDateString('en-GB')}
+                                            <Calendar size={14} /> {formatLeadHistoryDate(l.UpdatedAt || l.CreatedAt)}
                                         </div>
                                     </td>
                                 </tr>
