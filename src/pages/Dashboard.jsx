@@ -320,6 +320,11 @@ const Dashboard = ({ user, onLogout }) => {
         }
         setEndDate(val);
     };
+
+    const handleClearDashboardDateFilter = () => {
+        setStartDate('');
+        setEndDate('');
+    };
     const [timeData, setTimeData] = useState([]);
     const [loadingCharts, setLoadingCharts] = useState(false);
     const [exporting, setExporting] = useState(false);
@@ -485,7 +490,8 @@ const Dashboard = ({ user, onLogout }) => {
         if (user?.role !== 'Admin' && user?.role !== 'Team Lead') return;
         setLoadingCharts(true);
         try {
-            const res = await fetch(`${API_URL}/api/stats/time-series?startDate=${startDate}&endDate=${endDate}`, {
+            const query = (startDate && endDate) ? `?startDate=${startDate}&endDate=${endDate}` : '';
+            const res = await fetch(`${API_URL}/api/stats/time-series${query}`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('crm_token')}` }
             });
             if (res.ok) setTimeData(await res.json());
@@ -521,7 +527,7 @@ const Dashboard = ({ user, onLogout }) => {
             const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
             const fmtPeriod = (dStr) => dStr ? dStr.split('-').reverse().join('-') : '';
             doc.text(`Generated on: ${dateStr} ${timeStr}`, 20, 32);
-            doc.text(`Period: ${fmtPeriod(startDate)} to ${fmtPeriod(endDate)}`, pageWidth - 20, 32, { align: 'right' });
+            doc.text(`Period: ${startDate && endDate ? `${fmtPeriod(startDate)} to ${fmtPeriod(endDate)}` : 'All Time'}`, pageWidth - 20, 32, { align: 'right' });
 
             let y = 55;
 
@@ -581,7 +587,7 @@ const Dashboard = ({ user, onLogout }) => {
                 doc.addImage(imgData, 'PNG', 20, y, 170, 85);
             }
             const base64 = doc.output('datauristring').split(',')[1];
-            const filename = `CRM_Report_${fmtPeriod(startDate)}_${fmtPeriod(endDate)}.pdf`;
+            const filename = `CRM_Report_${startDate && endDate ? `${fmtPeriod(startDate)}_${fmtPeriod(endDate)}` : 'All_Time'}.pdf`;
 
             await savePDF(doc, filename);
 
@@ -1126,6 +1132,36 @@ const Dashboard = ({ user, onLogout }) => {
                                         />
                                     </div>
                                 </div>
+                                {(startDate || endDate) && (
+                                    <button
+                                        type="button"
+                                        onClick={handleClearDashboardDateFilter}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            padding: '8px 14px',
+                                            background: '#f1f5f9',
+                                            color: '#475569',
+                                            border: '1px solid #cbd5e1',
+                                            borderRadius: '8px',
+                                            fontSize: '0.84rem',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                        onMouseEnter={e => {
+                                            e.currentTarget.style.background = '#e2e8f0';
+                                            e.currentTarget.style.color = '#1e293b';
+                                        }}
+                                        onMouseLeave={e => {
+                                            e.currentTarget.style.background = '#f1f5f9';
+                                            e.currentTarget.style.color = '#475569';
+                                        }}
+                                    >
+                                        <X size={14} /> Clear
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
@@ -2638,7 +2674,9 @@ const Dashboard = ({ user, onLogout }) => {
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
                                 <span style={{ fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic', marginRight: '10px' }}>
-                                    Range: {startDate.split('-').reverse().join('-')} to {endDate.split('-').reverse().join('-')}
+                                    {startDate && endDate 
+                                        ? `Range: ${startDate.split('-').reverse().join('-')} to ${endDate.split('-').reverse().join('-')}`
+                                        : 'Range: All Time'}
                                 </span>
                                 <button
                                     onClick={handleDownloadPDF}
