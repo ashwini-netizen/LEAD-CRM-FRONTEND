@@ -225,7 +225,7 @@ const LeadHistory = ({ user }) => {
                                 <th style={{ ...thStyle, padding: '16px 14px', width: '330px', minWidth: '280px', maxWidth: '380px' }}>Lead Name</th>
                                 <th style={{ ...thStyle, padding: '16px 14px', width: '250px', minWidth: '200px', maxWidth: '290px' }}>Company</th>
                                 <th style={thStyle}>Final Status</th>
-                                <th style={thStyle}>Contact</th>
+                                <th style={{ ...thStyle, padding: '16px 12px', width: '130px', minWidth: '120px', maxWidth: '140px', whiteSpace: 'nowrap' }}>Contact</th>
                                 <th style={thStyle}>Invoice</th>
                                 <th style={thStyle}>Executive</th>
                                 <th style={thStyle}>Date</th>
@@ -265,7 +265,7 @@ const LeadHistory = ({ user }) => {
                                             {l.Status === 'Quotation' ? 'Converted' : l.Status}
                                         </span>
                                     </td>
-                                    <td style={{ ...tdStyle, color: '#1e293b', fontWeight: '800' }}>{l.Phone}</td>
+                                    <td style={{ ...tdStyle, padding: '14px 12px', color: '#1e293b', fontWeight: '800', width: '130px', minWidth: '120px', maxWidth: '140px', whiteSpace: 'nowrap' }}>{l.Phone}</td>
                                     <td style={tdStyle}>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                                             {getInvoiceNumbers(l.BillingBreakdown).length > 0 ? (
