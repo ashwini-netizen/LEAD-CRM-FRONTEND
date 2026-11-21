@@ -310,16 +310,10 @@ const Dashboard = ({ user, onLogout }) => {
     const handleStartDateChange = (val) => {
         const clamped = (val && val > todayStr) ? todayStr : val;
         setStartDate(clamped);
-        if (clamped && endDate && clamped > endDate) {
-            setEndDate(clamped);
-        }
     };
 
     const handleEndDateChange = (val) => {
         const clamped = (val && val > todayStr) ? todayStr : val;
-        if (clamped && startDate && clamped < startDate) {
-            return;
-        }
         setEndDate(clamped);
     };
 
@@ -384,7 +378,12 @@ const Dashboard = ({ user, onLogout }) => {
             let url = `${API_URL}/api/stats/overview?date=${dateParam}`;
             if (isAdminOrTL) {
                 if (startD || endD) {
-                    url += `&startDate=${startD || ''}&endDate=${endD || ''}`;
+                    let s = startD;
+                    let e = endD;
+                    if (s && e && s > e) {
+                        [s, e] = [e, s];
+                    }
+                    url += `&startDate=${s || ''}&endDate=${e || ''}`;
                 }
                 if (ceFilter) {
                     url += `&executiveId=${ceFilter}`;
@@ -492,8 +491,13 @@ const Dashboard = ({ user, onLogout }) => {
         if (user?.role !== 'Admin' && user?.role !== 'Team Lead') return;
         setLoadingCharts(true);
         try {
-            const query = (startDate || endDate) 
-                ? `?startDate=${startDate || ''}&endDate=${endDate || ''}` 
+            let s = startDate;
+            let e = endDate;
+            if (s && e && s > e) {
+                [s, e] = [e, s];
+            }
+            const query = (s || e) 
+                ? `?startDate=${s || ''}&endDate=${e || ''}` 
                 : '';
             const res = await fetch(`${API_URL}/api/stats/time-series${query}`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('crm_token')}` }
@@ -531,7 +535,19 @@ const Dashboard = ({ user, onLogout }) => {
             const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
             const fmtPeriod = (dStr) => dStr ? dStr.split('-').reverse().join('-') : '';
             doc.text(`Generated on: ${dateStr} ${timeStr}`, 20, 32);
-            doc.text(`Period: ${startDate && endDate ? `${fmtPeriod(startDate)} to ${fmtPeriod(endDate)}` : 'All Time'}`, pageWidth - 20, 32, { align: 'right' });
+            let s = startDate;
+            let e = endDate;
+            if (s && e && s > e) {
+                [s, e] = [e, s];
+            }
+            const periodText = (s && e)
+                ? `${fmtPeriod(s)} to ${fmtPeriod(e)}`
+                : s
+                    ? `From ${fmtPeriod(s)} onwards`
+                    : e
+                        ? `Up to ${fmtPeriod(e)}`
+                        : 'All Time';
+            doc.text(`Period: ${periodText}`, pageWidth - 20, 32, { align: 'right' });
 
             let y = 55;
 
@@ -591,7 +607,7 @@ const Dashboard = ({ user, onLogout }) => {
                 doc.addImage(imgData, 'PNG', 20, y, 170, 85);
             }
             const base64 = doc.output('datauristring').split(',')[1];
-            const filename = `CRM_Report_${startDate && endDate ? `${fmtPeriod(startDate)}_${fmtPeriod(endDate)}` : 'All_Time'}.pdf`;
+            const filename = `CRM_Report_${s && e ? `${fmtPeriod(s)}_${fmtPeriod(e)}` : s ? `From_${fmtPeriod(s)}` : e ? `Up_To_${fmtPeriod(e)}` : 'All_Time'}.pdf`;
 
             await savePDF(doc, filename);
 
@@ -1114,7 +1130,7 @@ const Dashboard = ({ user, onLogout }) => {
                                             type="date"
                                             className="input-field"
                                             title="From Date"
-                                            max={endDate || todayStr}
+                                            max={todayStr}
                                             style={{ padding: '8px 8px 8px 30px', width: '100%', boxSizing: 'border-box', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '0.85rem' }}
                                             value={startDate}
                                             onChange={e => handleStartDateChange(e.target.value)}
@@ -1129,7 +1145,6 @@ const Dashboard = ({ user, onLogout }) => {
                                             type="date"
                                             className="input-field"
                                             title="To Date"
-                                            min={startDate || undefined}
                                             max={todayStr}
                                             style={{ padding: '8px 8px 8px 30px', width: '100%', boxSizing: 'border-box', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '0.85rem' }}
                                             value={endDate}
@@ -2679,9 +2694,20 @@ const Dashboard = ({ user, onLogout }) => {
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
                                 <span style={{ fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic', marginRight: '10px' }}>
-                                    {startDate && endDate 
-                                        ? `Range: ${startDate.split('-').reverse().join('-')} to ${endDate.split('-').reverse().join('-')}`
-                                        : 'Range: All Time'}
+                                    {(() => {
+                                        let s = startDate;
+                                        let e = endDate;
+                                        if (s && e && s > e) {
+                                            [s, e] = [e, s];
+                                        }
+                                        return (s && e) 
+                                            ? `Range: ${s.split('-').reverse().join('-')} to ${e.split('-').reverse().join('-')}`
+                                            : s
+                                                ? `Range: From ${s.split('-').reverse().join('-')} onwards`
+                                                : e
+                                                    ? `Range: Up to ${e.split('-').reverse().join('-')}`
+                                                    : 'Range: All Time';
+                                    })()}
                                 </span>
                                 <button
                                     onClick={handleDownloadPDF}
