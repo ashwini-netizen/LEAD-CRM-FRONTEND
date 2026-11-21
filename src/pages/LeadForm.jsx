@@ -350,7 +350,7 @@ const LeadForm = ({ user }) => {
                 companyName: formData.company,
                 serviceInterested: serviceSummary,
                 address: formData.address,
-                callDate: formData.callDate || null,
+                callDate: formData.callDate || getTodayDateStr(),
                 callNote: isFE ? null : (isFollowupStatus && formData.status !== 'Follow-up' ? (isOther ? resolvedStatus : formData.status) : formData.callNote),
                 followupDate: formData.status === 'Follow-up' ? formData.followupDate : null,
                 followupTime: formData.status === 'Follow-up' ? formatTo12Hr(formData.followupTime) : null,

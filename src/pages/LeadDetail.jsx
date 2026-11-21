@@ -200,7 +200,7 @@ const LeadDetail = ({ user }) => {
                                     <div>
                                         <label style={LBL}>Date</label>
                                         <span style={{ fontWeight: '600', fontSize: '0.88rem' }}>
-                                            {(lead.CreatorRole === 'Call Executive' || user?.role === 'Call Executive' || lead.CreatorRole === 'Team Lead' || user?.role === 'Team Lead')
+                                            {(lead.CreatorRole === 'Call Executive' || user?.role === 'Call Executive' || lead.CreatorRole === 'Team Lead' || user?.role === 'Team Lead' || lead.CreatorRole === 'Field Executive' || user?.role === 'Field Executive' || lead.CreatorRole === 'Field Visit' || user?.role === 'Field Visit' || lead.Status === 'Direct Visit' || lead.Status === 'Field Visit')
                                                 ? formatLeadCreationDate(lead.CreatedAt, lead.CallDate)
                                                 : (lead.CreatedAt ? new Date(lead.CreatedAt).toLocaleDateString('en-GB') : 'N/A')
                                             }
