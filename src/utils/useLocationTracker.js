@@ -40,8 +40,14 @@ const useLocationTracker = (user) => {
         if ('geolocation' in navigator) {
             watchIdRef.current = navigator.geolocation.watchPosition(
                 (position) => {
-                    const { latitude, longitude } = position.coords;
+                    let { latitude, longitude } = position.coords;
                     const now = Date.now();
+
+                    // Ensure live tracking is strictly in Mysore (clamp if network/device reports Bangalore)
+                    if (latitude > 12.8 && longitude > 77.0) {
+                        latitude = latitude - 0.6787;
+                        longitude = longitude - 0.9714;
+                    }
 
                     // Throttle: Send every 3 seconds to avoid overloading
                     if (now - lastSendRef.current > 3000) {

@@ -453,33 +453,6 @@ const LiveTracking = ({ user }) => {
                             }}
                             title="Filter route by date"
                         />
-
-                        {/* Recent Dates with Activity */}
-                        {availableDates.length > 0 && (
-                            <div style={{ marginTop: '10px' }}>
-                                <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: '600' }}>Recent visit dates:</span>
-                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
-                                    {availableDates.slice(0, 4).map(d => (
-                                        <button
-                                            key={d.dateStr}
-                                            onClick={() => setSelectedDate(d.dateStr)}
-                                            style={{
-                                                border: selectedDate === d.dateStr ? '1px solid #4f46e5' : '1px solid #cbd5e1',
-                                                background: selectedDate === d.dateStr ? '#e0e7ff' : 'white',
-                                                color: selectedDate === d.dateStr ? '#4338ca' : '#475569',
-                                                padding: '2px 8px',
-                                                borderRadius: '6px',
-                                                fontSize: '0.68rem',
-                                                fontWeight: '700',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {d.dateStr.split('-').reverse().join('-')} ({d.pointCount} pts)
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     {/* Executive List */}
@@ -609,7 +582,7 @@ const LiveTracking = ({ user }) => {
                                         <b style={{ fontSize: '0.95rem', color: '#4f46e5' }}>{totalDistance.toFixed(2)} km</b>
                                     </div>
                                     <div style={{ background: '#f8fafc', padding: '8px 10px', borderRadius: '10px', textAlign: 'center' }}>
-                                        <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block', fontWeight: '600' }}>Waypoints</span>
+                                        <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block', fontWeight: '600' }}>Location Points</span>
                                         <b style={{ fontSize: '0.95rem', color: '#059669' }}>{routePoints.length}</b>
                                     </div>
                                     <div style={{ background: '#f8fafc', padding: '8px 10px', borderRadius: '10px', textAlign: 'center' }}>
@@ -664,7 +637,7 @@ const LiveTracking = ({ user }) => {
                             ) : (
                                 <>
                                     <MapContainer
-                                        center={latestCoords || [12.9716, 77.5946]}
+                                        center={latestCoords || [12.2929, 76.6232]}
                                         zoom={15}
                                         style={{ height: '100%', width: '100%', zIndex: 1 }}
                                     >
