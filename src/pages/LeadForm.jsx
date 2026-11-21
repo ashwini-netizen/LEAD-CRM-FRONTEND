@@ -110,7 +110,7 @@ const LeadForm = ({ user }) => {
     const getRedirectPath = () => {
         const params = new URLSearchParams(location.search);
         const fromParam = params.get('from');
-        if (fromParam === 'dashboard') return '/dashboard';
+        if (fromParam === 'dashboard') return isFE ? '/leads/my-created' : '/dashboard';
         if (fromParam === 'leads') return isFE ? '/leads/my-created' : '/leads';
         return location.state?.from || (isFE ? '/leads/my-created' : '/leads');
     };
@@ -142,9 +142,11 @@ const LeadForm = ({ user }) => {
 
     const validateForm = () => {
         // 1. Check mandatory fields first
-        const isMandatoryMissing = isFEorCE
-            ? (!formData.fullName || !formData.address || !formData.company || !formData.callDate)
-            : (!formData.fullName || !formData.phone || !formData.email || !formData.address || !formData.company || !formData.callDate);
+        const isMandatoryMissing = isFE
+            ? (!formData.fullName || !formData.company || !formData.phone || !formData.address || !formData.callDate)
+            : (isCE
+                ? (!formData.fullName || !formData.address || !formData.company || !formData.callDate)
+                : (!formData.fullName || !formData.phone || !formData.email || !formData.address || !formData.company || !formData.callDate));
 
         if (isMandatoryMissing) {
             setSubmitError('Please fill all mandatory fields (marked with *).');
@@ -153,13 +155,13 @@ const LeadForm = ({ user }) => {
 
         // 2. Format checks for fields
         if (formData.phone) {
-            const phoneValidation = validatePhoneNumber(formData.phone, 'Phone number');
+            const phoneValidation = validatePhoneNumber(formData.phone, isFE ? 'Contact number' : 'Phone number');
             if (!phoneValidation.isValid) {
                 setSubmitError(phoneValidation.message);
                 return false;
             }
-        } else if (!isFEorCE) {
-            setSubmitError('Phone number is required.');
+        } else if (!isCE) {
+            setSubmitError(isFE ? 'Contact number is required.' : 'Phone number is required.');
             return false;
         }
 
@@ -391,11 +393,11 @@ const LeadForm = ({ user }) => {
 
     return (
         <div style={{ background: '#f8fafc', minHeight: '100vh', display: 'flex', flexDirection: 'column', width: '100vw', overflowX: 'hidden' }}>
-            <UserHeader user={user} title="Create New Lead" />
+            <UserHeader user={user} title={isFE ? "Create Walk-in Lead" : "Create New Lead"} />
 
             <div className="page-main-container" style={{ maxWidth: '100%', boxSizing: 'border-box', flex: 1, overflowY: 'auto' }}>
                 <header className="responsive-header">
-                    <h1>Lead Creation Form</h1>
+                    <h1>{isFE ? "Walk-in Lead Form" : "Lead Creation Form"}</h1>
                     <button onClick={() => navigate(getRedirectPath(), { replace: true })} className="btn-secondary" style={{ padding: '10px 20px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>Exit</button>
                 </header>
 
@@ -407,13 +409,13 @@ const LeadForm = ({ user }) => {
 
                 <div className="glass-card fade-in responsive-form-grid" onKeyDown={handleKeyDown}>
                     <div>
-                        <div style={labelStyle}>Full Name *</div>
+                        <div style={labelStyle}>{isFE ? 'Name *' : 'Full Name *'}</div>
                         <input 
                             data-field="fullName"
                             type="text"
                             name="crm_field_client_entry" 
                             className="input-field" 
-                            placeholder="Client Name" 
+                            placeholder={isFE ? "Client / Contact Name" : "Client Name"} 
                             value={formData.fullName} 
                             onChange={handleChange} 
                             readOnly
@@ -430,7 +432,7 @@ const LeadForm = ({ user }) => {
                         />
                     </div>
                     <div>
-                        <div style={labelStyle}>Phone Number {isFEorCE ? '' : '*'}</div>
+                        <div style={labelStyle}>{isFE ? 'Contact Number *' : (isCE ? 'Phone Number' : 'Phone Number *')}</div>
                         <input 
                             data-field="phone"
                             type="text"
@@ -450,7 +452,7 @@ const LeadForm = ({ user }) => {
                             spellCheck="false"
                             data-lpignore="true"
                             data-form-type="other"
-                            required={!isFEorCE} 
+                            required={!isCE} 
                         />
                     </div>
                     <div>
@@ -479,7 +481,7 @@ const LeadForm = ({ user }) => {
                         />
                     </div>
                     <div>
-                        <div style={labelStyle}>Company *</div>
+                        <div style={labelStyle}>{isFE ? 'Company Name *' : 'Company *'}</div>
                         <input 
                             data-field="company"
                             name="crm_field_org_entry" 
@@ -502,13 +504,13 @@ const LeadForm = ({ user }) => {
                     </div>
 
                     <div style={{ gridColumn: 'span 2' }}>
-                        <div style={labelStyle}>Address *</div>
+                        <div style={labelStyle}>{isFE ? 'Location *' : 'Address *'}</div>
                         <textarea 
                             data-field="address"
                             name="crm_field_loc_entry" 
                             className="input-field" 
                             rows="3" 
-                            placeholder="Enter Full Address" 
+                            placeholder={isFE ? "Enter Full Location / Address" : "Enter Full Address"} 
                             value={formData.address} 
                             onChange={handleChange} 
                             readOnly
@@ -526,7 +528,7 @@ const LeadForm = ({ user }) => {
                     </div>
 
                     <div style={isFE ? { gridColumn: 'span 2' } : {}}>
-                        <div style={labelStyle}>Call Date *</div>
+                        <div style={labelStyle}>{isFE ? 'Visit Date *' : 'Call Date *'}</div>
                         <div style={{ position: 'relative' }}>
                             <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
                             <input type="date" name="callDate" className="input-field" style={{ paddingLeft: '36px' }} value={formData.callDate} onChange={handleChange} min={isFE ? undefined : getTodayDateStr()} required />
@@ -855,7 +857,7 @@ const LeadForm = ({ user }) => {
 
                     <div style={{ display: 'flex', gap: '15px', gridColumn: 'span 2', marginTop: '30px' }}>
                         <button type="button" onClick={handleSubmit} className="btn-primary" disabled={submitting}>
-                            {submitting ? 'Saving...' : 'Save Lead'}
+                            {submitting ? 'Saving...' : (isFE ? 'Save Walk-in Lead' : 'Save Lead')}
                         </button>
                     </div>
                 </div>

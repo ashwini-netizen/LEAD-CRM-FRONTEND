@@ -525,6 +525,7 @@ function App() {
 
                 <Route path="/dashboard" element={<ProtectedRoute element={<Dashboard user={user} onLogout={handleLogout} />} />} />
                 <Route path="/leads/new" element={<ProtectedRoute element={<LeadForm user={user} />} />} />
+                <Route path="/leads/walk-in" element={<ProtectedRoute element={<LeadForm user={user} />} />} />
                 <Route path="/leads" element={<ProtectedRoute element={<LeadList user={user} />} />} />
                 <Route path="/leads/my-created" element={<ProtectedRoute element={<LeadList user={user} isMyCreated={true} />} />} />
                 <Route path="/leads/:id" element={<ProtectedRoute element={<LeadDetail user={user} />} />} />

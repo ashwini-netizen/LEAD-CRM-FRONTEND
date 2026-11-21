@@ -1013,7 +1013,11 @@ const Dashboard = ({ user, onLogout }) => {
                 <h2 style={{ color: '#6366f1', marginBottom: '40px', fontSize: '1.8rem', fontWeight: '800' }}>CRM Portal</h2>
                 <nav className="sidebar-nav" style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: '5px' }}>
                     <NavItem to="/dashboard" active={location.pathname === '/dashboard'}><LayoutDashboard size={20} /> Dashboard</NavItem>
-                    {user?.role !== 'Admin' && <NavItem to="/leads/new?from=dashboard" active={location.pathname === '/leads/new'}><UserPlus size={20} /> New Lead</NavItem>}
+                    {user?.role === 'Field Executive' ? (
+                        <NavItem to="/leads/walk-in?from=dashboard" active={location.pathname === '/leads/walk-in' || location.pathname === '/leads/new'}><UserPlus size={20} /> Walk-in Leads</NavItem>
+                    ) : (
+                        user?.role !== 'Admin' && <NavItem to="/leads/new?from=dashboard" active={location.pathname === '/leads/new'}><UserPlus size={20} /> New Lead</NavItem>
+                    )}
                     <NavItem to="/leads" active={location.pathname === '/leads'}><List size={20} /> {user?.role === 'Field Executive' ? 'Assigned Meetings Leads' : 'Leads List'}</NavItem>
                     {user?.role === 'Field Executive' && (
                         <>

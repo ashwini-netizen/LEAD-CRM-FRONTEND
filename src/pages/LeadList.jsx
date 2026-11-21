@@ -1105,7 +1105,7 @@ const LeadList = ({ user, isMyCreated }) => {
 
     return (
         <div style={{ background: '#f8fafc', minHeight: '100vh', width: '100vw', overflowX: 'hidden' }}>
-            <UserHeader user={user} title={isMyCreated ? 'My Created Leads' : 'Lead Management'} />
+            <UserHeader user={user} title={isMyCreated ? (user?.role === 'Field Executive' ? 'Walk-in Leads List' : 'My Created Leads') : 'Lead Management'} />
 
             <div className="page-main-container" style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
                 <button
@@ -1116,14 +1116,16 @@ const LeadList = ({ user, isMyCreated }) => {
                     <ArrowLeft size={18} /> Back to Dashboard
                 </button>
                 <header className="responsive-header">
-                    <h1>{user?.role === 'Field Executive' && !isMyCreated ? 'Assigned Meetings Leads' : (isMyCreated ? 'My Created Leads' : 'Lead Database')}
+                    <h1>{user?.role === 'Field Executive' && !isMyCreated ? 'Assigned Meetings Leads' : (isMyCreated ? (user?.role === 'Field Executive' ? 'Walk-in Leads List' : 'My Created Leads') : 'Lead Database')}
                         <span style={{ fontSize: '0.9rem', color: '#64748b', marginLeft: '12px', fontWeight: '500' }}>{filtered.length} total</span>
                     </h1>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <button onClick={fetchLeads} style={{ background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.3)', padding: '10px 14px', borderRadius: '8px', cursor: 'pointer' }}>
                             <RefreshCw size={16} />
                         </button>
-                        <button className="btn-primary" onClick={() => navigate('/leads/new?from=leads', { state: { from: '/leads' } })}>+ New Lead</button>
+                        <button className="btn-primary" onClick={() => navigate(user?.role === 'Field Executive' ? '/leads/walk-in?from=leads' : '/leads/new?from=leads', { state: { from: isMyCreated ? '/leads/my-created' : '/leads' } })}>
+                            {user?.role === 'Field Executive' ? '+ Walk-in Lead' : '+ New Lead'}
+                        </button>
                         {(isCE || (isFE && isMyCreated)) && (
                             <div style={{ position: 'relative', overflow: 'hidden', display: 'inline-block' }}>
                                 <input
