@@ -39,6 +39,22 @@ const LeadHistory = ({ user }) => {
         fetchHistory();
     }, []);
 
+    const getTodayDateStr = () => {
+        try {
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).format(new Date());
+        } catch { }
+        const pad = (n) => String(n).padStart(2, '0');
+        const d = new Date();
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    };
+
+    const todayStr = getTodayDateStr();
+
     const getInvoiceNumbers = (breakdownStr) => {
         if (!breakdownStr) return [];
         try {
@@ -222,7 +238,15 @@ const LeadHistory = ({ user }) => {
                             className="input-field"
                             style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '44px', paddingRight: selectedDate ? '34px' : '12px', background: 'white' }}
                             value={selectedDate}
-                            onChange={e => setSelectedDate(e.target.value)}
+                            max={todayStr}
+                            onChange={e => {
+                                const val = e.target.value;
+                                if (val && val > todayStr) {
+                                    setSelectedDate(todayStr);
+                                } else {
+                                    setSelectedDate(val);
+                                }
+                            }}
                             title="Filter by Date"
                         />
                         {selectedDate && (
