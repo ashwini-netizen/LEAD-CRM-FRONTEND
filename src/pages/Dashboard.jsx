@@ -308,17 +308,19 @@ const Dashboard = ({ user, onLogout }) => {
     const [callTrackingTab, setCallTrackingTab] = useState('overview'); // 'overview' | 'comparison' | 'activity'
 
     const handleStartDateChange = (val) => {
-        setStartDate(val);
-        if (val && endDate && val > endDate) {
-            setEndDate(val);
+        const clamped = (val && val > todayStr) ? todayStr : val;
+        setStartDate(clamped);
+        if (clamped && endDate && clamped > endDate) {
+            setEndDate(clamped);
         }
     };
 
     const handleEndDateChange = (val) => {
-        if (val && startDate && val < startDate) {
+        const clamped = (val && val > todayStr) ? todayStr : val;
+        if (clamped && startDate && clamped < startDate) {
             return;
         }
-        setEndDate(val);
+        setEndDate(clamped);
     };
 
     const handleClearDashboardDateFilter = () => {
@@ -381,8 +383,8 @@ const Dashboard = ({ user, onLogout }) => {
 
             let url = `${API_URL}/api/stats/overview?date=${dateParam}`;
             if (isAdminOrTL) {
-                if (startD && endD) {
-                    url += `&startDate=${startD}&endDate=${endD}`;
+                if (startD || endD) {
+                    url += `&startDate=${startD || ''}&endDate=${endD || ''}`;
                 }
                 if (ceFilter) {
                     url += `&executiveId=${ceFilter}`;
@@ -490,7 +492,9 @@ const Dashboard = ({ user, onLogout }) => {
         if (user?.role !== 'Admin' && user?.role !== 'Team Lead') return;
         setLoadingCharts(true);
         try {
-            const query = (startDate && endDate) ? `?startDate=${startDate}&endDate=${endDate}` : '';
+            const query = (startDate || endDate) 
+                ? `?startDate=${startDate || ''}&endDate=${endDate || ''}` 
+                : '';
             const res = await fetch(`${API_URL}/api/stats/time-series${query}`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('crm_token')}` }
             });
