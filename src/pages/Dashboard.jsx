@@ -209,8 +209,8 @@ const Dashboard = ({ user, onLogout }) => {
     const location = useLocation();
     const [overview, setOverview] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const [callDate, setCallDate] = useState(new Date().toISOString().split('T')[0]);
     const [showAllStatuses, setShowAllStatuses] = useState(false);
     const [callPage, setCallPage] = useState(1);
@@ -1110,7 +1110,7 @@ const Dashboard = ({ user, onLogout }) => {
                                             type="date"
                                             className="input-field"
                                             title="From Date"
-                                            max={endDate || undefined}
+                                            max={endDate || todayStr}
                                             style={{ padding: '8px 8px 8px 30px', width: '100%', boxSizing: 'border-box', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '0.85rem' }}
                                             value={startDate}
                                             onChange={e => handleStartDateChange(e.target.value)}
@@ -1126,6 +1126,7 @@ const Dashboard = ({ user, onLogout }) => {
                                             className="input-field"
                                             title="To Date"
                                             min={startDate || undefined}
+                                            max={todayStr}
                                             style={{ padding: '8px 8px 8px 30px', width: '100%', boxSizing: 'border-box', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '0.85rem' }}
                                             value={endDate}
                                             onChange={e => handleEndDateChange(e.target.value)}
