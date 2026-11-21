@@ -203,6 +203,11 @@ const isPendingStatus = (status) => {
     return !NON_PENDING_STATUSES.includes(s);
 };
 
+const isInterestedStatus = (status) => {
+    if (!status) return false;
+    return status.trim().toLowerCase() === 'interested';
+};
+
 const hasValidPhone = (phone) => {
     if (!phone) return false;
     const str = String(phone).trim();
@@ -925,8 +930,9 @@ const LeadList = ({ user, isMyCreated }) => {
         return true;
     }, []);
 
-    const { conversionsCount, pendingCount, allLeadsCount } = useMemo(() => {
+    const { conversionsCount, interestedCount, pendingCount, allLeadsCount } = useMemo(() => {
         let conv = 0;
+        let interested = 0;
         let pend = 0;
         let total = 0;
         const targetList = isMyCreated ? baseLeads : leads;
@@ -958,12 +964,13 @@ const LeadList = ({ user, isMyCreated }) => {
             if (inDate) {
                 total++;
                 if (isPendingStatus(s)) pend++;
+                if (isInterestedStatus(s)) interested++;
             }
             if (isConvertedStatus(s) && inDateConv) {
                 conv++;
             }
         }
-        return { conversionsCount: conv, pendingCount: pend, allLeadsCount: total };
+        return { conversionsCount: conv, interestedCount: interested, pendingCount: pend, allLeadsCount: total };
     }, [leads, baseLeads, isMyCreated, isTL, isFE, isAdmin, isCE, isDateFilterActiveForCE, dateFilterMode, singleDate, fromDate, toDate, checkDateInRange]);
 
     const filtered = useMemo(() => {
@@ -981,6 +988,7 @@ const LeadList = ({ user, isMyCreated }) => {
 
             if (!hasStatus) {
                 if (categoryFilter === 'conversions' && !isConvertedStatus(l.Status)) return false;
+                if (categoryFilter === 'interested' && !isInterestedStatus(l.Status)) return false;
                 if (categoryFilter === 'pending' && !isPendingStatus(l.Status)) return false;
             }
 
@@ -1246,6 +1254,23 @@ const LeadList = ({ user, isMyCreated }) => {
                             }}
                         >
                             Conversions ({conversionsCount})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setCategoryFilter('interested'); setStatusFilter('All'); }}
+                            style={{
+                                padding: '8px 18px',
+                                borderRadius: '20px',
+                                border: `1.5px solid ${categoryFilter === 'interested' ? '#3b82f6' : '#e2e8f0'}`,
+                                background: categoryFilter === 'interested' ? 'rgba(59, 130, 246, 0.1)' : 'white',
+                                color: categoryFilter === 'interested' ? '#1d4ed8' : '#64748b',
+                                cursor: 'pointer',
+                                fontSize: '0.85rem',
+                                fontWeight: '700',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            Interested ({interestedCount})
                         </button>
                         <button
                             type="button"
@@ -1821,16 +1846,20 @@ const LeadList = ({ user, isMyCreated }) => {
                                                 ? `No leads found for ${formatDateBadge(singleDate) || 'the selected date'}.`
                                                 : (categoryFilter === 'conversions'
                                                     ? 'No converted leads found for the selected date range.'
-                                                    : (categoryFilter === 'pending'
-                                                        ? 'No pending leads found for the selected date range.'
-                                                        : 'No leads found for the selected date range.'))))
+                                                    : (categoryFilter === 'interested'
+                                                        ? 'No interested leads found for the selected date range.'
+                                                        : (categoryFilter === 'pending'
+                                                            ? 'No pending leads found for the selected date range.'
+                                                            : 'No leads found for the selected date range.')))))
                                         : (isFE && !isMyCreated
                                             ? 'No assigned meeting leads yet.'
                                             : (categoryFilter === 'conversions'
                                                 ? 'No converted leads yet.'
-                                                : (categoryFilter === 'pending'
-                                                    ? 'No pending leads yet.'
-                                                    : 'No leads yet. Create your first lead!')))
+                                                : (categoryFilter === 'interested'
+                                                    ? 'No interested leads yet.'
+                                                    : (categoryFilter === 'pending'
+                                                        ? 'No pending leads yet.'
+                                                        : 'No leads yet. Create your first lead!'))))
                                 )}
                             </div>
                         </div>

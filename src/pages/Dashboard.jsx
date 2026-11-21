@@ -960,8 +960,9 @@ const Dashboard = ({ user, onLogout }) => {
 
     const statsConfig = [
         { label: 'Total Leads', key: 'totalLeads', color: '#6366f1', filter: 'all' },
-        { label: 'Conversions', key: 'conversions', color: '#10b981', filter: 'conversions' },
-        { label: 'Pending', key: 'pending', color: '#f59e0b', filter: 'pending' },
+        { label: 'Converted Leads', key: 'conversions', color: '#10b981', filter: 'conversions' },
+        { label: 'Interested Leads', key: 'interested', color: '#3b82f6', filter: 'interested' },
+        { label: 'Pending Leads', key: 'pending', color: '#f59e0b', filter: 'pending' },
         ...(user?.role !== 'Call Executive' && user?.role !== 'Field Executive' ? [
             { label: 'Revenue', key: 'totalRevenue', color: '#ec4899', isCurrency: true },
             { label: 'Due Revenue', key: 'dueRevenue', color: '#f43f5e', isCurrency: true },
@@ -1258,6 +1259,28 @@ const Dashboard = ({ user, onLogout }) => {
                                         </div>
                                         <h2 style={{ fontSize: '2rem', margin: '14px 0 0 0', color: '#1d4ed8', fontWeight: '800' }}>
                                             {loading ? '...' : (overview?.stats?.totalLeads ?? 0)}
+                                        </h2>
+                                    </div>
+
+                                    {/* Interested Leads */}
+                                    <div
+                                        className="glass-card"
+                                        onClick={() => navigate('/leads', { state: { categoryFilter: 'interested' } })}
+                                        style={{ ...convCardStyle('#0ea5e9', '#f0f9ff', '#bae6fd'), cursor: 'pointer' }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: '600', color: '#0369a1' }}>Interested Leads</p>
+                                                <span style={{ fontSize: '0.72rem', color: '#0284c7', fontWeight: '700', display: 'inline-block', marginTop: '4px' }}>
+                                                    View list →
+                                                </span>
+                                            </div>
+                                            <div style={{ padding: '8px', background: '#e0f2fe', borderRadius: '10px', color: '#0ea5e9' }}>
+                                                <Users size={20} />
+                                            </div>
+                                        </div>
+                                        <h2 style={{ fontSize: '2rem', margin: '14px 0 0 0', color: '#0284c7', fontWeight: '800' }}>
+                                            {loading ? '...' : (overview?.stats?.interested ?? 0)}
                                         </h2>
                                     </div>
 
@@ -2115,7 +2138,7 @@ const Dashboard = ({ user, onLogout }) => {
                     ) : (
                         <div className="dashboard-stats-grid">
                             {statsConfig.map((stat, i) => {
-                                const isClickable = Boolean(stat.filter && !isTL);
+                                const isClickable = Boolean(stat.filter);
                                 const isCallTrackingClickable = stat.isCallCard && (user?.role === 'Admin' || user?.role === 'Team Lead');
                                 return (
                                     <div
