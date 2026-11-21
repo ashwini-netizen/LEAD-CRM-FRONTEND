@@ -218,12 +218,12 @@ const LeadHistory = ({ user }) => {
                     onMouseUp={handleMouseUp}
                     onMouseMove={handleMouseMove}
                 >
-                    <table style={{ width: '100%', borderCollapse: 'collapse', userSelect: isDragging ? 'none' : 'auto', minWidth: '1000px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', userSelect: isDragging ? 'none' : 'auto', minWidth: '1150px' }}>
                         <thead style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
                             <tr style={{ textAlign: 'left' }}>
                                 <th style={thStyle}>S.No</th>
-                                <th style={{ ...thStyle, padding: '16px 14px', width: '280px', minWidth: '240px', maxWidth: '320px' }}>Lead Name</th>
-                                <th style={{ ...thStyle, padding: '16px 12px', width: '190px', minWidth: '150px', maxWidth: '210px' }}>Company</th>
+                                <th style={{ ...thStyle, padding: '16px 14px', width: '330px', minWidth: '280px', maxWidth: '380px' }}>Lead Name</th>
+                                <th style={{ ...thStyle, padding: '16px 14px', width: '250px', minWidth: '200px', maxWidth: '290px' }}>Company</th>
                                 <th style={thStyle}>Final Status</th>
                                 <th style={thStyle}>Contact</th>
                                 <th style={thStyle}>Invoice</th>
@@ -235,11 +235,11 @@ const LeadHistory = ({ user }) => {
                             {filteredLeads.map((l, index) => (
                                 <tr key={l.LeadID} style={{ borderBottom: '1px solid #f1f5f9' }} className="row-hover">
                                     <td style={{ ...tdStyle, fontWeight: '800', color: '#64748b' }}>{index + 1}</td>
-                                    <td style={{ ...tdStyle, padding: '14px 14px', width: '280px', minWidth: '240px', maxWidth: '320px', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
+                                    <td style={{ ...tdStyle, padding: '14px 14px', width: '330px', minWidth: '280px', maxWidth: '380px', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
                                         <p style={{ fontWeight: '800', margin: 0, color: '#0f172a', fontSize: '0.95rem', lineHeight: '1.35', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>{l.FullName}</p>
                                         <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '2px 0 0 0', fontWeight: '800' }}>ID: {l.LeadID}</p>
                                     </td>
-                                    <td style={{ ...tdStyle, padding: '14px 12px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '800', width: '190px', minWidth: '150px', maxWidth: '210px', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: '1.35' }}>
+                                    <td style={{ ...tdStyle, padding: '14px 14px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '800', width: '250px', minWidth: '200px', maxWidth: '290px', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal', lineHeight: '1.35' }}>
                                         {l.CompanyName || 'N/A'}
                                     </td>
                                     <td style={tdStyle}>
