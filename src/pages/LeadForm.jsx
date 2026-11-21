@@ -315,9 +315,10 @@ const LeadForm = ({ user }) => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e && e.preventDefault) e.preventDefault();
         if ((user?.role === 'Call Executive' || user?.role === 'Field Executive') && !user?.IsOnline) {
-            return alert('Please turn on online status to perform activities.');
+            setSubmitError('Please turn on online status to perform activities.');
+            return;
         }
         setSubmitError('');
 
@@ -374,12 +375,18 @@ const LeadForm = ({ user }) => {
                 return;
             }
             window.dispatchEvent(new Event('lead_updated'));
-            alert('Lead created successfully!');
             navigate(getRedirectPath(), { replace: true });
         } catch (err) {
             setSubmitError('Cannot connect to server. Is the backend running?');
         }
         setSubmitting(false);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' && e.target && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            handleSubmit(e);
+        }
     };
 
     return (
@@ -398,17 +405,12 @@ const LeadForm = ({ user }) => {
                     </div>
                 )}
 
-                <form className="glass-card fade-in responsive-form-grid" onSubmit={handleSubmit} autoComplete="off">
-                    {/* Chrome autofill decoy fields to absorb browser personal info injection */}
-                    <div style={{ position: 'absolute', opacity: 0, height: 0, width: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: -1 }} tabIndex="-1" aria-hidden="true">
-                        <input type="text" name="crm_dummy_prevent_user" tabIndex="-1" autoComplete="off" readOnly />
-                        <input type="password" name="crm_dummy_prevent_pass" tabIndex="-1" autoComplete="off" readOnly />
-                    </div>
-
+                <div className="glass-card fade-in responsive-form-grid" onKeyDown={handleKeyDown}>
                     <div>
                         <div style={labelStyle}>Full Name *</div>
                         <input 
                             data-field="fullName"
+                            type="text"
                             name="crm_field_client_entry" 
                             className="input-field" 
                             placeholder="Client Name" 
@@ -430,7 +432,8 @@ const LeadForm = ({ user }) => {
                         <div style={labelStyle}>Phone Number {isFEorCE ? '' : '*'}</div>
                         <input 
                             data-field="phone"
-                            name="crm_field_contact_entry" 
+                            type="tel"
+                            name="phone" 
                             className="input-field" 
                             placeholder="10 Digit Number (starts with 6-9)" 
                             value={formData.phone} 
@@ -842,11 +845,11 @@ const LeadForm = ({ user }) => {
                     )}
 
                     <div style={{ display: 'flex', gap: '15px', gridColumn: 'span 2', marginTop: '30px' }}>
-                        <button type="submit" className="btn-primary" disabled={submitting}>
+                        <button type="button" onClick={handleSubmit} className="btn-primary" disabled={submitting}>
                             {submitting ? 'Saving...' : 'Save Lead'}
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
 
             <style>{`
