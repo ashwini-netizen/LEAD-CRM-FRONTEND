@@ -890,6 +890,7 @@ const LeadList = ({ user, isMyCreated }) => {
         if (location.state?.categoryFilter) {
             const cat = location.state.categoryFilter;
             setCategoryFilter((cat === 'new' || cat === 'followup') ? 'all' : cat);
+            setStatusFilter('All');
         }
         if (location.state?.fromDate !== undefined) {
             setFromDate(location.state.fromDate);
@@ -904,12 +905,6 @@ const LeadList = ({ user, isMyCreated }) => {
             setStatusFilter('All');
         }
     }, [isTL, isFE, isAdmin, statusFilter]);
-
-    useEffect(() => {
-        if (isAdmin && categoryFilter !== 'all') {
-            setCategoryFilter('all');
-        }
-    }, [isAdmin, categoryFilter]);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -945,7 +940,7 @@ const LeadList = ({ user, isMyCreated }) => {
             let inDate = true;
             let inDateConv = true;
 
-            if ((isTL || isFE) && singleDate) {
+            if ((isTL || isFE || isAdmin) && singleDate) {
                 const primaryYMD = getLeadDateYMD(l.CallDate || l.CreatedAt);
                 const createdYMD = l.CreatedAt ? getLeadDateYMD(l.CreatedAt) : '';
                 const callYMD = l.CallDate ? getLeadDateYMD(l.CallDate) : '';
@@ -969,7 +964,7 @@ const LeadList = ({ user, isMyCreated }) => {
             }
         }
         return { conversionsCount: conv, pendingCount: pend, allLeadsCount: total };
-    }, [leads, baseLeads, isMyCreated, isTL, isCE, isDateFilterActiveForCE, dateFilterMode, singleDate, fromDate, toDate, checkDateInRange]);
+    }, [leads, baseLeads, isMyCreated, isTL, isFE, isAdmin, isCE, isDateFilterActiveForCE, dateFilterMode, singleDate, fromDate, toDate, checkDateInRange]);
 
     const filtered = useMemo(() => {
         const searchLower = search.trim().toLowerCase();
@@ -1215,8 +1210,8 @@ const LeadList = ({ user, isMyCreated }) => {
                     </div>
                 )}
 
-                {/* Quick Category Filter Tabs (All / Conversions / Pending) - Hidden for Admin and FE Assigned Meetings */}
-                {!isAdmin && !(isFE && !isMyCreated) && (
+                {/* Quick Category Filter Tabs (All / Conversions / Pending) - Hidden for FE Assigned Meetings */}
+                {!(isFE && !isMyCreated) && (
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
                         <button
                             type="button"
@@ -1233,7 +1228,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                 transition: 'all 0.15s ease'
                             }}
                         >
-                            {isCE ? 'Total Leads' : 'All Leads'} ({isMyCreated ? baseLeads.length : (isTL ? allLeadsCount : (isCE ? (isDateFilterActiveForCE ? allLeadsCount : leads.length) : leads.length))})
+                            {isCE ? 'Total Leads' : 'All Leads'} ({isMyCreated ? baseLeads.length : ((isTL || isAdmin) ? (singleDate ? allLeadsCount : leads.length) : (isCE ? (isDateFilterActiveForCE ? allLeadsCount : leads.length) : leads.length))})
                         </button>
                         <button
                             type="button"
