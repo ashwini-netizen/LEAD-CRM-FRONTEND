@@ -52,11 +52,11 @@ const InterestedLeads = ({ user }) => {
 
         let matchesFilter = true;
         if (filterType === 'call_executive') {
-            matchesFilter = l.CreatorRole === 'Call Executive' && l.AssignedToRole === 'Field Executive';
+            matchesFilter = l.CreatorRole === 'Call Executive' || l.AssignedToRole === 'Field Executive';
         } else if (filterType === 'team_lead') {
             matchesFilter = l.CreatorRole === 'Team Lead';
         } else if (filterType === 'self') {
-            matchesFilter = String(l.CreatedBy) === String(user?.id || user?.UserID);
+            matchesFilter = String(l.CreatedBy) === String(user?.id || user?.UserID) || l.CreatorRole === 'Field Executive';
         }
 
         return matchesSearch && matchesFilter;
@@ -102,7 +102,7 @@ const InterestedLeads = ({ user }) => {
                             autoComplete="off"
                         />
                     </div>
-                    {(user?.role === 'Team Lead' || user?.role === 'Admin') && (
+                    {(user?.role === 'Team Lead' || user?.role === 'Admin' || user?.role === 'Field Executive') && (
                         <div style={{ display: 'flex', gap: '5px', background: 'white', padding: '5px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                             <button
                                 onClick={() => setFilterType('all')}
@@ -122,6 +122,14 @@ const InterestedLeads = ({ user }) => {
                             >
                                 TL Leads
                             </button>
+                            {user?.role === 'Field Executive' && (
+                                <button
+                                    onClick={() => setFilterType('self')}
+                                    style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: '800', fontSize: '0.85rem', background: filterType === 'self' ? '#e0e7ff' : 'transparent', color: filterType === 'self' ? '#4f46e5' : '#64748b', transition: '0.2s' }}
+                                >
+                                    Walk-in Leads
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -172,26 +180,28 @@ const InterestedLeads = ({ user }) => {
                                              )}
                                          </td>
                                          <td style={{ padding: '16px 20px', display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                                            {(user?.role === 'Team Lead' || user?.role === 'Admin') && (
+                                                <button
+                                                    onClick={() => setSelectingLead(lead)}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px',
+                                                        background: '#6366f1',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        padding: '8px 16px',
+                                                        borderRadius: '8px',
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: '600',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <UserPlus size={14} /> Assign
+                                                </button>
+                                            )}
                                             <button
-                                                onClick={() => setSelectingLead(lead)}
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '6px',
-                                                    background: '#6366f1',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    padding: '8px 16px',
-                                                    borderRadius: '8px',
-                                                    fontSize: '0.8rem',
-                                                    fontWeight: '600',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                <UserPlus size={14} /> Assign
-                                            </button>
-                                            <button
-                                                onClick={() => navigate(`/leads/manage/${lead.LeadID}`)}
+                                                onClick={() => navigate(`/leads/manage/${lead.LeadID}`, { state: { from: '/leads/interested', label: 'Interested Leads' } })}
                                                 style={{
                                                     display: 'flex',
                                                     alignItems: 'center',

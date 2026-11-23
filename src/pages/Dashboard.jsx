@@ -1022,6 +1022,7 @@ const Dashboard = ({ user, onLogout }) => {
                     {user?.role === 'Field Executive' && (
                         <>
                             <NavItem to="/leads/my-created" active={location.pathname === '/leads/my-created'}><List size={20} /> Lead List</NavItem>
+                            <NavItem to="/leads/interested" active={location.pathname === '/leads/interested'}><BarChart size={20} /> Interested Leads</NavItem>
                             <NavItem to="/leads/assigned" active={location.pathname === '/leads/assigned'}><UserPlus size={20} /> Assigned Call Leads</NavItem>
                             <NavItem to="/leads/finalized" active={location.pathname === '/leads/finalized'}><CheckCircle size={20} /> Finalized Leads</NavItem>
                         </>

@@ -601,7 +601,8 @@ const ManageLead = ({ user }) => {
 
             alert('Quotations generated and sent successfully!');
             setShowModal(false);
-            navigate('/leads', { replace: true });
+            const returnPath = location.state?.from || (lead.Status === 'Interested' ? '/leads/interested' : '/leads');
+            navigate(returnPath, { replace: true });
         } catch (err) {
             alert(err.message);
         } finally {
@@ -611,13 +612,13 @@ const ManageLead = ({ user }) => {
 
     const handleAttendMeeting = async (isFmQuotation = false) => {
         if (isOnlineRestricted()) return;
-        const isFmQuotation_ = user?.role === 'Team Lead' && outcome === 'quotation';
+        const isFmQuotation_ = (user?.role === 'Team Lead' || user?.role === 'Field Executive') && outcome === 'quotation';
 
         if (!isFmQuotation_ && !notes.trim()) return alert('Please enter meeting notes.');
         setSubmitting(true);
         try {
             const formData = new FormData();
-            formData.append('notes', isFmQuotation_ ? 'Quotation uploaded by Team Lead' : notes);
+            formData.append('notes', isFmQuotation_ ? `Quotation uploaded by ${user?.role}` : notes);
             formData.append('outcome', outcome);
             formData.append('isMeetingCompleted', isMeetingCompleted ? '1' : '0');
 
@@ -643,7 +644,8 @@ const ManageLead = ({ user }) => {
                 alert('Lead finalized successfully!');
             }
             setShowModal(false);
-            navigate('/leads', { replace: true });
+            const returnPath = location.state?.from || (lead.Status === 'Interested' ? '/leads/interested' : '/leads');
+            navigate(returnPath, { replace: true });
         } catch (err) {
             alert(err.message);
         } finally {
@@ -694,7 +696,8 @@ const ManageLead = ({ user }) => {
             if (!res.ok) throw new Error('Failed to reject lead');
             alert('Lead has been marked as rejected.');
             setShowRejectModal(false);
-            navigate('/leads', { replace: true });
+            const returnPath = location.state?.from || (lead.Status === 'Interested' ? '/leads/interested' : '/leads');
+            navigate(returnPath, { replace: true });
         } catch (err) {
             alert(err.message);
         } finally {
@@ -906,11 +909,11 @@ const ManageLead = ({ user }) => {
                                     backLabel = 'Assigned Meetings Leads';
                                 }
 
-                                if (user?.role !== 'Field Executive') {
-                                    if (lead.Status === 'Interested') {
-                                        backPath = '/leads/interested';
-                                        backLabel = 'Interested Leads';
-                                    } else if (lead.Status === 'Paid' || lead.Status === 'Due Payment') {
+                                if (lead.Status === 'Interested') {
+                                    backPath = '/leads/interested';
+                                    backLabel = 'Interested Leads';
+                                } else if (user?.role !== 'Field Executive') {
+                                    if (lead.Status === 'Paid' || lead.Status === 'Due Payment') {
                                         if (user?.role === 'Admin' || user?.role === 'Team Lead') {
                                             backPath = '/admin/clients';
                                             backLabel = 'Client List';
@@ -1036,15 +1039,9 @@ const ManageLead = ({ user }) => {
                             ) : (
                                 <>
                                     {(user?.role === 'Admin' || lead.Status === 'Call Follow-up' || lead.Status === 'Follow-up' || lead.Status === 'Interested' || lead.Status === 'Quotation Needed' || lead.Status === 'meetingFollowup' || lead.Status === 'Meeting Follow-up' || lead.Status === 'Meeting Followup') && lead.Status !== 'Rejected' && lead.Status !== 'Removed' && (
-                                        user?.role === 'Field Executive' && lead.Status === 'Quotation Needed' ? (
-                                            <div style={{ flex: 1, padding: '15px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center', color: '#64748b', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                                                <CheckCircle2 size={18} color="#10b981" /> Request forwarded to team lead
-                                            </div>
-                                        ) : (
-                                            <button className="btn-primary" style={{ flex: 1 }} onClick={openMeetingModal}>
-                                                <Calendar size={18} /> {lead.Status === 'Quotation Needed' ? 'Upload Quotation' : 'Attend Meeting / Finalize'}
-                                            </button>
-                                        )
+                                        <button className="btn-primary" style={{ flex: 1 }} onClick={openMeetingModal}>
+                                            <Calendar size={18} /> {lead.Status === 'Quotation Needed' ? 'Upload Quotation' : 'Attend Meeting / Finalize'}
+                                        </button>
                                     )}
 
                                     {(lead.Status === 'Quotation' || lead.Status === 'Quotation Done' || lead.Status === 'Due Payment') && (
@@ -1052,7 +1049,7 @@ const ManageLead = ({ user }) => {
                                             <button className="btn-primary" style={{ background: '#10b981', width: '100%' }} onClick={openPaymentModal}>
                                                 <CreditCard size={window.Capacitor ? 24 : 18} /> {lead.Status === 'Due Payment' ? 'Receive Balance Payment' : 'Receive Payments'}
                                             </button>
-                                            {user?.role === 'Team Lead' && (lead.Status === 'Quotation' || lead.Status === 'Quotation Done') && (
+                                            {(user?.role === 'Team Lead' || user?.role === 'Field Executive') && (lead.Status === 'Quotation' || lead.Status === 'Quotation Done') && (
                                                 <button className="btn-primary" style={{ background: '#ef4444', width: '100%' }} onClick={() => setShowRejectModal(true)}>
                                                     <XCircle size={18} /> Rejected
                                                 </button>
@@ -1100,7 +1097,7 @@ const ManageLead = ({ user }) => {
                     <div className="modal-content" style={{ width: '100vw', height: '100vh', maxWidth: '100vw', maxHeight: '100vh', borderRadius: 0, padding: '40px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                         <h2 style={{ marginBottom: '10px' }}>Meeting Outcome</h2>
                         {/* Hide standard fields if FM is uploading quotation for already requested lead */}
-                        {user?.role === 'Team Lead' && lead.Status === 'Quotation Needed' && outcome === 'quotation' ? (
+                        {(user?.role === 'Team Lead' || user?.role === 'Field Executive') && lead.Status === 'Quotation Needed' && outcome === 'quotation' ? (
                             <>
                                 <div style={{ marginBottom: '20px', padding: '15px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }} className="fade-in">
                                     <p style={{ ...labelStyle, marginBottom: '10px', color: '#6366f1' }}>Reference Meeting Details</p>
@@ -1343,78 +1340,70 @@ const ManageLead = ({ user }) => {
 
                                         {outcome === 'quotation' && (
                                             <div style={{ marginBottom: '20px' }} className="fade-in">
-                                                {user?.role === 'Field Executive' ? (
-                                                    <div style={{ padding: '20px', background: '#f5f7ff', borderRadius: '15px', border: '1px solid #c3dafe', textAlign: 'center', marginBottom: '20px' }}>
-                                                        <p style={{ margin: 0, fontWeight: '700', color: '#1e40af' }}>Quotation request will be forwarded to Team Lead for generation and upload.</p>
+                                                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                                                    <button onClick={() => setQuotationMode('manual')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid', borderColor: quotationMode === 'manual' ? '#6366f1' : '#e2e8f0', background: quotationMode === 'manual' ? '#f5f7ff' : 'white', color: quotationMode === 'manual' ? '#6366f1' : '#64748b', fontSize: '0.8rem', fontWeight: '700' }}>Upload Manual</button>
+                                                    <button onClick={() => setQuotationMode('auto')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid', borderColor: quotationMode === 'auto' ? '#6366f1' : '#e2e8f0', background: quotationMode === 'auto' ? '#f5f7ff' : 'white', color: quotationMode === 'auto' ? '#6366f1' : '#64748b', fontSize: '0.8rem', fontWeight: '700' }}>Auto Generate</button>
+                                                </div>
+
+                                                {quotationMode === 'manual' ? (
+                                                    <div className="fade-in">
+                                                        <label style={labelStyle}>Upload Quotation (PDF) *</label>
+                                                        <input type="file" accept=".pdf" className="input-field" onChange={e => setQuotationFile(e.target.files[0])} required />
                                                     </div>
                                                 ) : (
-                                                    <>
-                                                        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                                                            <button onClick={() => setQuotationMode('manual')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid', borderColor: quotationMode === 'manual' ? '#6366f1' : '#e2e8f0', background: quotationMode === 'manual' ? '#f5f7ff' : 'white', color: quotationMode === 'manual' ? '#6366f1' : '#64748b', fontSize: '0.8rem', fontWeight: '700' }}>Upload Manual</button>
-                                                            <button onClick={() => setQuotationMode('auto')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid', borderColor: quotationMode === 'auto' ? '#6366f1' : '#e2e8f0', background: quotationMode === 'auto' ? '#f5f7ff' : 'white', color: quotationMode === 'auto' ? '#6366f1' : '#64748b', fontSize: '0.8rem', fontWeight: '700' }}>Auto Generate</button>
+                                                    <div className="fade-in" style={{ padding: '15px', background: '#f8fafc', borderRadius: '15px', border: '1px solid #e2e8f0' }}>
+                                                        <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '5px', marginBottom: '15px' }}>
+                                                            {selectedQuotes.map((q, idx) => (
+                                                                <div key={idx} style={{ marginBottom: '20px', padding: '15px', background: 'white', borderRadius: '12px', border: '1px solid #edf2f7' }}>
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                                                        <span style={{ fontWeight: '700', color: '#6366f1', fontSize: '0.85rem' }}>Quotation #{idx + 1}</span>
+                                                                        {selectedQuotes.length > 1 && (
+                                                                            <button onClick={() => removeQuoteOption(idx)} style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', padding: '5px' }}><XCircle size={18} /></button>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <label style={labelStyle}>Quotation Type</label>
+                                                                    <select className="input-field" value={q.type} onChange={e => updateQuoteOption(idx, 'type', e.target.value)} style={{ marginBottom: '15px' }}>
+                                                                        <option value="personalized">Personalized Application</option>
+                                                                        <option value="digitalMarketing">Digital Marketing</option>
+                                                                        <option value="website">Website Development</option>
+                                                                        <option value="tokensBoy">Tokens Boy App</option>
+                                                                    </select>
+
+                                                                    {(q.type === 'personalized' || q.type === 'website') && (
+                                                                        <>
+                                                                            <label style={labelStyle}>Development Price (₹)</label>
+                                                                            <input type="number" min="0" onKeyDown={handleNumberKeyDown} className="input-field" value={q.devPrice} onChange={e => updateQuoteOption(idx, 'devPrice', e.target.value)} placeholder="e.g. 50000" style={{ marginBottom: '10px' }} />
+                                                                            <label style={labelStyle}>Maintenance Price (₹)</label>
+                                                                            <input type="number" min="0" onKeyDown={handleNumberKeyDown} className="input-field" value={q.maintenancePrice} onChange={e => updateQuoteOption(idx, 'maintenancePrice', e.target.value)} placeholder="e.g. 2000" style={{ marginBottom: '10px' }} />
+                                                                        </>
+                                                                    )}
+
+                                                                    {q.type === 'digitalMarketing' && (
+                                                                        <>
+                                                                            <label style={labelStyle}>Monthly Price (₹)</label>
+                                                                            <input type="number" min="0" onKeyDown={handleNumberKeyDown} className="input-field" value={q.monthlyPrice} onChange={e => updateQuoteOption(idx, 'monthlyPrice', e.target.value)} placeholder="e.g. 15000" style={{ marginBottom: '10px' }} />
+                                                                        </>
+                                                                    )}
+
+                                                                    {q.type === 'tokensBoy' && (
+                                                                        <>
+                                                                            <label style={labelStyle}>Application Price (₹)</label>
+                                                                            <input type="number" min="0" onKeyDown={handleNumberKeyDown} className="input-field" value={q.price} onChange={e => updateQuoteOption(idx, 'price', e.target.value)} placeholder="e.g. 10000" />
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                            <div ref={quoteEndRef} />
                                                         </div>
 
-                                                        {quotationMode === 'manual' ? (
-                                                            <div className="fade-in">
-                                                                <label style={labelStyle}>Upload Quotation (PDF) *</label>
-                                                                <input type="file" accept=".pdf" className="input-field" onChange={e => setQuotationFile(e.target.files[0])} required />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="fade-in" style={{ padding: '15px', background: '#f8fafc', borderRadius: '15px', border: '1px solid #e2e8f0' }}>
-                                                                <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '5px', marginBottom: '15px' }}>
-                                                                    {selectedQuotes.map((q, idx) => (
-                                                                        <div key={idx} style={{ marginBottom: '20px', padding: '15px', background: 'white', borderRadius: '12px', border: '1px solid #edf2f7' }}>
-                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                                                                <span style={{ fontWeight: '700', color: '#6366f1', fontSize: '0.85rem' }}>Quotation #{idx + 1}</span>
-                                                                                {selectedQuotes.length > 1 && (
-                                                                                    <button onClick={() => removeQuoteOption(idx)} style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', padding: '5px' }}><XCircle size={18} /></button>
-                                                                                )}
-                                                                            </div>
-
-                                                                            <label style={labelStyle}>Quotation Type</label>
-                                                                            <select className="input-field" value={q.type} onChange={e => updateQuoteOption(idx, 'type', e.target.value)} style={{ marginBottom: '15px' }}>
-                                                                                <option value="personalized">Personalized Application</option>
-                                                                                <option value="digitalMarketing">Digital Marketing</option>
-                                                                                <option value="website">Website Development</option>
-                                                                                <option value="tokensBoy">Tokens Boy App</option>
-                                                                            </select>
-
-                                                                            {(q.type === 'personalized' || q.type === 'website') && (
-                                                                                <>
-                                                                                    <label style={labelStyle}>Development Price (₹)</label>
-                                                                                    <input type="number" min="0" onKeyDown={handleNumberKeyDown} className="input-field" value={q.devPrice} onChange={e => updateQuoteOption(idx, 'devPrice', e.target.value)} placeholder="e.g. 50000" style={{ marginBottom: '10px' }} />
-                                                                                    <label style={labelStyle}>Maintenance Price (₹)</label>
-                                                                                    <input type="number" min="0" onKeyDown={handleNumberKeyDown} className="input-field" value={q.maintenancePrice} onChange={e => updateQuoteOption(idx, 'maintenancePrice', e.target.value)} placeholder="e.g. 2000" style={{ marginBottom: '10px' }} />
-                                                                                </>
-                                                                            )}
-
-                                                                            {q.type === 'digitalMarketing' && (
-                                                                                <>
-                                                                                    <label style={labelStyle}>Monthly Price (₹)</label>
-                                                                                    <input type="number" min="0" onKeyDown={handleNumberKeyDown} className="input-field" value={q.monthlyPrice} onChange={e => updateQuoteOption(idx, 'monthlyPrice', e.target.value)} placeholder="e.g. 15000" style={{ marginBottom: '10px' }} />
-                                                                                </>
-                                                                            )}
-
-                                                                            {q.type === 'tokensBoy' && (
-                                                                                <>
-                                                                                    <label style={labelStyle}>Application Price (₹)</label>
-                                                                                    <input type="number" min="0" onKeyDown={handleNumberKeyDown} className="input-field" value={q.price} onChange={e => updateQuoteOption(idx, 'price', e.target.value)} placeholder="e.g. 10000" />
-                                                                                </>
-                                                                            )}
-                                                                        </div>
-                                                                    ))}
-                                                                    <div ref={quoteEndRef} />
-                                                                </div>
-
-                                                                <button
-                                                                    onClick={addQuoteOption}
-                                                                    style={{ width: '100%', padding: '10px', background: 'white', border: '2px dashed #cbd5e1', borderRadius: '12px', color: '#64748b', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                                                                >
-                                                                    <RefreshCw size={16} /> Add Another Quotation
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </>
+                                                        <button
+                                                            onClick={addQuoteOption}
+                                                            style={{ width: '100%', padding: '10px', background: 'white', border: '2px dashed #cbd5e1', borderRadius: '12px', color: '#64748b', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                                        >
+                                                            <RefreshCw size={16} /> Add Another Quotation
+                                                        </button>
+                                                    </div>
                                                 )}
                                             </div>
                                         )}
@@ -1427,10 +1416,10 @@ const ManageLead = ({ user }) => {
 
                                         <button
                                             className="btn-primary"
-                                            onClick={(user?.role !== 'Field Executive' && quotationMode === 'auto' && outcome === 'quotation') ? handleGenerateAutoQuotation : handleAttendMeeting}
+                                            onClick={(quotationMode === 'auto' && outcome === 'quotation') ? handleGenerateAutoQuotation : handleAttendMeeting}
                                             disabled={submitting}
                                         >
-                                            {submitting ? 'Processing...' : ((user?.role !== 'Field Executive' && quotationMode === 'auto' && outcome === 'quotation') ? `Generate & Send ${selectedQuotes.length} Quote(s)` : 'Submit Action')}
+                                            {submitting ? 'Processing...' : ((quotationMode === 'auto' && outcome === 'quotation') ? `Generate & Send ${selectedQuotes.length} Quote(s)` : 'Submit Action')}
                                         </button>
                                     </>
                                 ) : (
