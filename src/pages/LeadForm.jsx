@@ -107,6 +107,17 @@ const LeadForm = ({ user }) => {
             return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
         }
     };
+    const getFirstDayOfCurrentMonthStr = () => {
+        try {
+            const todayStr = getTodayDateStr();
+            const [year, month] = todayStr.split('-');
+            return `${year}-${month}-01`;
+        } catch {
+            const d = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
+        }
+    };
     const getRedirectPath = () => {
         const params = new URLSearchParams(location.search);
         const fromParam = params.get('from');
@@ -202,6 +213,20 @@ const LeadForm = ({ user }) => {
         if (formData.address.trim().length < 10) {
             setSubmitError('Address must be at least 10 characters long.');
             return false;
+        }
+
+        // Date restrictions for Walk-in Leads (1st day of current month up to today)
+        if (isFE) {
+            const minDate = getFirstDayOfCurrentMonthStr();
+            const maxDate = getTodayDateStr();
+            if (formData.callDate > maxDate) {
+                setSubmitError('Future dates are not allowed for Walk-in Leads.');
+                return false;
+            }
+            if (formData.callDate < minDate) {
+                setSubmitError(`Visit Date cannot be earlier than the 1st of the current month (${minDate.split('-').reverse().join('-')}).`);
+                return false;
+            }
         }
 
         // 3. Status-specific validation
@@ -361,7 +386,8 @@ const LeadForm = ({ user }) => {
                 meetingTime: formData.status === 'Interested' ? formatTo12Hr(formData.meetingTime) : null,
                 reason: formData.reason || null,
                 status: resolvedStatus,
-                createdBy: user?.id || user?.UserID || null
+                createdBy: user?.id || user?.UserID || null,
+                isWalkIn: isFE
             };
             const res = await fetch(`${API_URL}/api/leads`, {
                 method: 'POST',
@@ -532,7 +558,17 @@ const LeadForm = ({ user }) => {
                         <div style={labelStyle}>{isFE ? 'Visit Date *' : 'Call Date *'}</div>
                         <div style={{ position: 'relative' }}>
                             <Calendar size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
-                            <input type="date" name="callDate" className="input-field" style={{ paddingLeft: '36px' }} value={formData.callDate} onChange={handleChange} min={isFE ? undefined : getTodayDateStr()} required />
+                            <input 
+                                type="date" 
+                                name="callDate" 
+                                className="input-field" 
+                                style={{ paddingLeft: '36px' }} 
+                                value={formData.callDate} 
+                                onChange={handleChange} 
+                                min={isFE ? getFirstDayOfCurrentMonthStr() : getTodayDateStr()} 
+                                max={isFE ? getTodayDateStr() : undefined}
+                                required 
+                            />
                         </div>
                     </div>
 
