@@ -453,7 +453,13 @@ const CallFollowupManage = ({ user }) => {
 
             window.dispatchEvent(new Event('lead_updated'));
             alert('Lead updated successfully');
-            navigate(backPath, { replace: true });
+            const isInterestedStatus = updatedStatus && (
+                updatedStatus === 'Interested' ||
+                updatedStatus === 'Interested – Follow-up Required' ||
+                (typeof updatedStatus === 'string' && updatedStatus.toLowerCase().includes('interested') && !updatedStatus.toLowerCase().includes('not interested'))
+            );
+            const targetRedirect = (user?.role === 'Field Executive' && isInterestedStatus) ? '/leads/interested' : backPath;
+            navigate(targetRedirect, { replace: true });
         } catch (err) {
             alert(err.message);
         } finally {

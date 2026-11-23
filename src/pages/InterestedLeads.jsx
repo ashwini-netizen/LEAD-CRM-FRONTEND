@@ -173,6 +173,8 @@ const InterestedLeads = ({ user }) => {
                                          <td style={{ padding: '16px 20px' }}>
                                              {lead.AssignedToRole === 'Field Executive' ? (
                                                  <span style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: '600', padding: '4px 10px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '20px' }}>Assigned ({lead.AssignedToName})</span>
+                                             ) : lead.CreatorRole === 'Field Executive' ? (
+                                                 <span style={{ color: '#6366f1', fontSize: '0.85rem', fontWeight: '600', padding: '4px 10px', background: 'rgba(99, 102, 241, 0.1)', borderRadius: '20px' }}>Walk-in ({lead.CreatorName})</span>
                                              ) : lead.AssignedToRole === 'Call Executive' ? (
                                                  <span style={{ color: '#f59e0b', fontSize: '0.85rem', fontWeight: '600', padding: '4px 10px', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '20px' }}>Needs Field Exec</span>
                                              ) : (

@@ -52,6 +52,13 @@ const formatTime24 = (hour12, minute, ampm) => {
     return `${hStr}:${minute || '00'}`;
 };
 
+const isInterestedLead = (s) => {
+    if (!s || typeof s !== 'string') return false;
+    const lower = s.trim().toLowerCase();
+    if (lower.includes('not interested')) return false;
+    return lower === 'interested' || lower.includes('interested') || ['requirement identified', 'technical discussion required', 'commercial discussion / negotiation'].includes(lower);
+};
+
 const ManageLead = ({ user }) => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -601,7 +608,7 @@ const ManageLead = ({ user }) => {
 
             alert('Quotations generated and sent successfully!');
             setShowModal(false);
-            const returnPath = location.state?.from || (lead.Status === 'Interested' ? '/leads/interested' : '/leads');
+            const returnPath = location.state?.from || (isInterestedLead(lead?.Status) ? '/leads/interested' : '/leads');
             navigate(returnPath, { replace: true });
         } catch (err) {
             alert(err.message);
@@ -644,7 +651,7 @@ const ManageLead = ({ user }) => {
                 alert('Lead finalized successfully!');
             }
             setShowModal(false);
-            const returnPath = location.state?.from || (lead.Status === 'Interested' ? '/leads/interested' : '/leads');
+            const returnPath = location.state?.from || (isInterestedLead(lead?.Status) ? '/leads/interested' : '/leads');
             navigate(returnPath, { replace: true });
         } catch (err) {
             alert(err.message);
@@ -696,7 +703,7 @@ const ManageLead = ({ user }) => {
             if (!res.ok) throw new Error('Failed to reject lead');
             alert('Lead has been marked as rejected.');
             setShowRejectModal(false);
-            const returnPath = location.state?.from || (lead.Status === 'Interested' ? '/leads/interested' : '/leads');
+            const returnPath = location.state?.from || (isInterestedLead(lead?.Status) ? '/leads/interested' : '/leads');
             navigate(returnPath, { replace: true });
         } catch (err) {
             alert(err.message);
@@ -909,7 +916,7 @@ const ManageLead = ({ user }) => {
                                     backLabel = 'Assigned Meetings Leads';
                                 }
 
-                                if (lead.Status === 'Interested') {
+                                if (isInterestedLead(lead?.Status)) {
                                     backPath = '/leads/interested';
                                     backLabel = 'Interested Leads';
                                 } else if (user?.role !== 'Field Executive') {
@@ -1038,7 +1045,7 @@ const ManageLead = ({ user }) => {
                                 </div>
                             ) : (
                                 <>
-                                    {(user?.role === 'Admin' || lead.Status === 'Call Follow-up' || lead.Status === 'Follow-up' || lead.Status === 'Interested' || lead.Status === 'Quotation Needed' || lead.Status === 'meetingFollowup' || lead.Status === 'Meeting Follow-up' || lead.Status === 'Meeting Followup') && lead.Status !== 'Rejected' && lead.Status !== 'Removed' && (
+                                    {(user?.role === 'Admin' || isInterestedLead(lead?.Status) || lead.Status === 'Call Follow-up' || lead.Status === 'Follow-up' || lead.Status === 'Quotation Needed' || lead.Status === 'meetingFollowup' || lead.Status === 'Meeting Follow-up' || lead.Status === 'Meeting Followup') && lead.Status !== 'Rejected' && lead.Status !== 'Removed' && (
                                         <button className="btn-primary" style={{ flex: 1 }} onClick={openMeetingModal}>
                                             <Calendar size={18} /> {lead.Status === 'Quotation Needed' ? 'Upload Quotation' : 'Attend Meeting / Finalize'}
                                         </button>
@@ -1692,7 +1699,7 @@ const ManageLead = ({ user }) => {
                         <label style={labelStyle}>Address *</label>
                         <textarea className="input-field" style={{ height: '80px', marginBottom: '20px' }} value={editFormData.address} onChange={e => setEditFormData({...editFormData, address: stripEmojis(e.target.value)})} placeholder="Full Address" />
                         
-                        {(lead.Status === 'Interested' || lead.Status === 'meetingFollowup' || lead.Status === 'Meeting Follow-up' || lead.Status === 'Meeting Followup') && (
+                        {(isInterestedLead(lead?.Status) || lead.Status === 'meetingFollowup' || lead.Status === 'Meeting Follow-up' || lead.Status === 'Meeting Followup') && (
                             <>
                                 <label style={labelStyle}>Meeting Date</label>
                                 {(lead.Status === 'meetingFollowup' || lead.Status === 'Meeting Follow-up' || lead.Status === 'Meeting Followup') ? (

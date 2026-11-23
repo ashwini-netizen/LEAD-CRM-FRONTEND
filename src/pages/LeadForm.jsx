@@ -118,7 +118,16 @@ const LeadForm = ({ user }) => {
             return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
         }
     };
-    const getRedirectPath = () => {
+    const getRedirectPath = (statusToRedirect, isSubmitted = false) => {
+        const curStatus = statusToRedirect || formData.status;
+        const isInterested = curStatus && (
+            curStatus === 'Interested – Follow-up Required' ||
+            curStatus === 'Interested' ||
+            (typeof curStatus === 'string' && curStatus.toLowerCase().includes('interested') && !curStatus.toLowerCase().includes('not interested'))
+        );
+        if (isSubmitted && isFE && isInterested) {
+            return '/leads/interested';
+        }
         const params = new URLSearchParams(location.search);
         const fromParam = params.get('from');
         if (fromParam === 'dashboard') return isFE ? '/leads/my-created' : '/dashboard';
@@ -404,7 +413,7 @@ const LeadForm = ({ user }) => {
                 return;
             }
             window.dispatchEvent(new Event('lead_updated'));
-            navigate(getRedirectPath(), { replace: true });
+            navigate(getRedirectPath(resolvedStatus, true), { replace: true });
         } catch (err) {
             setSubmitError('Cannot connect to server. Is the backend running?');
         }
