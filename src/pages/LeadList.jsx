@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Eye, Edit, Search, Loader, RefreshCw, FileText, Upload, Download, ArrowLeft, Calendar, Trash2, AlertTriangle, CheckSquare, Square, X, FileSpreadsheet, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check, RotateCcw } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -222,6 +222,7 @@ const isPendingStatus = (status) => {
 const isInterestedStatus = (status) => {
     if (!status) return false;
     const s = status.trim().toLowerCase();
+    if (s.includes('not interested') || s === 'not interested') return false;
     return s === 'interested' || s.includes('interested') || s === 'requirement identified' || s === 'technical discussion required' || s === 'commercial discussion / negotiation';
 };
 
@@ -429,6 +430,7 @@ const formatAddress = (addr) => {
 const LeadList = ({ user, isMyCreated }) => {
     const navigate = useNavigate();
     const location = useLocation();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const currentUserId = user?.id || user?.UserID;
     const currentRole = user?.role || user?.Role;
@@ -436,8 +438,9 @@ const LeadList = ({ user, isMyCreated }) => {
         leadsCache.userId === currentUserId &&
         leadsCache.role === currentRole;
 
+    const queryCategory = searchParams.get('category');
     const [categoryFilter, setCategoryFilter] = useState(() => {
-        const initial = location.state?.categoryFilter || 'all';
+        const initial = queryCategory || location.state?.categoryFilter || 'all';
         if (initial === 'new' || initial === 'followup') return 'all';
         return initial;
     });
@@ -966,9 +969,11 @@ const LeadList = ({ user, isMyCreated }) => {
     }, [fetchLeads]);
 
     useEffect(() => {
-        if (location.state?.categoryFilter) {
-            const cat = location.state.categoryFilter;
-            setCategoryFilter((cat === 'new' || cat === 'followup') ? 'all' : cat);
+        const qCat = searchParams.get('category');
+        const cat = qCat || location.state?.categoryFilter;
+        if (cat) {
+            const resolved = (cat === 'new' || cat === 'followup') ? 'all' : cat;
+            setCategoryFilter(resolved);
             setStatusFilter('All');
         }
         if (location.state?.fromDate !== undefined) {
@@ -977,7 +982,7 @@ const LeadList = ({ user, isMyCreated }) => {
         if (location.state?.toDate !== undefined) {
             setToDate(location.state.toDate);
         }
-    }, [location.state?.categoryFilter, location.state?.fromDate, location.state?.toDate]);
+    }, [searchParams, location.state?.categoryFilter, location.state?.fromDate, location.state?.toDate]);
 
     useEffect(() => {
         if ((isTL || isFE || isAdmin) && statusFilter === 'N/A Leads') {
@@ -1300,7 +1305,15 @@ const LeadList = ({ user, isMyCreated }) => {
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
                         <button
                             type="button"
-                            onClick={() => { setCategoryFilter('all'); setStatusFilter('All'); }}
+                            onClick={() => {
+                                setCategoryFilter('all');
+                                setStatusFilter('All');
+                                setSearchParams(prev => {
+                                    const next = new URLSearchParams(prev);
+                                    next.set('category', 'all');
+                                    return next;
+                                }, { replace: true });
+                            }}
                             style={{
                                 padding: '8px 18px',
                                 borderRadius: '20px',
@@ -1313,11 +1326,19 @@ const LeadList = ({ user, isMyCreated }) => {
                                 transition: 'all 0.15s ease'
                             }}
                         >
-                            {isCE ? 'Total Leads' : 'All Leads'} ({isMyCreated ? baseLeads.length : ((isTL || isAdmin) ? (singleDate ? allLeadsCount : leads.length) : (isCE ? (isDateFilterActiveForCE ? allLeadsCount : leads.length) : leads.length))})
+                            {isCE ? 'Total Leads' : 'All Leads'} ({isMyCreated ? ((singleDate || fromDate || toDate) ? allLeadsCount : baseLeads.length) : ((isTL || isAdmin) ? (singleDate ? allLeadsCount : leads.length) : (isCE ? (isDateFilterActiveForCE ? allLeadsCount : leads.length) : leads.length))})
                         </button>
                         <button
                             type="button"
-                            onClick={() => { setCategoryFilter('conversions'); setStatusFilter('All'); }}
+                            onClick={() => {
+                                setCategoryFilter('conversions');
+                                setStatusFilter('All');
+                                setSearchParams(prev => {
+                                    const next = new URLSearchParams(prev);
+                                    next.set('category', 'conversions');
+                                    return next;
+                                }, { replace: true });
+                            }}
                             style={{
                                 padding: '8px 18px',
                                 borderRadius: '20px',
@@ -1334,7 +1355,15 @@ const LeadList = ({ user, isMyCreated }) => {
                         </button>
                         <button
                             type="button"
-                            onClick={() => { setCategoryFilter('interested'); setStatusFilter('All'); }}
+                            onClick={() => {
+                                setCategoryFilter('interested');
+                                setStatusFilter('All');
+                                setSearchParams(prev => {
+                                    const next = new URLSearchParams(prev);
+                                    next.set('category', 'interested');
+                                    return next;
+                                }, { replace: true });
+                            }}
                             style={{
                                 padding: '8px 18px',
                                 borderRadius: '20px',
@@ -1351,7 +1380,15 @@ const LeadList = ({ user, isMyCreated }) => {
                         </button>
                         <button
                             type="button"
-                            onClick={() => { setCategoryFilter('pending'); setStatusFilter('All'); }}
+                            onClick={() => {
+                                setCategoryFilter('pending');
+                                setStatusFilter('All');
+                                setSearchParams(prev => {
+                                    const next = new URLSearchParams(prev);
+                                    next.set('category', 'pending');
+                                    return next;
+                                }, { replace: true });
+                            }}
                             style={{
                                 padding: '8px 18px',
                                 borderRadius: '20px',
@@ -1390,6 +1427,11 @@ const LeadList = ({ user, isMyCreated }) => {
                                 setStatusFilter(e.target.value);
                                 if (e.target.value !== 'All') {
                                     setCategoryFilter('all');
+                                    setSearchParams(prev => {
+                                        const next = new URLSearchParams(prev);
+                                        next.delete('category');
+                                        return next;
+                                    }, { replace: true });
                                 }
                             }}
                         >

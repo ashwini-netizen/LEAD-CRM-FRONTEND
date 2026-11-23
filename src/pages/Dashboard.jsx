@@ -1247,7 +1247,7 @@ const Dashboard = ({ user, onLogout }) => {
                                     {/* Total Leads */}
                                     <div
                                         className="glass-card"
-                                        onClick={() => navigate('/leads', { state: { categoryFilter: 'all' } })}
+                                        onClick={() => navigate('/leads?category=all', { state: { categoryFilter: 'all' } })}
                                         style={{ ...convCardStyle('#3b82f6', '#eff6ff', '#bfdbfe'), cursor: 'pointer' }}
                                     >
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1269,7 +1269,7 @@ const Dashboard = ({ user, onLogout }) => {
                                     {/* Interested Leads */}
                                     <div
                                         className="glass-card"
-                                        onClick={() => navigate('/leads', { state: { categoryFilter: 'interested' } })}
+                                        onClick={() => navigate('/leads?category=interested', { state: { categoryFilter: 'interested' } })}
                                         style={{ ...convCardStyle('#0ea5e9', '#f0f9ff', '#bae6fd'), cursor: 'pointer' }}
                                     >
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1291,7 +1291,7 @@ const Dashboard = ({ user, onLogout }) => {
                                     {/* Pending Leads */}
                                     <div
                                         className="glass-card"
-                                        onClick={() => navigate('/leads', { state: { categoryFilter: 'pending' } })}
+                                        onClick={() => navigate('/leads?category=pending', { state: { categoryFilter: 'pending' } })}
                                         style={{ ...convCardStyle('#f59e0b', '#fffbeb', '#fde68a'), cursor: 'pointer' }}
                                     >
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -2152,7 +2152,8 @@ const Dashboard = ({ user, onLogout }) => {
                                             if (isClickable) {
                                                 const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
                                                 const targetPath = isFE ? '/leads/my-created' : '/leads';
-                                                navigate(targetPath, {
+                                                const query = stat.filter ? `?category=${encodeURIComponent(stat.filter)}` : '';
+                                                navigate(`${targetPath}${query}`, {
                                                     state: {
                                                         categoryFilter: stat.filter
                                                     }
