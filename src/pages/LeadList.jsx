@@ -450,17 +450,20 @@ const LeadList = ({ user, isMyCreated }) => {
     const [fromDate, setFromDate] = useState(location.state?.fromDate || '');
     const [toDate, setToDate] = useState(location.state?.toDate || '');
     const [singleDate, setSingleDate] = useState(location.state?.singleDate || '');
-    const [dateFilterMode, setDateFilterMode] = useState(() => {
-        if (location.state?.fromDate && location.state?.toDate && location.state.fromDate !== location.state.toDate) {
-            return 'range';
-        }
-        return 'single';
-    });
-
     const isFE = user?.role === 'Field Executive' || user?.Role === 'Field Executive';
     const isCE = user?.role === 'Call Executive' || user?.Role === 'Call Executive';
     const isTL = user?.role === 'Team Lead' || user?.Role === 'Team Lead';
     const isAdmin = user?.role === 'Admin' || user?.Role === 'Admin';
+
+    const [dateFilterMode, setDateFilterMode] = useState(() => {
+        if (location.state?.fromDate && location.state?.toDate && location.state.fromDate !== location.state.toDate) {
+            return 'range';
+        }
+        if (isFE && isMyCreated) {
+            return 'range';
+        }
+        return 'single';
+    });
 
     const isDateFilterActiveForCE = isCE && (
         (dateFilterMode === 'single' && !!singleDate) ||
@@ -680,14 +683,28 @@ const LeadList = ({ user, isMyCreated }) => {
             const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
             const filePrefix = isMyCreated
-                ? 'My_Created_Leads'
+                ? (isFE ? 'Walk_in_Leads' : 'My_Created_Leads')
                 : (isFE ? 'Assigned_Meetings_Leads' : 'Leads');
             const reportTitle = isMyCreated
-                ? 'My Created Leads Report'
+                ? (isFE ? 'Walk-in Leads Report' : 'My Created Leads Report')
                 : (isFE ? 'Assigned Meetings Leads Report' : 'Lead Database Report');
+            const dateRangeLabel = (fromDate && toDate)
+                ? `Period: ${fromDate.split('-').reverse().join('-')} to ${toDate.split('-').reverse().join('-')}`
+                : (singleDate ? `Date: ${singleDate.split('-').reverse().join('-')}` : '');
+            const dateSuffix = (fromDate && toDate) ? `_${fromDate}_to_${toDate}` : (singleDate ? `_${singleDate}` : '');
 
             if (exportFormat === 'excel') {
-                const exportData = recordsToExport.map((lead, idx) => ({
+                const exportData = recordsToExport.map((lead, idx) => (isFE && isMyCreated) ? ({
+                    "S.No": idx + 1,
+                    "Client / Lead Name": lead.FullName || '',
+                    "Contact Number": lead.Phone || '',
+                    "Company Name": lead.CompanyName || lead.CompanyType || '',
+                    "Location / Address": lead.Address || '',
+                    "Visit Date": formatLeadCreationDate(lead.CreatedAt, lead.CallDate),
+                    "Visit Outcome": lead.Status || '',
+                    "Service Interested": lead.ServiceInterested || '',
+                    "Created Date": formatLeadCreationDate(lead.CreatedAt, lead.CallDate)
+                }) : ({
                     "S.No": idx + 1,
                     "Lead ID": lead.LeadID,
                     "Lead Name": lead.FullName || '',
@@ -715,9 +732,9 @@ const LeadList = ({ user, isMyCreated }) => {
                 worksheet['!cols'] = colWidths;
 
                 const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, isMyCreated ? 'My Created Leads' : 'Leads');
+                XLSX.utils.book_append_sheet(workbook, worksheet, isMyCreated ? (isFE ? 'Walk-in Leads' : 'My Created Leads') : 'Leads');
 
-                const filename = `${filePrefix}_Export_${exportScope}_${dateStr}.xlsx`;
+                const filename = `${filePrefix}_Export_${exportScope}${dateSuffix}_${dateStr}.xlsx`;
                 XLSX.writeFile(workbook, filename);
                 setShowExportModal(false);
             } else {
@@ -731,9 +748,24 @@ const LeadList = ({ user, isMyCreated }) => {
 
                 doc.setFontSize(9);
                 doc.setTextColor(100, 116, 139);
-                doc.text(`Generated on: ${dateStr} ${timeStr} | Scope: ${exportScope.toUpperCase()} | Total: ${recordsToExport.length} records`, 14, 25);
+                const infoText = [
+                    dateRangeLabel,
+                    `Generated on: ${dateStr} ${timeStr}`,
+                    `Scope: ${exportScope.toUpperCase()}`,
+                    `Total: ${recordsToExport.length} records`
+                ].filter(Boolean).join(' | ');
+                doc.text(infoText, 14, 25);
 
-                const tableColumns = [
+                const tableColumns = (isFE && isMyCreated) ? [
+                    "S.No",
+                    "Client / Lead Name",
+                    "Contact Number",
+                    "Company Name",
+                    "Location / Address",
+                    "Visit Date",
+                    "Visit Outcome",
+                    "Service Interested"
+                ] : [
                     "S.No",
                     "Lead Name",
                     "Primary Phone",
@@ -745,7 +777,16 @@ const LeadList = ({ user, isMyCreated }) => {
                     "Follow-up / Meeting Date"
                 ];
 
-                const tableRows = recordsToExport.map((lead, idx) => [
+                const tableRows = recordsToExport.map((lead, idx) => (isFE && isMyCreated) ? [
+                    idx + 1,
+                    lead.FullName || '-',
+                    lead.Phone || '-',
+                    lead.CompanyName || lead.CompanyType || '-',
+                    lead.Address || '-',
+                    formatLeadCreationDate(lead.CreatedAt, lead.CallDate),
+                    lead.Status || '-',
+                    lead.ServiceInterested || '-'
+                ] : [
                     idx + 1,
                     lead.FullName || '-',
                     lead.Phone || '-',
@@ -770,7 +811,7 @@ const LeadList = ({ user, isMyCreated }) => {
                     margin: { top: 30, left: 10, right: 10 }
                 });
 
-                const filename = `${filePrefix}_Export_${exportScope}_${dateStr}.pdf`;
+                const filename = `${filePrefix}_Export_${exportScope}${dateSuffix}_${dateStr}.pdf`;
                 await savePDF(doc, filename);
                 setShowExportModal(false);
             }
@@ -1200,6 +1241,7 @@ const LeadList = ({ user, isMyCreated }) => {
                         {(isCE || isFE) && (
                             <button
                                 onClick={() => {
+                                    setExportFormat((isFE && isMyCreated) ? 'pdf' : 'excel');
                                     setExportScope((search || statusFilter !== 'All' || fromDate || toDate || singleDate) ? 'filtered' : 'all');
                                     setShowExportModal(true);
                                 }}
@@ -1386,55 +1428,227 @@ const LeadList = ({ user, isMyCreated }) => {
                             })()}
                         </select>
                     </div>
-                    {/* Team Lead, Field Executive & Admin Single Date Picker */}
-                    {(isTL || isFE || isAdmin) && (
-                        <div style={{ position: 'relative', minWidth: '160px', flex: '0 1 auto', display: 'flex', alignItems: 'center' }}>
-                            <div style={{ position: 'relative', width: '100%' }}>
-                                <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
-                                <input
-                                    type="date"
+                    {/* Walk-in Leads (Field Executive) Date Range & Single Date Filter */}
+                    {(isFE && isMyCreated) ? (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flex: '0 0 auto', flexWrap: 'wrap' }}>
+                            <div style={{ minWidth: '125px', flex: '0 0 auto' }}>
+                                <select
                                     className="input-field"
-                                    title="Filter by Date"
-                                    placeholder="Filter by Date"
-                                    style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '40px', paddingRight: singleDate ? '34px' : '14px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
-                                    value={singleDate}
+                                    style={{
+                                        width: '100%',
+                                        boxSizing: 'border-box',
+                                        cursor: 'pointer',
+                                        background: 'white',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                        fontSize: '0.85rem',
+                                        fontWeight: '600',
+                                        color: '#334155',
+                                        padding: '9px 12px'
+                                    }}
+                                    value={dateFilterMode}
                                     onChange={e => {
-                                        setSingleDate(e.target.value);
-                                        if (e.target.value) {
+                                        const newMode = e.target.value;
+                                        setDateFilterMode(newMode);
+                                        if (newMode === 'single') {
+                                            if (fromDate && !singleDate) setSingleDate(fromDate);
                                             setFromDate('');
                                             setToDate('');
+                                        } else {
+                                            if (singleDate && !fromDate) {
+                                                setFromDate(singleDate);
+                                                setToDate(getTodayDateStr());
+                                            }
+                                            setSingleDate('');
                                         }
                                     }}
-                                    min={(isFE && isMyCreated) ? getFirstDayOfCurrentMonthStr() : undefined}
-                                    max={(isFE && isMyCreated) ? getTodayDateStr() : undefined}
-                                />
-                                {singleDate && (
+                                >
+                                    <option value="range">Date Range</option>
+                                    <option value="single">Single Date</option>
+                                </select>
+                            </div>
+
+                            {dateFilterMode === 'range' && (
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flex: '0 0 auto' }}>
+                                    <div style={{ position: 'relative', width: '135px' }}>
+                                        <Calendar size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                        <input
+                                            type="date"
+                                            className="input-field"
+                                            title="From Date"
+                                            placeholder="From Date"
+                                            style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '30px', paddingRight: '6px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.82rem' }}
+                                            value={fromDate}
+                                            onChange={e => {
+                                                if (singleDate) setSingleDate('');
+                                                handleFromDateChange(e.target.value);
+                                            }}
+                                            max={toDate || getTodayDateStr()}
+                                        />
+                                    </div>
+                                    <span style={{ color: '#94a3b8', fontSize: '0.82rem', fontWeight: '700' }}>–</span>
+                                    <div style={{ position: 'relative', width: '135px' }}>
+                                        <Calendar size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                        <input
+                                            type="date"
+                                            className="input-field"
+                                            title="To Date"
+                                            placeholder="To Date"
+                                            style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '30px', paddingRight: '6px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.82rem' }}
+                                            value={toDate}
+                                            onChange={e => {
+                                                if (singleDate) setSingleDate('');
+                                                handleToDateChange(e.target.value);
+                                            }}
+                                            min={fromDate || undefined}
+                                            max={getTodayDateStr()}
+                                        />
+                                    </div>
+                                    {(fromDate || toDate) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { setFromDate(''); setToDate(''); }}
+                                            title="Clear date range"
+                                            style={{
+                                                background: '#f1f5f9',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: '#64748b',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                padding: '6px',
+                                                borderRadius: '50%',
+                                                transition: '0.2s'
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fee2e2'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.background = '#f1f5f9'; }}
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
                                     <button
                                         type="button"
-                                        onClick={() => setSingleDate('')}
-                                        title="Clear date filter"
-                                        style={{
-                                            position: 'absolute',
-                                            right: '10px',
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            background: 'none',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            color: '#64748b',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            padding: 0
+                                        onClick={() => {
+                                            setSingleDate('');
+                                            setFromDate(getFirstDayOfCurrentMonthStr());
+                                            setToDate(getTodayDateStr());
                                         }}
-                                        onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; }}
+                                        title="Filter Current Month"
+                                        style={{
+                                            padding: '7px 12px',
+                                            background: (fromDate === getFirstDayOfCurrentMonthStr() && toDate === getTodayDateStr()) ? '#e0e7ff' : '#f8fafc',
+                                            color: (fromDate === getFirstDayOfCurrentMonthStr() && toDate === getTodayDateStr()) ? '#4338ca' : '#64748b',
+                                            border: `1px solid ${(fromDate === getFirstDayOfCurrentMonthStr() && toDate === getTodayDateStr()) ? '#c7d2fe' : '#cbd5e1'}`,
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            fontSize: '0.78rem',
+                                            fontWeight: '700',
+                                            whiteSpace: 'nowrap',
+                                            transition: 'all 0.15s ease'
+                                        }}
                                     >
-                                        <X size={15} />
+                                        This Month
                                     </button>
-                                )}
-                            </div>
+                                </div>
+                            )}
+
+                            {dateFilterMode === 'single' && (
+                                <div style={{ position: 'relative', width: '150px', flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>
+                                    <div style={{ position: 'relative', width: '100%' }}>
+                                        <Calendar size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                        <input
+                                            type="date"
+                                            className="input-field"
+                                            title="Filter by Specific Date"
+                                            placeholder="Select Date"
+                                            style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '34px', paddingRight: singleDate ? '30px' : '10px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
+                                            value={singleDate}
+                                            onChange={e => {
+                                                setSingleDate(e.target.value);
+                                                if (e.target.value) {
+                                                    setFromDate('');
+                                                    setToDate('');
+                                                }
+                                            }}
+                                            max={getTodayDateStr()}
+                                        />
+                                        {singleDate && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setSingleDate('')}
+                                                title="Clear date filter"
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: '8px',
+                                                    top: '50%',
+                                                    transform: 'translateY(-50%)',
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    color: '#64748b',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    padding: 0
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; }}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
+                    ) : (
+                        (isTL || isFE || isAdmin) && (
+                            <div style={{ position: 'relative', minWidth: '160px', flex: '0 1 auto', display: 'flex', alignItems: 'center' }}>
+                                <div style={{ position: 'relative', width: '100%' }}>
+                                    <Calendar size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                                    <input
+                                        type="date"
+                                        className="input-field"
+                                        title="Filter by Date"
+                                        placeholder="Filter by Date"
+                                        style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '40px', paddingRight: singleDate ? '34px' : '14px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
+                                        value={singleDate}
+                                        onChange={e => {
+                                            setSingleDate(e.target.value);
+                                            if (e.target.value) {
+                                                setFromDate('');
+                                                setToDate('');
+                                            }
+                                        }}
+                                    />
+                                    {singleDate && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setSingleDate('')}
+                                            title="Clear date filter"
+                                            style={{
+                                                position: 'absolute',
+                                                right: '10px',
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: '#64748b',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                padding: 0
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; }}
+                                        >
+                                            <X size={15} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )
                     )}
                     {isTL && !singleDate && (fromDate || toDate) && (
                         <div style={{
