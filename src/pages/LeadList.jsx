@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Eye, Edit, Search, Loader, RefreshCw, FileText, Upload, Download, ArrowLeft, Calendar, Trash2, AlertTriangle, CheckSquare, Square, X, FileSpreadsheet, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check, RotateCcw } from 'lucide-react';
+import { Eye, Edit, Search, Loader, RefreshCw, FileText, Upload, Download, ArrowLeft, Calendar, Trash2, AlertTriangle, CheckSquare, Square, X, FileSpreadsheet, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check, RotateCcw, UserPlus } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { savePDF } from '../utils/pdfDownload';
 import UserHeader from '../components/UserHeader';
+import AssignModal from '../components/AssignModal';
 import { stripEmojis } from '../utils/stringUtils';
 import { formatCleanTime } from '../utils/notificationSync';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
@@ -496,6 +497,17 @@ const LeadList = ({ user, isMyCreated }) => {
     const [exportFormat, setExportFormat] = useState('excel');
     const [exportScope, setExportScope] = useState('filtered');
     const [exporting, setExporting] = useState(false);
+    const [assigningLead, setAssigningLead] = useState(null);
+
+    const handleAssignSuccess = (leadId, execId, execName, execRole) => {
+        setLeads(prev => prev.map(l => l.LeadID === leadId ? {
+            ...l,
+            AssignedTo: execId,
+            AssignedToName: execName,
+            AssignedToRole: execRole
+        } : l));
+        leadsCache.data = null;
+    };
 
     // Custom Record Range Selection state
     const [rangeInput, setRangeInput] = useState('');
@@ -2394,6 +2406,33 @@ const LeadList = ({ user, isMyCreated }) => {
                                                             title="Repeat Call Action"
                                                         />
                                                     )}
+                                                    {isCE && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setAssigningLead(lead)}
+                                                            style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '5px',
+                                                                padding: '4px 10px',
+                                                                background: '#6366f1',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                borderRadius: '6px',
+                                                                fontSize: '0.78rem',
+                                                                fontWeight: '600',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.15s ease',
+                                                                boxShadow: '0 1px 2px rgba(99, 102, 241, 0.2)'
+                                                            }}
+                                                            onMouseEnter={e => e.currentTarget.style.background = '#4f46e5'}
+                                                            onMouseLeave={e => e.currentTarget.style.background = '#6366f1'}
+                                                            title="Assign Lead to TL or Field Executive"
+                                                        >
+                                                            <UserPlus size={13} />
+                                                            <span>Assign</span>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -2944,6 +2983,15 @@ const LeadList = ({ user, isMyCreated }) => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {assigningLead && (
+                <AssignModal
+                    lead={assigningLead}
+                    onClose={() => setAssigningLead(null)}
+                    onAssign={handleAssignSuccess}
+                    allowedRoles={['Team Lead', 'Field Executive']}
+                />
             )}
 
             <style>{`

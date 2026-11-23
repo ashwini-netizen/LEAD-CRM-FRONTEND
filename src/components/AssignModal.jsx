@@ -3,12 +3,13 @@ import { X, UserCheck, Loader } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
-const AssignModal = ({ lead, onClose, onAssign, onlyField = false }) => {
+const AssignModal = ({ lead, onClose, onAssign, onlyField = false, allowedRoles = null }) => {
     const [executives, setExecutives] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [assigning, setAssigning] = useState(false);
-    const [selectedRole, setSelectedRole] = useState(onlyField ? 'Field Executive' : 'Call Executive');
+    const defaultRole = allowedRoles && allowedRoles.length > 0 ? allowedRoles[0] : (onlyField ? 'Field Executive' : 'Call Executive');
+    const [selectedRole, setSelectedRole] = useState(defaultRole);
 
     useEffect(() => {
         const fetchExecutives = async () => {
@@ -59,41 +60,66 @@ const AssignModal = ({ lead, onClose, onAssign, onlyField = false }) => {
                     <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}><X size={24} /></button>
                 </div>
 
-                {!onlyField && (
+                {allowedRoles && allowedRoles.length > 0 ? (
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                        <button
-                            onClick={() => setSelectedRole('Call Executive')}
-                            style={{
-                                flex: 1,
-                                padding: '10px',
-                                borderRadius: '10px',
-                                border: selectedRole === 'Call Executive' ? '2px solid #6366f1' : '1px solid #e2e8f0',
-                                background: selectedRole === 'Call Executive' ? 'rgba(99, 102, 241, 0.1)' : 'white',
-                                color: selectedRole === 'Call Executive' ? '#6366f1' : '#64748b',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            Call Executive
-                        </button>
-                        <button
-                            onClick={() => setSelectedRole('Field Executive')}
-                            style={{
-                                flex: 1,
-                                padding: '10px',
-                                borderRadius: '10px',
-                                border: selectedRole === 'Field Executive' ? '2px solid #6366f1' : '1px solid #e2e8f0',
-                                background: selectedRole === 'Field Executive' ? 'rgba(99, 102, 241, 0.1)' : 'white',
-                                color: selectedRole === 'Field Executive' ? '#6366f1' : '#64748b',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            Field Executive
-                        </button>
+                        {allowedRoles.map(role => (
+                            <button
+                                key={role}
+                                type="button"
+                                onClick={() => setSelectedRole(role)}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px',
+                                    borderRadius: '10px',
+                                    border: selectedRole === role ? '2px solid #6366f1' : '1px solid #e2e8f0',
+                                    background: selectedRole === role ? 'rgba(99, 102, 241, 0.1)' : 'white',
+                                    color: selectedRole === role ? '#6366f1' : '#64748b',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                {role === 'Team Lead' ? 'Team Lead (TL)' : (role === 'Field Executive' ? 'Field Executive (FE)' : role)}
+                            </button>
+                        ))}
                     </div>
+                ) : (
+                    !onlyField && (
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                            <button
+                                onClick={() => setSelectedRole('Call Executive')}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px',
+                                    borderRadius: '10px',
+                                    border: selectedRole === 'Call Executive' ? '2px solid #6366f1' : '1px solid #e2e8f0',
+                                    background: selectedRole === 'Call Executive' ? 'rgba(99, 102, 241, 0.1)' : 'white',
+                                    color: selectedRole === 'Call Executive' ? '#6366f1' : '#64748b',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                Call Executive
+                            </button>
+                            <button
+                                onClick={() => setSelectedRole('Field Executive')}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px',
+                                    borderRadius: '10px',
+                                    border: selectedRole === 'Field Executive' ? '2px solid #6366f1' : '1px solid #e2e8f0',
+                                    background: selectedRole === 'Field Executive' ? 'rgba(99, 102, 241, 0.1)' : 'white',
+                                    color: selectedRole === 'Field Executive' ? '#6366f1' : '#64748b',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                Field Executive
+                            </button>
+                        </div>
+                    )
                 )}
 
                 <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '10px' }}>
@@ -115,7 +141,7 @@ const AssignModal = ({ lead, onClose, onAssign, onlyField = false }) => {
                                         padding: '15px', 
                                         background: '#f8fafc', 
                                         borderRadius: '12px', 
-                                        border: lead.AssignedTo === exec.UserID ? '2px solid #6366f1' : '1px solid #e2e8f0',
+                                        border: String(lead.AssignedTo) === String(exec.UserID) ? '2px solid #6366f1' : '1px solid #e2e8f0',
                                         transition: '0.2s'
                                     }}
                                 >
@@ -125,14 +151,14 @@ const AssignModal = ({ lead, onClose, onAssign, onlyField = false }) => {
                                     </div>
                                     <button 
                                         onClick={() => handleAssign(exec.UserID)}
-                                        disabled={assigning || lead.AssignedTo === exec.UserID}
+                                        disabled={assigning || String(lead.AssignedTo) === String(exec.UserID)}
                                         style={{ 
                                             padding: '8px 16px', 
-                                            background: lead.AssignedTo === exec.UserID ? '#10b981' : '#6366f1', 
+                                            background: String(lead.AssignedTo) === String(exec.UserID) ? '#10b981' : '#6366f1', 
                                             color: 'white', 
                                             border: 'none', 
                                             borderRadius: '8px', 
-                                            cursor: lead.AssignedTo === exec.UserID ? 'default' : 'pointer',
+                                            cursor: String(lead.AssignedTo) === String(exec.UserID) ? 'default' : 'pointer',
                                             fontSize: '0.85rem',
                                             fontWeight: '600',
                                             display: 'flex',
@@ -140,7 +166,7 @@ const AssignModal = ({ lead, onClose, onAssign, onlyField = false }) => {
                                             gap: '6px'
                                         }}
                                     >
-                                        {lead.AssignedTo === exec.UserID ? <><UserCheck size={16} /> Assigned</> : 'Select'}
+                                        {String(lead.AssignedTo) === String(exec.UserID) ? <><UserCheck size={16} /> Assigned</> : 'Select'}
                                     </button>
                                 </div>
                             ))}
