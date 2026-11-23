@@ -254,9 +254,25 @@ const matchesQuery = (targetStr, queryStr) => {
 };
 
 const getTodayDateStr = () => {
-    const pad = (n) => String(n).padStart(2, '0');
-    const d = new Date();
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    try {
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    } catch {
+        const pad = (n) => String(n).padStart(2, '0');
+        const d = new Date();
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+};
+
+const getFirstDayOfCurrentMonthStr = () => {
+    try {
+        const todayStr = getTodayDateStr();
+        const [year, month] = todayStr.split('-');
+        return `${year}-${month}-01`;
+    } catch {
+        const pad = (n) => String(n).padStart(2, '0');
+        const d = new Date();
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
+    }
 };
 
 const getLeadDateYMD = (dateVal) => {
@@ -1389,6 +1405,8 @@ const LeadList = ({ user, isMyCreated }) => {
                                             setToDate('');
                                         }
                                     }}
+                                    min={(isFE && isMyCreated) ? getFirstDayOfCurrentMonthStr() : undefined}
+                                    max={(isFE && isMyCreated) ? getTodayDateStr() : undefined}
                                 />
                                 {singleDate && (
                                     <button
@@ -1527,6 +1545,8 @@ const LeadList = ({ user, isMyCreated }) => {
                                             style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '34px', paddingRight: singleDate ? '30px' : '10px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.85rem' }}
                                             value={singleDate}
                                             onChange={e => setSingleDate(e.target.value)}
+                                            min={(isFE && isMyCreated) ? getFirstDayOfCurrentMonthStr() : undefined}
+                                            max={(isFE && isMyCreated) ? getTodayDateStr() : undefined}
                                         />
                                         {singleDate && (
                                             <button
@@ -1570,6 +1590,8 @@ const LeadList = ({ user, isMyCreated }) => {
                                             style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '30px', paddingRight: '6px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.82rem' }}
                                             value={fromDate}
                                             onChange={e => handleFromDateChange(e.target.value)}
+                                            min={(isFE && isMyCreated) ? getFirstDayOfCurrentMonthStr() : undefined}
+                                            max={(isFE && isMyCreated) ? (toDate || getTodayDateStr()) : undefined}
                                         />
                                     </div>
                                     <span style={{ color: '#94a3b8', fontSize: '0.82rem', fontWeight: '700' }}>–</span>
@@ -1583,6 +1605,8 @@ const LeadList = ({ user, isMyCreated }) => {
                                             style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '30px', paddingRight: '6px', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', fontSize: '0.82rem' }}
                                             value={toDate}
                                             onChange={e => handleToDateChange(e.target.value)}
+                                            min={(isFE && isMyCreated) ? (fromDate || getFirstDayOfCurrentMonthStr()) : undefined}
+                                            max={(isFE && isMyCreated) ? getTodayDateStr() : undefined}
                                         />
                                     </div>
                                     {(fromDate || toDate) && (
