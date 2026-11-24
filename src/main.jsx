@@ -45,6 +45,8 @@ window.fetch = async function (input, init) {
         if (hasToken) {
             localStorage.removeItem('crm_token');
             localStorage.removeItem('crm_user');
+            localStorage.removeItem('crm_last_route');
+            localStorage.setItem('crm_logged_out', 'true');
             window.dispatchEvent(new CustomEvent('auth_expired', {
                 detail: { message: 'Your session has expired. Please log in again.' }
             }));

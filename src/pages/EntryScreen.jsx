@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Phone, Users, UserCheck, ShieldCheck, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -12,6 +13,30 @@ const roles = [
 
 const EntryScreen = ({ onSelectRole }) => {
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const token = localStorage.getItem('crm_token');
+        const currentUser = (() => {
+            try { return JSON.parse(localStorage.getItem('crm_user')); } catch { return null; }
+        })();
+
+        // 1. If user already authenticated, automatically restore session and previous module/page
+        if (token && currentUser) {
+            const lastRoute = localStorage.getItem('crm_last_route');
+            const target = (lastRoute && lastRoute !== '/' && lastRoute !== '/login' && lastRoute !== '/reset-password')
+                ? lastRoute
+                : '/dashboard';
+            navigate(target, { replace: true });
+            return;
+        }
+
+        // 2. If user manually logged out or has selected role, redirect to login page
+        const loggedOut = localStorage.getItem('crm_logged_out');
+        const savedRole = localStorage.getItem('selected_role');
+        if (loggedOut === 'true' || savedRole) {
+            navigate('/login', { replace: true });
+        }
+    }, [navigate]);
 
     return (
         <div style={containerStyle}>

@@ -2901,7 +2901,6 @@ const Dashboard = ({ user, onLogout }) => {
                                         onClick={() => {
                                             setShowLogoutModal(false);
                                             onLogout();
-                                            navigate('/');
                                         }}
                                         style={{ background: '#ef4444', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}
                                         onMouseEnter={(e) => e.target.style.background = '#dc2626'}

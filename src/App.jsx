@@ -38,8 +38,43 @@ import GlobalModal from './components/GlobalModal';
 
 // Load persisted session
 const savedUser = (() => {
+    const token = localStorage.getItem('crm_token');
+    if (!token) return null;
     try { return JSON.parse(localStorage.getItem('crm_user')); } catch { return null; }
 })();
+
+// Role-based route permission validator for session restoration
+const getValidRouteForRole = (route, role) => {
+    if (!route || typeof route !== 'string') return '/dashboard';
+    const cleanRoute = route.trim();
+    if (cleanRoute === '/' || cleanRoute === '/login' || cleanRoute === '/reset-password') {
+        return '/dashboard';
+    }
+
+    const userRole = String(role || '').trim().toLowerCase();
+
+    // Admin-only routes
+    if (cleanRoute.startsWith('/admin')) {
+        if (cleanRoute.startsWith('/admin/clients') || cleanRoute.startsWith('/admin/time-logs')) {
+            if (userRole === 'admin' || userRole === 'team lead' || userRole === 'team_lead') {
+                return cleanRoute;
+            }
+            return '/dashboard';
+        }
+        if (userRole !== 'admin') {
+            return '/dashboard';
+        }
+    }
+
+    // Live tracking route (Admin & Team Lead only)
+    if (cleanRoute.startsWith('/tracking')) {
+        if (userRole !== 'admin' && userRole !== 'team lead' && userRole !== 'team_lead') {
+            return '/dashboard';
+        }
+    }
+
+    return cleanRoute;
+};
 
 function App() {
     const navigate = useNavigate();
@@ -244,6 +279,8 @@ function App() {
                 if (res.status === 401) {
                     localStorage.removeItem('crm_token');
                     localStorage.removeItem('crm_user');
+                    localStorage.removeItem('crm_last_route');
+                    localStorage.setItem('crm_logged_out', 'true');
                     setUser(null);
                     toast.error('Session expired. Please log in again.');
                     const currentRole = localStorage.getItem('selected_role');
@@ -273,6 +310,46 @@ function App() {
         };
         syncProfile();
     }, []);
+
+    // Auto-restore session and redirect to last visited module/page when opening root or login
+    useEffect(() => {
+        const token = localStorage.getItem('crm_token');
+        const currentUser = user || (() => {
+            const t = localStorage.getItem('crm_token');
+            if (!t) return null;
+            try { return JSON.parse(localStorage.getItem('crm_user')); } catch { return null; }
+        })();
+
+        if (token && currentUser) {
+            if (location.pathname === '/' || location.pathname === '/login') {
+                if (currentUser.role !== 'Admin' && currentUser.isFirstLogin) {
+                    navigate('/reset-password', { replace: true });
+                } else {
+                    const lastRoute = localStorage.getItem('crm_last_route');
+                    const target = getValidRouteForRole(lastRoute, currentUser.role);
+                    navigate(target, { replace: true });
+                }
+            }
+        } else if (location.pathname === '/') {
+            // After manual logout or if role was selected, direct user to login page requiring credentials
+            const loggedOut = localStorage.getItem('crm_logged_out');
+            const savedRole = localStorage.getItem('selected_role');
+            if (loggedOut === 'true' || savedRole) {
+                navigate('/login', { replace: true });
+            }
+        }
+    }, [location.pathname, user, navigate]);
+
+    // Continuously persist active protected route so user returns to the exact same page upon reopening app
+    useEffect(() => {
+        const token = localStorage.getItem('crm_token');
+        if (user && token && !isPublicPage) {
+            const currentPath = location.pathname + location.search;
+            if (currentPath && currentPath !== '/' && currentPath !== '/login' && currentPath !== '/reset-password') {
+                localStorage.setItem('crm_last_route', currentPath);
+            }
+        }
+    }, [location.pathname, location.search, user, isPublicPage]);
 
     // Real-time Notifications
     useEffect(() => {
@@ -380,12 +457,29 @@ function App() {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('crm_token');
-        localStorage.removeItem('crm_user');
+        const token = localStorage.getItem('crm_token');
+        if (token) {
+            const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
+            fetch(`${API_URL}/api/auth/logout`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` }
+            }).catch(() => {});
+        }
+
+        try {
+            localStorage.removeItem('crm_token');
+            localStorage.removeItem('crm_user');
+            localStorage.removeItem('crm_last_route');
+            localStorage.removeItem('admin_panel_selected_role');
+            localStorage.setItem('crm_logged_out', 'true');
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('lead_cache_')) localStorage.removeItem(key);
+            });
+        } catch (e) {}
+
         setUser(null);
-        setSelectedRole(null);
-        localStorage.removeItem('selected_role');
         setChatPartner(null);
+        navigate('/login', { replace: true });
     };
 
     const ProtectedRoute = ({ element }) => {
@@ -529,7 +623,7 @@ function App() {
                 <Route path="/leads" element={<ProtectedRoute element={<LeadList user={user} />} />} />
                 <Route path="/leads/my-created" element={<ProtectedRoute element={<LeadList user={user} isMyCreated={true} />} />} />
                 <Route path="/leads/:id" element={<ProtectedRoute element={<LeadDetail user={user} />} />} />
-                <Route path="/profile" element={<ProtectedRoute element={<Profile user={user} />} />} />
+                <Route path="/profile" element={<ProtectedRoute element={<Profile user={user} onLogout={handleLogout} />} />} />
                 <Route path="/admin" element={<ProtectedRoute element={user?.role === 'Admin' ? <AdminPanel user={user} /> : <Navigate to="/dashboard" />} />} />
                 <Route path="/leads/interested" element={<ProtectedRoute element={<InterestedLeads user={user} />} />} />
                 <Route path="/leads/lead-gen-followup" element={<ProtectedRoute element={<LeadGenFollowupLeads user={user} />} />} />

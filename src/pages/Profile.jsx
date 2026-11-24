@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
 
-const Profile = ({ user }) => {
+const Profile = ({ user, onLogout }) => {
     const navigate = useNavigate();
     const [profileData, setProfileData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -52,7 +52,24 @@ const Profile = ({ user }) => {
     const performLogout = () => {
         localStorage.removeItem('crm_token');
         localStorage.removeItem('crm_user');
-        window.location.reload();
+        if (onLogout) {
+            onLogout();
+        } else {
+            const token = localStorage.getItem('crm_token');
+            if (token) {
+                fetch(`${API_URL}/api/auth/logout`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}` }
+                }).catch(() => {});
+            }
+            try {
+                localStorage.removeItem('crm_token');
+                localStorage.removeItem('crm_user');
+                localStorage.removeItem('crm_last_route');
+                localStorage.setItem('crm_logged_out', 'true');
+            } catch (e) {}
+            navigate('/login', { replace: true });
+        }
     };
 
     const handleLogoutClick = () => {

@@ -52,6 +52,21 @@ const LoginScreen = ({ role, onLogin }) => {
     const [emailFocused, setEmailFocused] = useState(false);
     const [passFocused, setPassFocused] = useState(false);
 
+    // If user already authenticated, restore session automatically
+    useEffect(() => {
+        const token = localStorage.getItem('crm_token');
+        const currentUser = (() => {
+            try { return JSON.parse(localStorage.getItem('crm_user')); } catch { return null; }
+        })();
+        if (token && currentUser) {
+            const lastRoute = localStorage.getItem('crm_last_route');
+            const target = (lastRoute && lastRoute !== '/' && lastRoute !== '/login' && lastRoute !== '/reset-password')
+                ? lastRoute
+                : '/dashboard';
+            navigate(target, { replace: true });
+        }
+    }, [navigate]);
+
     // Completely clear credentials on role switch or mount (no default prefill in any module)
     useEffect(() => {
         setEmail('');
@@ -115,13 +130,20 @@ const LoginScreen = ({ role, onLogin }) => {
                 setLoading(false);
                 return;
             }
+            localStorage.removeItem('crm_logged_out');
             localStorage.setItem('crm_token', data.token);
             localStorage.setItem('crm_user', JSON.stringify(data.user));
+            const roleKey = normalizeRoleKey(data.user.role || activeRoleKey);
+            localStorage.setItem('selected_role', roleKey);
             onLogin(data.user);
             if (data.user.isFirstLogin) {
                 navigate('/reset-password', { replace: true });
             } else {
-                navigate('/dashboard', { replace: true });
+                const lastRoute = localStorage.getItem('crm_last_route');
+                const target = (lastRoute && lastRoute !== '/' && lastRoute !== '/login' && lastRoute !== '/reset-password')
+                    ? lastRoute
+                    : '/dashboard';
+                navigate(target, { replace: true });
             }
         } catch (err) {
             if (API_URL.includes('ngrok-free.dev')) {
@@ -230,7 +252,11 @@ const LoginScreen = ({ role, onLogin }) => {
                     </button>
                 ) : (
                     <button 
-                        onClick={() => navigate('/')} 
+                        onClick={() => {
+                            localStorage.removeItem('crm_logged_out');
+                            localStorage.removeItem('selected_role');
+                            navigate('/');
+                        }} 
                         className="btn-secondary" 
                         style={{ marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '8px', width: 'fit-content' }}
                     >
