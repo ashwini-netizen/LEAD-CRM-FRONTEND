@@ -64,8 +64,14 @@ const LoginScreen = ({ role, onLogin }) => {
                 ? lastRoute
                 : '/dashboard';
             navigate(target, { replace: true });
+            return;
         }
-    }, [navigate]);
+
+        // If no role is selected, return to portal selection screen
+        if (!role && !localStorage.getItem('selected_role')) {
+            navigate('/', { replace: true });
+        }
+    }, [navigate, role]);
 
     // Completely clear credentials on role switch or mount (no default prefill in any module)
     useEffect(() => {

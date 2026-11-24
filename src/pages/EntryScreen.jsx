@@ -29,13 +29,6 @@ const EntryScreen = ({ onSelectRole }) => {
             navigate(target, { replace: true });
             return;
         }
-
-        // 2. If user manually logged out or has selected role, redirect to login page
-        const loggedOut = localStorage.getItem('crm_logged_out');
-        const savedRole = localStorage.getItem('selected_role');
-        if (loggedOut === 'true' || savedRole) {
-            navigate('/login', { replace: true });
-        }
     }, [navigate]);
 
     return (

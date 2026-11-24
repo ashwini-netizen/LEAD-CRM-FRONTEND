@@ -330,13 +330,6 @@ function App() {
                     navigate(target, { replace: true });
                 }
             }
-        } else if (location.pathname === '/') {
-            // After manual logout or if role was selected, direct user to login page requiring credentials
-            const loggedOut = localStorage.getItem('crm_logged_out');
-            const savedRole = localStorage.getItem('selected_role');
-            if (loggedOut === 'true' || savedRole) {
-                navigate('/login', { replace: true });
-            }
         }
     }, [location.pathname, user, navigate]);
 
@@ -471,15 +464,17 @@ function App() {
             localStorage.removeItem('crm_user');
             localStorage.removeItem('crm_last_route');
             localStorage.removeItem('admin_panel_selected_role');
-            localStorage.setItem('crm_logged_out', 'true');
+            localStorage.removeItem('selected_role');
+            localStorage.removeItem('crm_logged_out');
             Object.keys(localStorage).forEach(key => {
                 if (key.startsWith('lead_cache_')) localStorage.removeItem(key);
             });
         } catch (e) {}
 
         setUser(null);
+        setSelectedRole(null);
         setChatPartner(null);
-        navigate('/login', { replace: true });
+        navigate('/', { replace: true });
     };
 
     const ProtectedRoute = ({ element }) => {
@@ -489,8 +484,7 @@ function App() {
         })();
 
         if (!currentUser || !token) {
-            const currentRole = localStorage.getItem('selected_role');
-            return <Navigate to={currentRole ? "/login" : "/"} replace />;
+            return <Navigate to="/" replace />;
         }
         // Enforce password reset on first login for non-admins
         if (currentUser.role !== 'Admin' && currentUser.isFirstLogin) {

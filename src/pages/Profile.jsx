@@ -68,7 +68,7 @@ const Profile = ({ user, onLogout }) => {
                 localStorage.removeItem('crm_last_route');
                 localStorage.setItem('crm_logged_out', 'true');
             } catch (e) {}
-            navigate('/login', { replace: true });
+            navigate('/', { replace: true });
         }
     };
 
