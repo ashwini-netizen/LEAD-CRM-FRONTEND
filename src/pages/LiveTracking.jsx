@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import io from 'socket.io-client';
-import { Loader, MapPin, Navigation, ArrowLeft, Clock, Calendar, RotateCcw, Route, Phone, Flag, List, Map as MapIcon, CheckCircle2, AlertTriangle, ShieldCheck, Briefcase, ExternalLink } from 'lucide-react';
+import { Loader, MapPin, Navigation, ArrowLeft, Clock, Calendar, RotateCcw, Route, Phone, Flag, List, Map as MapIcon, CheckCircle2, AlertTriangle, ShieldCheck, Briefcase, ExternalLink, Users } from 'lucide-react';
 import UserHeader from '../components/UserHeader';
 import 'leaflet/dist/leaflet.css';
 
@@ -39,7 +39,6 @@ const checkIsWithinOfficeHoursIST = () => {
             if (p.type === 'minute') minute = parseInt(p.value, 10);
         }
         const totalMinutes = hour * 60 + minute;
-        // 9:30 AM (570) to 6:00 PM (1080)
         return totalMinutes >= 570 && totalMinutes < 1080;
     } catch {
         const now = new Date();
@@ -84,7 +83,7 @@ const calculateDistanceKm = (coords) => {
         const [lat1, lon1] = coords[i];
         const [lat2, lon2] = coords[i + 1];
         if (lat1 === lat2 && lon1 === lon2) continue;
-        const R = 6371; // Earth's radius in km
+        const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
         const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -125,7 +124,6 @@ const startMarkerIcon = new L.Icon({
     popupAnchor: [0, -34],
 });
 
-// Stop marker generator for intermediate visited locations
 const createStopMarkerIcon = (stopNumber) => {
     const svg = encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
@@ -141,7 +139,6 @@ const createStopMarkerIcon = (stopNumber) => {
     });
 };
 
-// Client Drop-Pin Marker: Vibrant red drop-pin indicating assigned client locations
 const clientDropPinSvg = encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 46" width="36" height="46">
   <defs>
@@ -204,7 +201,6 @@ const resolveAddressToCoords = (address) => {
     if (!address || typeof address !== 'string') return null;
     const lower = address.toLowerCase();
 
-    // Check direct coordinates if present like "12.345, 76.543"
     const coordMatch = lower.match(/([0-9]+\.[0-9]+)[,\s]+([0-9]+\.[0-9]+)/);
     if (coordMatch) {
         const lat = parseFloat(coordMatch[1]);
@@ -212,10 +208,8 @@ const resolveAddressToCoords = (address) => {
         if (!isNaN(lat) && !isNaN(lng)) return [lat, lng];
     }
 
-    // Match locality from dictionary
     for (const [key, coords] of Object.entries(MYSORE_LOCALITIES)) {
         if (lower.includes(key)) {
-            // Apply slight deterministic micro-jitter so multiple client locations in same locality don't stack directly
             let hash = 0;
             for (let i = 0; i < address.length; i++) hash = (hash << 5) - hash + address.charCodeAt(i);
             const jitterLat = ((Math.abs(hash) % 100) - 50) * 0.00003;
@@ -224,7 +218,6 @@ const resolveAddressToCoords = (address) => {
         }
     }
 
-    // Fallback: central Mysore area with hash dispersion
     let hash = 0;
     for (let i = 0; i < address.length; i++) hash = (hash << 5) - hash + address.charCodeAt(i);
     const offsetLat = ((Math.abs(hash) % 200) - 100) * 0.0001;
@@ -232,7 +225,6 @@ const resolveAddressToCoords = (address) => {
     return [12.3051 + offsetLat, 76.6455 + offsetLng];
 };
 
-// Animated Marker for smooth live movement updates
 const AnimatedMarker = ({ position, name, employeeId, isLive, lastUpdateTime }) => {
     const [currentPos, setCurrentPos] = useState(position);
     const prevPosRef = useRef(position);
@@ -306,7 +298,7 @@ const MapFocus = ({ position, path, clientCoords, focusedLocation }) => {
             try {
                 const bounds = L.latLngBounds(allPoints);
                 if (bounds.isValid()) {
-                    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
+                    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
                 }
             } catch (e) {
                 if (position) map.setView(position, 15, { animate: true });
@@ -567,7 +559,6 @@ const LiveTracking = ({ user }) => {
                 const endTime = new Date(currentCluster[currentCluster.length - 1].Timestamp).getTime();
                 const durationMinutes = Math.round((endTime - startTime) / 60000);
 
-                // If stayed >= 4 minutes, record as a stop
                 if (durationMinutes >= 4 && currentCluster.length >= 3) {
                     const avgLat = currentCluster.reduce((sum, p) => sum + parseFloat(p.Latitude), 0) / currentCluster.length;
                     const avgLng = currentCluster.reduce((sum, p) => sum + parseFloat(p.Longitude), 0) / currentCluster.length;
@@ -599,7 +590,7 @@ const LiveTracking = ({ user }) => {
         }).filter(c => c.coords !== null);
     }, [assignedClients]);
 
-    // Road network snapping: follow actual streets route-wise
+    // Road network snapping
     const [snappedRoute, setSnappedRoute] = useState([]);
 
     useEffect(() => {
@@ -637,9 +628,7 @@ const LiveTracking = ({ user }) => {
                     setSnappedRoute(roadCoords);
                 }
             })
-            .catch(() => {
-                // Fallback gracefully to routeCoords
-            });
+            .catch(() => { });
 
         return () => { isMounted = false; };
     }, [routePoints]);
@@ -683,11 +672,11 @@ const LiveTracking = ({ user }) => {
             <UserHeader user={user} title="Field Visit Live Tracking & Route History" />
 
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }} className="tracking-container">
-                {/* Left Sidebar */}
-                <div className="tracking-sidebar" style={{ width: '380px', background: 'white', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
-                    {/* Header */}
-                    <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid #f1f5f9' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                {/* Left Sidebar - Holds all Controls, Date Selector, Selected Executive Tracking Stats, and Executive List */}
+                <div className="tracking-sidebar" style={{ width: '400px', minWidth: '380px', background: 'white', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
+                    {/* Sidebar Header */}
+                    <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid #f1f5f9' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                             <button
                                 onClick={() => navigate('/dashboard')}
                                 className="btn-secondary"
@@ -707,22 +696,22 @@ const LiveTracking = ({ user }) => {
                             </span>
                         </div>
 
-                        <h2 style={{ fontSize: '1.25rem', margin: '0 0 4px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800' }}>
+                        <h2 style={{ fontSize: '1.2rem', margin: '0 0 2px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800' }}>
                             <div style={{ padding: '6px', background: '#4f46e5', borderRadius: '8px', color: 'white', display: 'flex' }}>
-                                <Navigation size={18} />
+                                <Navigation size={17} />
                             </div>
                             Field Visit Tracking
                         </h2>
-                        <p style={{ color: '#64748b', fontSize: '0.78rem', margin: 0 }}>
+                        <p style={{ color: '#64748b', fontSize: '0.75rem', margin: 0 }}>
                             Automatic schedule: <b>9:30 AM – 6:00 PM IST</b>
                         </p>
                     </div>
 
                     {/* Date Selector */}
-                    <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div style={{ padding: '12px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                             <label style={{ fontSize: '0.75rem', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                <Calendar size={13} color="#4f46e5" /> Select Travel Date
+                                <Calendar size={13} color="#4f46e5" /> Travel Date
                             </label>
                             {!isToday && (
                                 <button
@@ -741,7 +730,7 @@ const LiveTracking = ({ user }) => {
                                         gap: '4px'
                                     }}
                                 >
-                                    <RotateCcw size={11} /> Back to Today (Live)
+                                    <RotateCcw size={11} /> Today (Live)
                                 </button>
                             )}
                         </div>
@@ -759,7 +748,7 @@ const LiveTracking = ({ user }) => {
                             }}
                             style={{
                                 width: '100%',
-                                padding: '8px 12px',
+                                padding: '7px 12px',
                                 borderRadius: '8px',
                                 border: '1px solid #cbd5e1',
                                 background: 'white',
@@ -772,114 +761,26 @@ const LiveTracking = ({ user }) => {
                         />
                     </div>
 
-                    {/* Executive List */}
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                            <span style={{ fontSize: '0.78rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                Field Executives ({activeList.length})
-                            </span>
-                            <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: '700' }}>
-                                {activeList.filter(e => e.isOnline).length} Active
-                            </span>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {activeList.map(exec => {
-                                const isSelected = selectedId === exec.id;
-                                const isLiveNow = isToday && inOfficeHours && exec.isOnline;
-                                return (
-                                    <div
-                                        key={exec.id}
-                                        onClick={() => {
-                                            setSelectedId(exec.id);
-                                            setFocusedLocation(null);
-                                        }}
-                                        style={{
-                                            padding: '12px 14px',
-                                            borderRadius: '12px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s ease',
-                                            background: isSelected ? '#f5f3ff' : 'white',
-                                            border: isSelected ? '2px solid #6366f1' : (isLiveNow ? '1px solid #86efac' : '1px solid #e2e8f0'),
-                                            boxShadow: isSelected ? '0 4px 12px rgba(99,102,241,0.12)' : '0 1px 2px rgba(0,0,0,0.03)'
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: isSelected ? '#6366f1' : '#e2e8f0', color: isSelected ? 'white' : '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '0.8rem' }}>
-                                                    {exec.name?.charAt(0)?.toUpperCase() || 'F'}
-                                                </div>
-                                                <div>
-                                                    <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: '700', color: isSelected ? '#4338ca' : '#1e293b' }}>
-                                                        {exec.name}
-                                                    </h4>
-                                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>ID: {exec.employeeId}</span>
-                                                </div>
-                                            </div>
-
-                                            <span style={{
-                                                padding: '2px 8px',
-                                                borderRadius: '12px',
-                                                fontSize: '0.65rem',
-                                                fontWeight: '800',
-                                                background: isLiveNow ? '#dcfce7' : (!inOfficeHours ? '#f1f5f9' : '#fee2e2'),
-                                                color: isLiveNow ? '#166534' : (!inOfficeHours ? '#64748b' : '#991b1b'),
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px'
-                                            }}>
-                                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isLiveNow ? '#22c55e' : '#94a3b8' }} />
-                                                {isLiveNow ? 'LIVE' : (!inOfficeHours ? 'OFF-HOURS' : 'OFFLINE')}
-                                            </span>
-                                        </div>
-
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f8fafc', fontSize: '0.72rem', color: '#64748b' }}>
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                <Phone size={11} /> {exec.phone}
-                                            </span>
-                                            <span>
-                                                {exec.lastUpdate ? `Updated: ${formatTimeOnly(exec.lastUpdate)}` : `Seen: ${formatDateTime(exec.lastOfflineTime)}`}
-                                            </span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Side - Map and Route Visualization */}
-                <div className="tracking-map-area" style={{ flex: 1, position: 'relative', background: '#f8fafc' }}>
-                    {!selectedData ? (
-                        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                            <MapPin size={56} color="#cbd5e1" style={{ marginBottom: '16px' }} />
-                            <h3 style={{ color: '#475569', margin: '0 0 6px 0' }}>No Field Executive Selected</h3>
-                            <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.9rem' }}>Choose an executive from the list to view live location, assigned client pins, and travel routes</p>
-                        </div>
-                    ) : (
-                        <div style={{ height: '100%', width: '100%', position: 'relative' }}>
-                            {/* Route & Status Overlay Card */}
+                    {/* Scrollable Container with Selected Executive Tracking Summary Card on the Left Side */}
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        {selectedData && (
+                            /* Selected Executive Tracking Card - Located on Left Side so map location is completely visible */
                             <div style={{
-                                position: 'absolute',
-                                top: '16px',
-                                left: '16px',
-                                zIndex: 1000,
-                                background: 'rgba(255, 255, 255, 0.96)',
-                                backdropFilter: 'blur(10px)',
-                                padding: '16px 20px',
-                                borderRadius: '16px',
-                                boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                                border: '1px solid rgba(226, 232, 240, 0.8)',
-                                minWidth: '350px',
-                                maxWidth: '92%'
+                                background: 'white',
+                                borderRadius: '14px',
+                                padding: '14px 16px',
+                                border: '1.5px solid #e0e7ff',
+                                boxShadow: '0 4px 16px rgba(99, 102, 241, 0.08)'
                             }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', gap: '12px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                                     <div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                            <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a', fontWeight: '800' }}>{selectedData.name}</h3>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                            <h3 style={{ margin: 0, fontSize: '1rem', color: '#0f172a', fontWeight: '800' }}>
+                                                {selectedData.name}
+                                            </h3>
                                             <span style={{
-                                                padding: '2px 8px',
-                                                borderRadius: '10px',
+                                                padding: '2px 7px',
+                                                borderRadius: '8px',
                                                 fontSize: '0.65rem',
                                                 fontWeight: '800',
                                                 background: isExecutiveLive ? '#dcfce7' : '#fee2e2',
@@ -891,137 +792,222 @@ const LiveTracking = ({ user }) => {
                                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isExecutiveLive ? '#16a34a' : '#dc2626' }} />
                                                 {isExecutiveLive ? 'LIVE' : 'LAST KNOWN'}
                                             </span>
-                                            <span style={{
-                                                padding: '2px 8px',
-                                                borderRadius: '10px',
-                                                fontSize: '0.65rem',
-                                                fontWeight: '700',
-                                                background: '#eff6ff',
-                                                color: '#2563eb',
-                                                border: '1px solid #bfdbfe'
-                                            }}>
-                                                9:30 AM – 6:00 PM
-                                            </span>
                                         </div>
-                                        <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-                                            Date: <b>{selectedDate.split('-').reverse().join('-')}</b> {isToday && '(Today)'}
-                                        </p>
+                                        <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                                            ID: <b>{selectedData.employeeId}</b> • Date: <b>{selectedDate.split('-').reverse().join('-')}</b>
+                                        </div>
                                     </div>
-
-                                    {/* View Toggle: Map vs Timeline vs Assigned Clients */}
-                                    <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '8px', padding: '2px', flexShrink: 0 }}>
-                                        <button
-                                            onClick={() => { setViewMode('map'); setFocusedLocation(null); }}
-                                            style={{
-                                                border: 'none',
-                                                background: viewMode === 'map' ? 'white' : 'transparent',
-                                                color: viewMode === 'map' ? '#4f46e5' : '#64748b',
-                                                padding: '4px 8px',
-                                                borderRadius: '6px',
-                                                fontSize: '0.72rem',
-                                                fontWeight: '700',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px',
-                                                boxShadow: viewMode === 'map' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                                            }}
-                                        >
-                                            <MapIcon size={12} /> Map
-                                        </button>
-                                        <button
-                                            onClick={() => setViewMode('timeline')}
-                                            style={{
-                                                border: 'none',
-                                                background: viewMode === 'timeline' ? 'white' : 'transparent',
-                                                color: viewMode === 'timeline' ? '#4f46e5' : '#64748b',
-                                                padding: '4px 8px',
-                                                borderRadius: '6px',
-                                                fontSize: '0.72rem',
-                                                fontWeight: '700',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px',
-                                                boxShadow: viewMode === 'timeline' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-                                            }}
-                                        >
-                                            <List size={12} /> Stops ({visitedStops.length})
-                                        </button>
-                                        <button
-                                            onClick={() => setViewMode('clients')}
-                                            style={{
-                                                border: 'none',
-                                                background: viewMode === 'clients' ? '#ffe4e6' : 'transparent',
-                                                color: viewMode === 'clients' ? '#e11d48' : '#64748b',
-                                                padding: '4px 8px',
-                                                borderRadius: '6px',
-                                                fontSize: '0.72rem',
-                                                fontWeight: '700',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px',
-                                                boxShadow: viewMode === 'clients' ? '0 1px 3px rgba(225,29,72,0.15)' : 'none'
-                                            }}
-                                            title="View clients assigned by Call Executive"
-                                        >
-                                            <MapPin size={12} color="#e11d48" /> Clients ({geocodedClients.length})
-                                        </button>
-                                    </div>
+                                    <span style={{
+                                        padding: '2px 6px',
+                                        borderRadius: '6px',
+                                        fontSize: '0.65rem',
+                                        fontWeight: '700',
+                                        background: '#eff6ff',
+                                        color: '#2563eb',
+                                        border: '1px solid #bfdbfe'
+                                    }}>
+                                        9:30 AM – 6 PM
+                                    </span>
                                 </div>
 
-                                {/* Metrics Badges */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
-                                    <div style={{ background: '#f8fafc', padding: '6px 4px', borderRadius: '10px', textAlign: 'center' }}>
-                                        <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block', fontWeight: '600' }}>Distance</span>
+                                {/* View Switcher Buttons */}
+                                <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '8px', padding: '2px', margin: '10px 0' }}>
+                                    <button
+                                        onClick={() => { setViewMode('map'); setFocusedLocation(null); }}
+                                        style={{
+                                            flex: 1,
+                                            border: 'none',
+                                            background: viewMode === 'map' ? 'white' : 'transparent',
+                                            color: viewMode === 'map' ? '#4f46e5' : '#64748b',
+                                            padding: '5px 4px',
+                                            borderRadius: '6px',
+                                            fontSize: '0.72rem',
+                                            fontWeight: '700',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '4px',
+                                            boxShadow: viewMode === 'map' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                                        }}
+                                    >
+                                        <MapIcon size={12} /> Map
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('timeline')}
+                                        style={{
+                                            flex: 1,
+                                            border: 'none',
+                                            background: viewMode === 'timeline' ? 'white' : 'transparent',
+                                            color: viewMode === 'timeline' ? '#4f46e5' : '#64748b',
+                                            padding: '5px 4px',
+                                            borderRadius: '6px',
+                                            fontSize: '0.72rem',
+                                            fontWeight: '700',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '4px',
+                                            boxShadow: viewMode === 'timeline' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                                        }}
+                                    >
+                                        <List size={12} /> Stops ({visitedStops.length})
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('clients')}
+                                        style={{
+                                            flex: 1,
+                                            border: 'none',
+                                            background: viewMode === 'clients' ? '#ffe4e6' : 'transparent',
+                                            color: viewMode === 'clients' ? '#e11d48' : '#64748b',
+                                            padding: '5px 4px',
+                                            borderRadius: '6px',
+                                            fontSize: '0.72rem',
+                                            fontWeight: '700',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '4px',
+                                            boxShadow: viewMode === 'clients' ? '0 1px 3px rgba(225,29,72,0.12)' : 'none'
+                                        }}
+                                        title="View clients assigned by Call Executive"
+                                    >
+                                        <MapPin size={12} color="#e11d48" /> Clients ({geocodedClients.length})
+                                    </button>
+                                </div>
+
+                                {/* 4-Col Metrics Grid */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginTop: '6px', paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}>
+                                    <div style={{ background: '#f8fafc', padding: '6px 2px', borderRadius: '8px', textAlign: 'center' }}>
+                                        <span style={{ fontSize: '0.62rem', color: '#64748b', display: 'block', fontWeight: '600' }}>Distance</span>
                                         <b style={{ fontSize: '0.85rem', color: '#4f46e5' }}>{totalDistance.toFixed(2)} km</b>
                                     </div>
-                                    <div style={{ background: '#f8fafc', padding: '6px 4px', borderRadius: '10px', textAlign: 'center' }}>
-                                        <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block', fontWeight: '600' }}>GPS Points</span>
+                                    <div style={{ background: '#f8fafc', padding: '6px 2px', borderRadius: '8px', textAlign: 'center' }}>
+                                        <span style={{ fontSize: '0.62rem', color: '#64748b', display: 'block', fontWeight: '600' }}>Points</span>
                                         <b style={{ fontSize: '0.85rem', color: '#059669' }}>{routePoints.length}</b>
                                     </div>
-                                    <div style={{ background: '#f8fafc', padding: '6px 4px', borderRadius: '10px', textAlign: 'center' }}>
-                                        <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block', fontWeight: '600' }}>Stops</span>
+                                    <div style={{ background: '#f8fafc', padding: '6px 2px', borderRadius: '8px', textAlign: 'center' }}>
+                                        <span style={{ fontSize: '0.62rem', color: '#64748b', display: 'block', fontWeight: '600' }}>Stops</span>
                                         <b style={{ fontSize: '0.85rem', color: '#d97706' }}>{visitedStops.length}</b>
                                     </div>
-                                    <div style={{ background: '#fff1f2', padding: '6px 4px', borderRadius: '10px', textAlign: 'center', border: '1px solid #ffe4e6' }}>
-                                        <span style={{ fontSize: '0.65rem', color: '#e11d48', display: 'block', fontWeight: '700' }}>Clients</span>
+                                    <div style={{ background: '#fff1f2', padding: '6px 2px', borderRadius: '8px', textAlign: 'center', border: '1px solid #ffe4e6' }}>
+                                        <span style={{ fontSize: '0.62rem', color: '#e11d48', display: 'block', fontWeight: '700' }}>Clients</span>
                                         <b style={{ fontSize: '0.85rem', color: '#e11d48' }}>{geocodedClients.length}</b>
                                     </div>
                                 </div>
 
                                 {startPoint && (
-                                    <div style={{ marginTop: '10px', fontSize: '0.72rem', color: '#64748b', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f8fafc', paddingTop: '8px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+                                    <div style={{ marginTop: '8px', fontSize: '0.7rem', color: '#64748b', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f8fafc', paddingTop: '6px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
                                             <span>Start: <b>{formatTimeOnly(startPoint.Timestamp)}</b></span>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isExecutiveLive ? '#10b981' : '#4f46e5', display: 'inline-block' }} />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: isExecutiveLive ? '#10b981' : '#4f46e5', display: 'inline-block' }} />
                                             <span>Latest: <b>{formatTimeOnly(endPoint?.Timestamp || selectedData.lastUpdate)}</b></span>
                                         </div>
                                     </div>
                                 )}
                             </div>
+                        )}
 
-                            {/* Assigned Clients List Overlay */}
+                        {/* Executive Selection List */}
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    Field Executives ({activeList.length})
+                                </span>
+                                <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: '700' }}>
+                                    {activeList.filter(e => e.isOnline).length} Active
+                                </span>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {activeList.map(exec => {
+                                    const isSelected = selectedId === exec.id;
+                                    const isLiveNow = isToday && inOfficeHours && exec.isOnline;
+                                    return (
+                                        <div
+                                            key={exec.id}
+                                            onClick={() => {
+                                                setSelectedId(exec.id);
+                                                setFocusedLocation(null);
+                                            }}
+                                            style={{
+                                                padding: '10px 12px',
+                                                borderRadius: '10px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s ease',
+                                                background: isSelected ? '#f5f3ff' : 'white',
+                                                border: isSelected ? '2px solid #6366f1' : (isLiveNow ? '1px solid #86efac' : '1px solid #e2e8f0'),
+                                                boxShadow: isSelected ? '0 2px 8px rgba(99,102,241,0.1)' : '0 1px 2px rgba(0,0,0,0.02)'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: isSelected ? '#6366f1' : '#e2e8f0', color: isSelected ? 'white' : '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '0.75rem' }}>
+                                                        {exec.name?.charAt(0)?.toUpperCase() || 'F'}
+                                                    </div>
+                                                    <div>
+                                                        <h4 style={{ margin: 0, fontSize: '0.88rem', fontWeight: '700', color: isSelected ? '#4338ca' : '#1e293b' }}>
+                                                            {exec.name}
+                                                        </h4>
+                                                        <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>ID: {exec.employeeId}</span>
+                                                    </div>
+                                                </div>
+
+                                                <span style={{
+                                                    padding: '2px 6px',
+                                                    borderRadius: '10px',
+                                                    fontSize: '0.62rem',
+                                                    fontWeight: '800',
+                                                    background: isLiveNow ? '#dcfce7' : (!inOfficeHours ? '#f1f5f9' : '#fee2e2'),
+                                                    color: isLiveNow ? '#166534' : (!inOfficeHours ? '#64748b' : '#991b1b'),
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '3px'
+                                                }}>
+                                                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: isLiveNow ? '#22c55e' : '#94a3b8' }} />
+                                                    {isLiveNow ? 'LIVE' : (!inOfficeHours ? 'OFF-HOURS' : 'OFFLINE')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Side - Map and Route Visualization (Completely Clear and Unobstructed) */}
+                <div className="tracking-map-area" style={{ flex: 1, position: 'relative', background: '#f8fafc' }}>
+                    {!selectedData ? (
+                        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                            <MapPin size={56} color="#cbd5e1" style={{ marginBottom: '16px' }} />
+                            <h3 style={{ color: '#475569', margin: '0 0 6px 0' }}>No Field Executive Selected</h3>
+                            <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.9rem' }}>Choose an executive from the left side to view live location, assigned client pins, and travel routes</p>
+                        </div>
+                    ) : (
+                        <div style={{ height: '100%', width: '100%', position: 'relative' }}>
+                            {/* Assigned Clients List View */}
                             {viewMode === 'clients' ? (
                                 <div style={{
                                     height: '100%',
                                     width: '100%',
                                     background: 'white',
                                     overflowY: 'auto',
-                                    padding: '160px 30px 40px 30px',
+                                    padding: '24px 30px',
                                     boxSizing: 'border-box'
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                                         <div>
                                             <h3 style={{ fontSize: '1.15rem', color: '#0f172a', margin: 0, fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <MapPin size={20} color="#e11d48" /> Assigned Client Locations
+                                                <MapPin size={20} color="#e11d48" /> Assigned Client Locations ({geocodedClients.length})
                                             </h3>
                                             <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                                                Clients assigned by Call Executive to {selectedData.name} (indicated on map with red drop-pins)
+                                                Clients assigned by Call Executive to {selectedData.name} for {selectedDate.split('-').reverse().join('-')}
                                             </p>
                                         </div>
                                         <button
@@ -1037,7 +1023,7 @@ const LiveTracking = ({ user }) => {
                                                 cursor: 'pointer'
                                             }}
                                         >
-                                            View Pins on Map
+                                            View on Map
                                         </button>
                                     </div>
 
@@ -1157,18 +1143,35 @@ const LiveTracking = ({ user }) => {
                                     )}
                                 </div>
                             ) : viewMode === 'timeline' ? (
-                                /* Timeline View Overlay */
+                                /* Timeline View */
                                 <div style={{
                                     height: '100%',
                                     width: '100%',
                                     background: 'white',
                                     overflowY: 'auto',
-                                    padding: '160px 30px 40px 30px',
+                                    padding: '24px 30px',
                                     boxSizing: 'border-box'
                                 }}>
-                                    <h3 style={{ fontSize: '1.1rem', color: '#0f172a', margin: '0 0 16px 0', fontWeight: '800' }}>
-                                        Travel & Visited Stops Timeline
-                                    </h3>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                        <h3 style={{ fontSize: '1.15rem', color: '#0f172a', margin: 0, fontWeight: '800' }}>
+                                            Travel & Visited Stops Timeline
+                                        </h3>
+                                        <button
+                                            onClick={() => setViewMode('map')}
+                                            style={{
+                                                padding: '6px 14px',
+                                                background: '#4f46e5',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '700',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            View on Map
+                                        </button>
+                                    </div>
 
                                     {routePoints.length === 0 ? (
                                         <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
@@ -1233,7 +1236,7 @@ const LiveTracking = ({ user }) => {
                                     )}
                                 </div>
                             ) : (
-                                /* Map View */
+                                /* Full Unobstructed Interactive Map View */
                                 displayRoute.length === 0 && geocodedClients.length === 0 ? (
                                     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                                         <MapPin size={48} color="#cbd5e1" style={{ marginBottom: '14px' }} />
@@ -1448,7 +1451,7 @@ const LiveTracking = ({ user }) => {
                     }
                     .tracking-sidebar {
                         width: 100% !important;
-                        height: 340px !important;
+                        height: 480px !important;
                         border-right: none !important;
                         border-bottom: 1px solid #e2e8f0 !important;
                     }
