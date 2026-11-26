@@ -58,6 +58,8 @@ const statusColors = {
     'Paid': { bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
     'Due Payment': { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
     'Completed': { bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
+    'Field Visit': { bg: 'rgba(168,85,247,0.12)', color: '#a855f7' },
+    'Rejected': { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' },
 };
 
 const toTitleCase = (str) => {
@@ -74,6 +76,7 @@ const canonicalStatusesCE = [
     'Interested',
     'Not Interested',
     'Follow-up',
+    'Call Follow-up',
     'Not Answering',
     'Busy',
     'Switch Off',
@@ -83,6 +86,7 @@ const canonicalStatusesCE = [
     'Invalid',
     'Wrong Number',
     'Direct Visit',
+    'Field Visit',
     'Converted',
     'Processing',
     'Out of Service',
@@ -98,7 +102,8 @@ const canonicalStatusesCE = [
     'Quotation',
     'Meeting Done',
     'Meeting Attended',
-    'Meeting Follow-up'
+    'Meeting Follow-up',
+    'Rejected'
 ];
 
 const getCanonicalStatusCE = (status) => {
@@ -138,8 +143,9 @@ const getCanonicalStatusCE = (status) => {
     // Spelling fixes & duplicates for Not Answering
     if (s === 'not answering' || s === 'not answered' || s === 'not answer') return 'Not Answering';
 
-    // Spelling fixes & duplicates for Follow-up
-    if (s === 'follow-up' || s === 'call follow-up' || s === 'followup' || s === 'call followup' || s === 'follow up') {
+    // Spelling fixes & duplicates for Follow-up & Call Follow-up
+    if (s === 'call follow-up' || s === 'call followup') return 'Call Follow-up';
+    if (s === 'follow-up' || s === 'followup' || s === 'follow up') {
         return 'Follow-up';
     }
 
@@ -151,10 +157,16 @@ const getCanonicalStatusCE = (status) => {
         return 'Wrong Number';
     }
 
-    // Direct Visit & spelling mistakes (e.g. "Direct Vist", "filed visit", "field visit", "directvisit")
-    if (s === 'direct visit' || s === 'direct vist' || s === 'directvisit' || s === 'field visit' || s === 'filed visit' || s.includes('direct visit') || s.includes('direct vist') || s.includes('field visit')) {
+    // Direct Visit & Field Visit
+    if (s === 'field visit' || s === 'filed visit') {
+        return 'Field Visit';
+    }
+    if (s === 'direct visit' || s === 'direct vist' || s === 'directvisit' || s.includes('direct visit') || s.includes('direct vist')) {
         return 'Direct Visit';
     }
+
+    // Rejected
+    if (s === 'rejected') return 'Rejected';
 
     // Active, Expired, Upgraded, Withdrawn (normalize UPPERCASE to Title Case)
     if (s === 'active') return 'Active';
@@ -487,7 +499,13 @@ const LeadList = ({ user, isMyCreated }) => {
             setFromDate(val);
         }
     };
-    const [statusFilter, setStatusFilter] = useState('All');
+    const [statusFilter, setStatusFilter] = useState(() => {
+        const qStatus = searchParams.get('status') || location.state?.statusFilter;
+        if (!qStatus) return 'All';
+        const s = qStatus.trim().toLowerCase();
+        if (s === 'all' || s === 'all status' || s === 'all statuses') return 'All';
+        return qStatus;
+    });
     const [importing, setImporting] = useState(false);
     const [selectedLeads, setSelectedLeads] = useState([]);
     const [selectMode, setSelectMode] = useState(false);
@@ -931,6 +949,32 @@ const LeadList = ({ user, isMyCreated }) => {
         setRangeError('');
     };
 
+    const handleStatusChange = (val) => {
+        const isAll = !val ||
+            val === 'All' ||
+            val.trim().toLowerCase() === 'all' ||
+            val.trim().toLowerCase() === 'all status' ||
+            val.trim().toLowerCase() === 'all statuses';
+
+        const targetStatus = isAll ? 'All' : val;
+        setStatusFilter(targetStatus);
+        setCategoryFilter('all');
+        setSearchParams(prev => {
+            const next = new URLSearchParams(prev);
+            next.delete('category');
+            if (isAll) {
+                next.delete('status');
+            } else {
+                next.set('status', targetStatus);
+            }
+            return next;
+        }, { replace: true });
+        setCurrentPage(1);
+        if (isCE && activeRange) {
+            handleClearSelection();
+        }
+    };
+
     const handleToggleSelectMode = () => {
         if (selectMode) {
             setSelectMode(false);
@@ -982,11 +1026,22 @@ const LeadList = ({ user, isMyCreated }) => {
 
     useEffect(() => {
         const qCat = searchParams.get('category');
+        const qStatus = searchParams.get('status');
         const cat = qCat || location.state?.categoryFilter;
-        if (cat) {
+        if (qStatus) {
+            const isAll = qStatus.toLowerCase() === 'all' || qStatus.toLowerCase() === 'all statuses' || qStatus.toLowerCase() === 'all status';
+            setStatusFilter(isAll ? 'All' : qStatus);
+            if (isAll) setCategoryFilter('all');
+        } else if (cat) {
             const resolved = (cat === 'new' || cat === 'followup') ? 'all' : cat;
             setCategoryFilter(resolved);
-            setStatusFilter('All');
+            if (resolved === 'interested') {
+                setStatusFilter('Interested');
+            } else if (resolved === 'conversions') {
+                setStatusFilter('Converted');
+            } else {
+                setStatusFilter('All');
+            }
         }
         if (location.state?.fromDate !== undefined) {
             setFromDate(location.state.fromDate);
@@ -994,7 +1049,7 @@ const LeadList = ({ user, isMyCreated }) => {
         if (location.state?.toDate !== undefined) {
             setToDate(location.state.toDate);
         }
-    }, [searchParams, location.state?.categoryFilter, location.state?.fromDate, location.state?.toDate]);
+    }, [searchParams, location.state?.categoryFilter, location.state?.statusFilter, location.state?.fromDate, location.state?.toDate]);
 
     useEffect(() => {
         if ((isTL || isFE || isAdmin) && statusFilter === 'N/A Leads') {
@@ -1064,11 +1119,17 @@ const LeadList = ({ user, isMyCreated }) => {
         return { conversionsCount: conv, interestedCount: interested, pendingCount: pend, allLeadsCount: total };
     }, [leads, baseLeads, isMyCreated, isTL, isFE, isAdmin, isCE, isDateFilterActiveForCE, dateFilterMode, singleDate, fromDate, toDate, checkDateInRange]);
 
+    const isAllStatus = useMemo(() => {
+        if (!statusFilter) return true;
+        const s = statusFilter.trim().toLowerCase();
+        return s === 'all' || s === 'all status' || s === 'all statuses';
+    }, [statusFilter]);
+
     const filtered = useMemo(() => {
         const searchLower = search.trim().toLowerCase();
         const hasSearch = searchLower.length > 0;
-        const hasStatus = statusFilter !== 'All';
-        const statusLower = statusFilter.trim().toLowerCase();
+        const hasStatus = !isAllStatus;
+        const statusLower = statusFilter ? statusFilter.trim().toLowerCase() : '';
         const isNAFilter = statusFilter === 'N/A Leads';
         const currentUserIdStr = String(currentUserId || '');
         const seenLeadIds = new Set();
@@ -1148,15 +1209,15 @@ const LeadList = ({ user, isMyCreated }) => {
             if (isNAFilter) {
                 if (hasValidPhone(l.Phone)) return false;
             } else if (hasStatus) {
-                const matchesStatus = isCE
-                    ? (getCanonicalStatusCE(l.Status).toLowerCase() === statusLower || (l.Status && l.Status.trim().toLowerCase() === statusLower))
-                    : (getCanonicalStatus(l.Status).toLowerCase() === statusLower || (l.Status && l.Status.trim().toLowerCase() === statusLower));
+                const canonicalStatus = isCE ? getCanonicalStatusCE(l.Status) : getCanonicalStatus(l.Status);
+                const rawStatusTrimmed = (l.Status || '').trim().toLowerCase();
+                const matchesStatus = (canonicalStatus && canonicalStatus.toLowerCase() === statusLower) || (rawStatusTrimmed === statusLower);
                 if (!matchesStatus) return false;
             }
 
             return true;
         });
-    }, [leads, statusFilter, categoryFilter, search, roleFilter, viewFilter, isMyCreated, isFE, isCE, currentUserId, isDateFilterActiveForCE, dateFilterMode, singleDate, fromDate, toDate, isTL, isAdmin, feCallStatuses, checkDateInRange]);
+    }, [leads, statusFilter, isAllStatus, categoryFilter, search, roleFilter, viewFilter, isMyCreated, isFE, isCE, currentUserId, isDateFilterActiveForCE, dateFilterMode, singleDate, fromDate, toDate, isTL, isAdmin, feCallStatuses, checkDateInRange]);
 
     const effectivePageSize = pageSize === 'all' ? (filtered.length || 1) : Number(pageSize);
     const totalPages = Math.max(1, Math.ceil(filtered.length / effectivePageSize));
@@ -1259,7 +1320,7 @@ const LeadList = ({ user, isMyCreated }) => {
                             <button
                                 onClick={() => {
                                     setExportFormat((isFE && isMyCreated) ? 'pdf' : 'excel');
-                                    setExportScope((search || statusFilter !== 'All' || fromDate || toDate || singleDate) ? 'filtered' : 'all');
+                                    setExportScope((search || (!isAllStatus) || fromDate || toDate || singleDate) ? 'filtered' : 'all');
                                     setShowExportModal(true);
                                 }}
                                 style={{
@@ -1318,20 +1379,14 @@ const LeadList = ({ user, isMyCreated }) => {
                         <button
                             type="button"
                             onClick={() => {
-                                setCategoryFilter('all');
-                                setStatusFilter('All');
-                                setSearchParams(prev => {
-                                    const next = new URLSearchParams(prev);
-                                    next.set('category', 'all');
-                                    return next;
-                                }, { replace: true });
+                                handleStatusChange('All');
                             }}
                             style={{
                                 padding: '8px 18px',
                                 borderRadius: '20px',
-                                border: `1.5px solid ${categoryFilter === 'all' ? '#6366f1' : '#e2e8f0'}`,
-                                background: categoryFilter === 'all' ? 'rgba(99, 102, 241, 0.1)' : 'white',
-                                color: categoryFilter === 'all' ? '#6366f1' : '#64748b',
+                                border: `1.5px solid ${categoryFilter === 'all' && isAllStatus ? '#6366f1' : '#e2e8f0'}`,
+                                background: categoryFilter === 'all' && isAllStatus ? 'rgba(99, 102, 241, 0.1)' : 'white',
+                                color: categoryFilter === 'all' && isAllStatus ? '#6366f1' : '#64748b',
                                 cursor: 'pointer',
                                 fontSize: '0.85rem',
                                 fontWeight: '700',
@@ -1344,12 +1399,14 @@ const LeadList = ({ user, isMyCreated }) => {
                             type="button"
                             onClick={() => {
                                 setCategoryFilter('conversions');
-                                setStatusFilter('All');
+                                setStatusFilter('Converted');
                                 setSearchParams(prev => {
                                     const next = new URLSearchParams(prev);
                                     next.set('category', 'conversions');
+                                    next.delete('status');
                                     return next;
                                 }, { replace: true });
+                                setCurrentPage(1);
                             }}
                             style={{
                                 padding: '8px 18px',
@@ -1369,12 +1426,14 @@ const LeadList = ({ user, isMyCreated }) => {
                             type="button"
                             onClick={() => {
                                 setCategoryFilter('interested');
-                                setStatusFilter('All');
+                                setStatusFilter('Interested');
                                 setSearchParams(prev => {
                                     const next = new URLSearchParams(prev);
                                     next.set('category', 'interested');
+                                    next.delete('status');
                                     return next;
                                 }, { replace: true });
+                                setCurrentPage(1);
                             }}
                             style={{
                                 padding: '8px 18px',
@@ -1398,8 +1457,10 @@ const LeadList = ({ user, isMyCreated }) => {
                                 setSearchParams(prev => {
                                     const next = new URLSearchParams(prev);
                                     next.set('category', 'pending');
+                                    next.delete('status');
                                     return next;
                                 }, { replace: true });
+                                setCurrentPage(1);
                             }}
                             style={{
                                 padding: '8px 18px',
@@ -1434,18 +1495,8 @@ const LeadList = ({ user, isMyCreated }) => {
                         <select
                             className="input-field"
                             style={{ width: '100%', boxSizing: 'border-box', cursor: 'pointer', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}
-                            value={statusFilter}
-                            onChange={e => {
-                                setStatusFilter(e.target.value);
-                                if (e.target.value !== 'All') {
-                                    setCategoryFilter('all');
-                                    setSearchParams(prev => {
-                                        const next = new URLSearchParams(prev);
-                                        next.delete('category');
-                                        return next;
-                                    }, { replace: true });
-                                }
-                            }}
+                            value={isAllStatus ? 'All' : statusFilter}
+                            onChange={e => handleStatusChange(e.target.value)}
                         >
                             {(() => {
                                 const rawStatuses = leads.map(l => l.Status).filter(Boolean);
@@ -1454,7 +1505,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                 statusMap.set('hold', 'Hold');
 
                                 rawStatuses.forEach(raw => {
-                                    const canonical = getCanonicalStatus(raw);
+                                    const canonical = isCE ? getCanonicalStatusCE(raw) : getCanonicalStatus(raw);
                                     if (!canonical) return;
                                     const key = canonical.toLowerCase();
                                     if (!statusMap.has(key)) {
@@ -1463,6 +1514,8 @@ const LeadList = ({ user, isMyCreated }) => {
                                 });
 
                                 statusMap.delete('all');
+                                statusMap.delete('all status');
+                                statusMap.delete('all statuses');
                                 statusMap.delete('n/a leads');
 
                                 const currentCanonicalList = isCE ? canonicalStatusesCE : canonicalStatuses;
@@ -2334,7 +2387,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                             )}
                                             <td style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>
                                                 <span style={{ padding: '4px 12px', background: sc.bg, color: sc.color, borderRadius: '20px', fontSize: '0.8rem', fontWeight: '700' }}>
-                                                    {currentCanonicalStatus}
+                                                    {currentCanonicalStatus || lead.Status || 'N/A'}
                                                 </span>
                                             </td>
                                             <td style={{ padding: '16px 20px', color: '#334155', fontWeight: '700', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
