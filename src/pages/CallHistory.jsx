@@ -212,7 +212,7 @@ const CallHistory = ({ user }) => {
                                                                 {date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                             </div>
                                                             <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px', marginLeft: '22px' }}>
-                                                                {date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}
+                                                                {date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }).toLowerCase()}
                                                             </div>
                                                         </>
                                                     );

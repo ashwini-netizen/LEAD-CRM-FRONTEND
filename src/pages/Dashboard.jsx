@@ -108,6 +108,36 @@ const formatLeadCreationDate = (createdAt, callDate) => {
     return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
 };
 
+// Formats call history time accurately in Indian Standard Time (IST)
+const formatCallTime = (dateVal) => {
+    if (!dateVal) return '-';
+    try {
+        let d;
+        if (dateVal instanceof Date) {
+            d = dateVal;
+        } else if (typeof dateVal === 'string') {
+            const str = dateVal.trim();
+            const isoLike = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
+            if (isoLike.test(str)) {
+                d = new Date(str.replace(' ', 'T') + 'Z');
+            } else {
+                d = new Date(str);
+            }
+        } else {
+            d = new Date(dateVal);
+        }
+        if (isNaN(d.getTime())) return '-';
+        return d.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Kolkata'
+        });
+    } catch {
+        return '-';
+    }
+};
+
 const addDaysToDate = (dateStr, days) => {
     if (!dateStr) return '';
     const d = new Date(dateStr + 'T00:00:00');
@@ -211,7 +241,7 @@ const Dashboard = ({ user, onLogout }) => {
     const [loading, setLoading] = useState(true);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [callDate, setCallDate] = useState(new Date().toISOString().split('T')[0]);
+    const [callDate, setCallDate] = useState(() => getTodayDateStr());
     const [showAllStatuses, setShowAllStatuses] = useState(false);
     const [callPage, setCallPage] = useState(1);
     const CALLS_PER_PAGE = 15;
@@ -301,7 +331,7 @@ const Dashboard = ({ user, onLogout }) => {
 
     // Team Lead & Admin Real-Time Call Activity Tracking State
     const [adminCeFilter, setAdminCeFilter] = useState('all');
-    const [adminCallDate, setAdminCallDate] = useState(new Date().toISOString().split('T')[0]);
+    const [adminCallDate, setAdminCallDate] = useState(() => getTodayDateStr());
     const [showAllTeamStatuses, setShowAllTeamStatuses] = useState(false);
     const [teamCallSearch, setTeamCallSearch] = useState('');
     const [teamCallPage, setTeamCallPage] = useState(1);
@@ -1352,7 +1382,7 @@ const Dashboard = ({ user, onLogout }) => {
                                                 </span>
                                             </div>
                                             <p style={{ margin: 0, fontSize: '0.76rem', color: '#64748b' }}>
-                                                {callDate === new Date().toISOString().split('T')[0]
+                                                {callDate === todayStr
                                                     ? "Showing today's call records and status counts"
                                                     : `Showing records for ${callDate.split('-').reverse().join('-')}`}
                                             </p>
@@ -1377,10 +1407,10 @@ const Dashboard = ({ user, onLogout }) => {
                                             </div>
                                         </div>
 
-                                        {callDate !== new Date().toISOString().split('T')[0] && (
+                                        {callDate !== todayStr && (
                                             <button
                                                 onClick={() => {
-                                                    setCallDate(new Date().toISOString().split('T')[0]);
+                                                    setCallDate(todayStr);
                                                     setCallPage(1);
                                                 }}
                                                 style={{
@@ -1536,7 +1566,7 @@ const Dashboard = ({ user, onLogout }) => {
                                                     <tr key={r.HistoryID || i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                                         <td style={{ padding: '10px 12px', color: '#94a3b8' }}>{(callPage - 1) * CALLS_PER_PAGE + i + 1}</td>
                                                         <td style={{ padding: '10px 12px', color: '#64748b', whiteSpace: 'nowrap' }}>
-                                                            {r.CreatedAt ? new Date(r.CreatedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '-'}
+                                                            {formatCallTime(r.CreatedAt)}
                                                         </td>
                                                         <td style={{ padding: '10px 12px', fontWeight: '600', color: '#1e293b' }}>
                                                             <Link to={`/leads?search=${encodeURIComponent(r.FullName || '')}`} style={{ color: '#6366f1', textDecoration: 'none' }}>
@@ -2291,10 +2321,10 @@ const Dashboard = ({ user, onLogout }) => {
                                     </div>
 
                                     {/* Quick Today Button */}
-                                    {adminCallDate !== new Date().toISOString().split('T')[0] && (
+                                    {adminCallDate !== todayStr && (
                                         <button
                                             onClick={() => {
-                                                setAdminCallDate(new Date().toISOString().split('T')[0]);
+                                                setAdminCallDate(todayStr);
                                                 setTeamCallPage(1);
                                             }}
                                             style={{
@@ -2643,7 +2673,7 @@ const Dashboard = ({ user, onLogout }) => {
                                                         <tr key={r.HistoryID || i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                                             <td style={{ padding: '10px 12px', color: '#94a3b8' }}>{(teamCallPage - 1) * TEAM_CALLS_PER_PAGE + i + 1}</td>
                                                             <td style={{ padding: '10px 12px', color: '#64748b', whiteSpace: 'nowrap' }}>
-                                                                {r.CreatedAt ? new Date(r.CreatedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '-'}
+                                                                {formatCallTime(r.CreatedAt)}
                                                             </td>
                                                             <td style={{ padding: '10px 12px' }}>
                                                                 <span style={{ fontWeight: '600', color: '#4f46e5' }}>
