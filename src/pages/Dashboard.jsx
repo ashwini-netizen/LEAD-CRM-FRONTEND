@@ -1048,7 +1048,53 @@ const Dashboard = ({ user, onLogout }) => {
                     ) : (
                         user?.role !== 'Admin' && <NavItem to="/leads/new?from=dashboard" active={location.pathname === '/leads/new'}><UserPlus size={20} /> New Lead</NavItem>
                     )}
-                    <NavItem to="/leads" active={location.pathname === '/leads'}><List size={20} /> {user?.role === 'Field Executive' ? 'Assigned Meetings Leads' : 'Leads List'}</NavItem>
+                    <NavItem to="/leads" active={location.pathname === '/leads'}><List size={20} /> {user?.role === 'Field Executive' ? 'Assigned Meetings Leads' : (user?.role === 'Team Lead' ? 'Lead Database' : 'Leads List')}</NavItem>
+                    {user?.role === 'Team Lead' && (
+                        <Link
+                            to="/leads/recycle-bin"
+                            state={{ from: location.pathname }}
+                            onClick={() => { if (isMobile) setIsSidebarOpen(false); }}
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '4px',
+                                padding: '12px 14px',
+                                borderRadius: '12px',
+                                textDecoration: 'none',
+                                background: location.pathname === '/leads/recycle-bin' ? '#ecfdf5' : '#f0fdf4',
+                                border: location.pathname === '/leads/recycle-bin' ? '1px solid #10b981' : '1px solid #dcfce7',
+                                transition: 'all 0.2s ease',
+                                cursor: 'pointer',
+                                boxShadow: location.pathname === '/leads/recycle-bin' ? '0 2px 8px rgba(16, 185, 129, 0.15)' : 'none'
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#047857', fontWeight: '700', fontSize: '0.92rem' }}>
+                                    <RotateCcw size={18} color="#10b981" />
+                                    <span>Recycle Bin</span>
+                                </div>
+                                <span style={{
+                                    background: '#10b981',
+                                    color: 'white',
+                                    fontSize: '0.65rem',
+                                    fontWeight: '800',
+                                    padding: '2px 7px',
+                                    borderRadius: '8px',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                    New
+                                </span>
+                            </div>
+                            <div style={{
+                                fontSize: '0.72rem',
+                                color: '#64748b',
+                                lineHeight: '1.3',
+                                paddingLeft: '28px'
+                            }}>
+                                View deleted leads, restore records, or permanently delete them.
+                            </div>
+                        </Link>
+                    )}
                     {user?.role === 'Field Executive' && (
                         <>
                             <NavItem to="/leads/my-created" active={location.pathname === '/leads/my-created'}><List size={20} /> Lead List</NavItem>

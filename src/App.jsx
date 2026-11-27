@@ -34,6 +34,7 @@ import ChatBox from './components/ChatBox';
 import FinalizedLeads from './pages/FinalizedLeads';
 import AssignedLeads from './pages/AssignedLeads';
 import CallHistory from './pages/CallHistory';
+import RecycleBin from './pages/RecycleBin';
 import GlobalModal from './components/GlobalModal';
 
 // Load persisted session
@@ -68,6 +69,13 @@ const getValidRouteForRole = (route, role) => {
 
     // Live tracking route (Admin & Team Lead only)
     if (cleanRoute.startsWith('/tracking')) {
+        if (userRole !== 'admin' && userRole !== 'team lead' && userRole !== 'team_lead') {
+            return '/dashboard';
+        }
+    }
+
+    // Recycle bin route (Team Lead & Admin only)
+    if (cleanRoute.startsWith('/leads/recycle-bin')) {
         if (userRole !== 'admin' && userRole !== 'team lead' && userRole !== 'team_lead') {
             return '/dashboard';
         }
@@ -622,6 +630,7 @@ function App() {
                 <Route path="/leads/new" element={<ProtectedRoute user={user} element={<LeadForm user={user} />} />} />
                 <Route path="/leads/walk-in" element={<ProtectedRoute user={user} element={<LeadForm user={user} />} />} />
                 <Route path="/leads" element={<ProtectedRoute user={user} element={<LeadList user={user} />} />} />
+                <Route path="/leads/recycle-bin" element={<ProtectedRoute user={user} element={(user?.role === 'Team Lead' || user?.role === 'Admin') ? <RecycleBin user={user} /> : <Navigate to="/dashboard" />} />} />
                 <Route path="/leads/my-created" element={<ProtectedRoute user={user} element={<LeadList user={user} isMyCreated={true} />} />} />
                 <Route path="/leads/:id" element={<ProtectedRoute user={user} element={<LeadDetail user={user} />} />} />
                 <Route path="/profile" element={<ProtectedRoute user={user} element={<Profile user={user} onLogout={handleLogout} />} />} />

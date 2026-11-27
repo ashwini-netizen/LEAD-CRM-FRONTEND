@@ -520,6 +520,7 @@ const LeadList = ({ user, isMyCreated }) => {
     const [selectMode, setSelectMode] = useState(false);
     const [deletingSelected, setDeletingSelected] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [retentionDays, setRetentionDays] = useState(30);
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportFormat, setExportFormat] = useState('excel');
     const [exportScope, setExportScope] = useState('filtered');
@@ -1003,7 +1004,10 @@ const LeadList = ({ user, isMyCreated }) => {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${localStorage.getItem('crm_token') || ''}`
                 },
-                body: JSON.stringify({ leadIds: selectedLeads })
+                body: JSON.stringify({ 
+                    leadIds: selectedLeads,
+                    retentionDays: isTL ? retentionDays : undefined
+                })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Delete failed');
@@ -3065,18 +3069,99 @@ const LeadList = ({ user, isMyCreated }) => {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000
                 }}>
                     <div style={{
-                        background: 'white', padding: '36px', borderRadius: '24px', width: '90%', maxWidth: '420px',
+                        background: 'white', padding: '36px', borderRadius: '24px', width: '90%', maxWidth: '440px',
                         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)'
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-                            <div style={{ background: '#fee2e2', color: '#ef4444', padding: '12px', borderRadius: '50%', flexShrink: 0 }}>
-                                <AlertTriangle size={26} />
+                            <div style={{
+                                background: isTL ? '#ecfdf5' : '#fee2e2',
+                                color: isTL ? '#059669' : '#ef4444',
+                                padding: '12px',
+                                borderRadius: '50%',
+                                flexShrink: 0
+                            }}>
+                                {isTL ? <RotateCcw size={26} /> : <AlertTriangle size={26} />}
                             </div>
-                            <h2 style={{ fontSize: '1.3rem', color: '#0f172a', margin: 0 }}>Delete Selected Leads</h2>
+                            <h2 style={{ fontSize: '1.3rem', color: '#0f172a', margin: 0 }}>
+                                {isTL ? 'Move to Recycle Bin' : 'Delete Selected Leads'}
+                            </h2>
                         </div>
-                        <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '24px' }}>
-                            Are you sure you want to <strong>permanently delete {selectedLeads.length} lead{selectedLeads.length > 1 ? 's' : ''}</strong>? This action cannot be undone and will remove all associated meetings and payments.
+                        <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: isTL ? '16px' : '24px' }}>
+                            {isTL ? (
+                                <>
+                                    Move <strong>{selectedLeads.length} lead{selectedLeads.length > 1 ? 's' : ''}</strong> to the Recycle Bin? The lead(s) will be removed from the active database and can be restored anytime before the retention period expires.
+                                </>
+                            ) : (
+                                <>
+                                    Are you sure you want to <strong>permanently delete {selectedLeads.length} lead{selectedLeads.length > 1 ? 's' : ''}</strong>? This action cannot be undone and will remove all associated meetings and payments.
+                                </>
+                            )}
                         </p>
+
+                        {isTL && (
+                            <div style={{
+                                background: '#f8fafc',
+                                padding: '16px',
+                                borderRadius: '14px',
+                                border: '1px solid #e2e8f0',
+                                marginBottom: '24px'
+                            }}>
+                                <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', color: '#334155', marginBottom: '10px' }}>
+                                    Select Retention Period:
+                                </label>
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <label style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '10px 14px',
+                                        borderRadius: '10px',
+                                        border: retentionDays === 30 ? '2px solid #10b981' : '1px solid #cbd5e1',
+                                        background: retentionDays === 30 ? '#ecfdf5' : 'white',
+                                        color: retentionDays === 30 ? '#047857' : '#475569',
+                                        fontWeight: retentionDays === 30 ? '700' : '500',
+                                        cursor: 'pointer',
+                                        fontSize: '0.9rem'
+                                    }}>
+                                        <input
+                                            type="radio"
+                                            name="retentionPeriod"
+                                            value={30}
+                                            checked={retentionDays === 30}
+                                            onChange={() => setRetentionDays(30)}
+                                            style={{ accentColor: '#10b981' }}
+                                        />
+                                        <span>30 Days (Default)</span>
+                                    </label>
+                                    <label style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '10px 14px',
+                                        borderRadius: '10px',
+                                        border: retentionDays === 15 ? '2px solid #10b981' : '1px solid #cbd5e1',
+                                        background: retentionDays === 15 ? '#ecfdf5' : 'white',
+                                        color: retentionDays === 15 ? '#047857' : '#475569',
+                                        fontWeight: retentionDays === 15 ? '700' : '500',
+                                        cursor: 'pointer',
+                                        fontSize: '0.9rem'
+                                    }}>
+                                        <input
+                                            type="radio"
+                                            name="retentionPeriod"
+                                            value={15}
+                                            checked={retentionDays === 15}
+                                            onChange={() => setRetentionDays(15)}
+                                            style={{ accentColor: '#10b981' }}
+                                        />
+                                        <span>15 Days</span>
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+
                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                             <button
                                 onClick={() => setShowDeleteModal(false)}
@@ -3086,9 +3171,21 @@ const LeadList = ({ user, isMyCreated }) => {
                             </button>
                             <button
                                 onClick={handleDeleteSelected}
-                                style={{ background: '#ef4444', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                style={{
+                                    background: isTL ? '#10b981' : '#ef4444',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '12px 24px',
+                                    borderRadius: '12px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}
                             >
-                                <Trash2 size={16} /> Yes, Delete
+                                {isTL ? <RotateCcw size={16} /> : <Trash2 size={16} />}
+                                {isTL ? 'Move to Recycle Bin' : 'Yes, Delete'}
                             </button>
                         </div>
                     </div>
