@@ -76,6 +76,29 @@ const getValidRouteForRole = (route, role) => {
     return cleanRoute;
 };
 
+// ProtectedRoute defined at module level so React never remounts child route subtrees when App re-renders
+const ProtectedRoute = ({ user, element }) => {
+    const token = localStorage.getItem('crm_token');
+    const currentUser = user || (() => {
+        try { return JSON.parse(localStorage.getItem('crm_user')); } catch { return null; }
+    })();
+
+    if (!currentUser || !token) {
+        return <Navigate to="/" replace />;
+    }
+    // Enforce password reset on first login for non-admins
+    if (currentUser.role !== 'Admin' && currentUser.isFirstLogin) {
+        return <Navigate to="/reset-password" replace />;
+    }
+    return element;
+};
+
+// Isolated location tracker so GPS state changes never cause App to re-render
+const LocationTracker = ({ user }) => {
+    useLocationTracker(user);
+    return null;
+};
+
 function App() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -241,8 +264,7 @@ function App() {
         }
     };
 
-    // Global Location Tracking (Only for Field Executives)
-    useLocationTracker(user);
+    // Global Location Tracking (Only for Field Executives) via isolated component
 
     useEffect(() => {
         const handleStorageUpdate = () => {
@@ -477,22 +499,6 @@ function App() {
         navigate('/', { replace: true });
     };
 
-    const ProtectedRoute = ({ element }) => {
-        const token = localStorage.getItem('crm_token');
-        const currentUser = user || (() => {
-            try { return JSON.parse(localStorage.getItem('crm_user')); } catch { return null; }
-        })();
-
-        if (!currentUser || !token) {
-            return <Navigate to="/" replace />;
-        }
-        // Enforce password reset on first login for non-admins
-        if (currentUser.role !== 'Admin' && currentUser.isFirstLogin) {
-            return <Navigate to="/reset-password" replace />;
-        }
-        return element;
-    };
-
     return (
         <>
             <style>{`
@@ -604,6 +610,7 @@ function App() {
                 </div>
             )}
 
+            <LocationTracker user={user} />
             <Toaster position="top-right" />
             <GlobalModal />
             <Routes>
@@ -611,32 +618,32 @@ function App() {
                 <Route path="/login" element={<LoginScreen key={selectedRole || 'login'} role={selectedRole} onLogin={handleLogin} />} />
                 <Route path="/reset-password" element={user && user.isFirstLogin ? <ResetPassword user={user} onComplete={handleLevelUp} /> : <Navigate to="/dashboard" />} />
 
-                <Route path="/dashboard" element={<ProtectedRoute element={<Dashboard user={user} onLogout={handleLogout} />} />} />
-                <Route path="/leads/new" element={<ProtectedRoute element={<LeadForm user={user} />} />} />
-                <Route path="/leads/walk-in" element={<ProtectedRoute element={<LeadForm user={user} />} />} />
-                <Route path="/leads" element={<ProtectedRoute element={<LeadList user={user} />} />} />
-                <Route path="/leads/my-created" element={<ProtectedRoute element={<LeadList user={user} isMyCreated={true} />} />} />
-                <Route path="/leads/:id" element={<ProtectedRoute element={<LeadDetail user={user} />} />} />
-                <Route path="/profile" element={<ProtectedRoute element={<Profile user={user} onLogout={handleLogout} />} />} />
-                <Route path="/admin" element={<ProtectedRoute element={user?.role === 'Admin' ? <AdminPanel user={user} /> : <Navigate to="/dashboard" />} />} />
-                <Route path="/leads/interested" element={<ProtectedRoute element={<InterestedLeads user={user} />} />} />
-                <Route path="/leads/lead-gen-followup" element={<ProtectedRoute element={<LeadGenFollowupLeads user={user} />} />} />
-                <Route path="/leads/meeting-followup" element={<ProtectedRoute element={<MeetingFollowupLeads user={user} />} />} />
-                <Route path="/leads/quotation-needed" element={<ProtectedRoute element={<QuotationNeededLeads user={user} />} />} />
-                <Route path="/leads/assigned" element={<ProtectedRoute element={<AssignedLeads user={user} />} />} />
-                <Route path="/admin/operations/:id" element={<ProtectedRoute element={user?.role === 'Admin' ? <EmployeeOperations user={user} /> : <Navigate to="/dashboard" />} />} />
-                <Route path="/leads/payment-pending" element={<ProtectedRoute element={<PaymentPendingLeads user={user} />} />} />
-                <Route path="/leads/manage/:id" element={<ProtectedRoute element={<ManageLead user={user} />} />} />
-                <Route path="/leads/call-manage/:id" element={<ProtectedRoute element={<CallFollowupManage user={user} />} />} />
-                <Route path="/tracking" element={<ProtectedRoute element={(user?.role === 'Admin' || user?.role === 'Team Lead') ? <LiveTracking user={user} /> : <Navigate to="/dashboard" />} />} />
-                <Route path="/admin/history" element={<ProtectedRoute element={user?.role === 'Admin' ? <LeadHistory user={user} /> : <Navigate to="/dashboard" />} />} />
-                <Route path="/admin/clients" element={<ProtectedRoute element={(user?.role === 'Admin' || user?.role === 'Team Lead') ? <ClientList user={user} /> : <Navigate to="/dashboard" />} />} />
+                <Route path="/dashboard" element={<ProtectedRoute user={user} element={<Dashboard user={user} onLogout={handleLogout} />} />} />
+                <Route path="/leads/new" element={<ProtectedRoute user={user} element={<LeadForm user={user} />} />} />
+                <Route path="/leads/walk-in" element={<ProtectedRoute user={user} element={<LeadForm user={user} />} />} />
+                <Route path="/leads" element={<ProtectedRoute user={user} element={<LeadList user={user} />} />} />
+                <Route path="/leads/my-created" element={<ProtectedRoute user={user} element={<LeadList user={user} isMyCreated={true} />} />} />
+                <Route path="/leads/:id" element={<ProtectedRoute user={user} element={<LeadDetail user={user} />} />} />
+                <Route path="/profile" element={<ProtectedRoute user={user} element={<Profile user={user} onLogout={handleLogout} />} />} />
+                <Route path="/admin" element={<ProtectedRoute user={user} element={user?.role === 'Admin' ? <AdminPanel user={user} /> : <Navigate to="/dashboard" />} />} />
+                <Route path="/leads/interested" element={<ProtectedRoute user={user} element={<InterestedLeads user={user} />} />} />
+                <Route path="/leads/lead-gen-followup" element={<ProtectedRoute user={user} element={<LeadGenFollowupLeads user={user} />} />} />
+                <Route path="/leads/meeting-followup" element={<ProtectedRoute user={user} element={<MeetingFollowupLeads user={user} />} />} />
+                <Route path="/leads/quotation-needed" element={<ProtectedRoute user={user} element={<QuotationNeededLeads user={user} />} />} />
+                <Route path="/leads/assigned" element={<ProtectedRoute user={user} element={<AssignedLeads user={user} />} />} />
+                <Route path="/admin/operations/:id" element={<ProtectedRoute user={user} element={user?.role === 'Admin' ? <EmployeeOperations user={user} /> : <Navigate to="/dashboard" />} />} />
+                <Route path="/leads/payment-pending" element={<ProtectedRoute user={user} element={<PaymentPendingLeads user={user} />} />} />
+                <Route path="/leads/manage/:id" element={<ProtectedRoute user={user} element={<ManageLead user={user} />} />} />
+                <Route path="/leads/call-manage/:id" element={<ProtectedRoute user={user} element={<CallFollowupManage user={user} />} />} />
+                <Route path="/tracking" element={<ProtectedRoute user={user} element={(user?.role === 'Admin' || user?.role === 'Team Lead') ? <LiveTracking user={user} /> : <Navigate to="/dashboard" />} />} />
+                <Route path="/admin/history" element={<ProtectedRoute user={user} element={user?.role === 'Admin' ? <LeadHistory user={user} /> : <Navigate to="/dashboard" />} />} />
+                <Route path="/admin/clients" element={<ProtectedRoute user={user} element={(user?.role === 'Admin' || user?.role === 'Team Lead') ? <ClientList user={user} /> : <Navigate to="/dashboard" />} />} />
 
-                <Route path="/admin/time-logs/:id" element={<ProtectedRoute element={(user?.role === 'Admin' || user?.role === 'Team Lead') ? <TimeLogs user={user} /> : <Navigate to="/dashboard" />} />} />
-                <Route path="/chat" element={<ProtectedRoute element={<Chat user={user} />} />} />
-                <Route path="/leads/finalized" element={<ProtectedRoute element={<FinalizedLeads user={user} />} />} />
-                <Route path="/leads/call-history" element={<ProtectedRoute element={<CallHistory user={user} />} />} />
-                <Route path="/notifications" element={<ProtectedRoute element={<Notifications user={user} />} />} />
+                <Route path="/admin/time-logs/:id" element={<ProtectedRoute user={user} element={(user?.role === 'Admin' || user?.role === 'Team Lead') ? <TimeLogs user={user} /> : <Navigate to="/dashboard" />} />} />
+                <Route path="/chat" element={<ProtectedRoute user={user} element={<Chat user={user} />} />} />
+                <Route path="/leads/finalized" element={<ProtectedRoute user={user} element={<FinalizedLeads user={user} />} />} />
+                <Route path="/leads/call-history" element={<ProtectedRoute user={user} element={<CallHistory user={user} />} />} />
+                <Route path="/notifications" element={<ProtectedRoute user={user} element={<Notifications user={user} />} />} />
             </Routes>
             {user && chatPartner && (
                 <ChatBox

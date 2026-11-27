@@ -472,8 +472,17 @@ const LeadList = ({ user, isMyCreated }) => {
     const isAdmin = user?.role === 'Admin' || user?.Role === 'Admin';
 
     const [dateFilterMode, setDateFilterMode] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem('fe_walkin_date_mode');
+            if (isFE && isMyCreated && (saved === 'single' || saved === 'range')) {
+                return saved;
+            }
+        } catch {}
         if (location.state?.fromDate && location.state?.toDate && location.state.fromDate !== location.state.toDate) {
             return 'range';
+        }
+        if (location.state?.singleDate) {
+            return 'single';
         }
         if (isFE && isMyCreated) {
             return 'range';
@@ -1086,13 +1095,14 @@ const LeadList = ({ user, isMyCreated }) => {
             let inDate = true;
             let inDateConv = true;
 
-            if ((isTL || isFE || isAdmin) && singleDate) {
+            const isSingle = (isFE && isMyCreated) ? (dateFilterMode === 'single') : !!singleDate;
+            if ((isTL || isFE || isAdmin) && isSingle && singleDate) {
                 const primaryYMD = getLeadDateYMD(l.CallDate || l.CreatedAt);
                 const createdYMD = l.CreatedAt ? getLeadDateYMD(l.CreatedAt) : '';
                 const callYMD = l.CallDate ? getLeadDateYMD(l.CallDate) : '';
                 inDate = (primaryYMD === singleDate || createdYMD === singleDate || callYMD === singleDate);
                 inDateConv = inDate;
-            } else if ((isTL || isFE) && (fromDate || toDate)) {
+            } else if ((isTL || isFE) && !isSingle && (fromDate || toDate)) {
                 const primaryYMD = getLeadDateYMD(l.CallDate || l.CreatedAt);
                 inDate = checkDateInRange(primaryYMD || l.CreatedAt, fromDate, toDate);
                 inDateConv = inDate || checkDateInRange(l.UpdatedAt, fromDate, toDate);
@@ -1170,12 +1180,13 @@ const LeadList = ({ user, isMyCreated }) => {
             if (isMyCreated && String(l.CreatedBy) !== currentUserIdStr) return false;
 
             if (isTL || isFE) {
-                if (singleDate) {
+                const isSingle = (isFE && isMyCreated) ? (dateFilterMode === 'single') : !!singleDate;
+                if (isSingle && singleDate) {
                     const primaryYMD = getLeadDateYMD(l.CallDate || l.CreatedAt);
                     const createdYMD = l.CreatedAt ? getLeadDateYMD(l.CreatedAt) : '';
                     const callYMD = l.CallDate ? getLeadDateYMD(l.CallDate) : '';
                     if (primaryYMD !== singleDate && createdYMD !== singleDate && callYMD !== singleDate) return false;
-                } else if (fromDate || toDate) {
+                } else if (!isSingle && (fromDate || toDate)) {
                     const primaryYMD = getLeadDateYMD(l.CallDate || l.CreatedAt);
                     const inCreated = checkDateInRange(primaryYMD || l.CreatedAt, fromDate, toDate);
                     if (categoryFilter === 'conversions') {
@@ -1391,7 +1402,7 @@ const LeadList = ({ user, isMyCreated }) => {
                                 transition: 'all 0.15s ease'
                             }}
                         >
-                            {isCE ? 'Total Leads' : 'All Leads'} ({isMyCreated ? ((singleDate || fromDate || toDate) ? allLeadsCount : baseLeads.length) : ((isTL || isAdmin) ? (singleDate ? allLeadsCount : leads.length) : (isCE ? (isDateFilterActiveForCE ? allLeadsCount : leads.length) : leads.length))})
+                            {isCE ? 'Total Leads' : 'All Leads'} ({isMyCreated ? (((dateFilterMode === 'single' ? singleDate : (fromDate || toDate))) ? allLeadsCount : baseLeads.length) : ((isTL || isAdmin) ? (singleDate ? allLeadsCount : leads.length) : (isCE ? (isDateFilterActiveForCE ? allLeadsCount : leads.length) : leads.length))})
                         </button>
                         <button
                             type="button"
@@ -1557,6 +1568,9 @@ const LeadList = ({ user, isMyCreated }) => {
                                     onChange={e => {
                                         const newMode = e.target.value;
                                         setDateFilterMode(newMode);
+                                        try {
+                                            sessionStorage.setItem('fe_walkin_date_mode', newMode);
+                                        } catch {}
                                         if (newMode === 'single') {
                                             if (fromDate && !singleDate) setSingleDate(fromDate);
                                             setFromDate('');
