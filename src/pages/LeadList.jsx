@@ -1035,13 +1035,7 @@ const LeadList = ({ user, isMyCreated }) => {
         } else if (cat) {
             const resolved = (cat === 'new' || cat === 'followup') ? 'all' : cat;
             setCategoryFilter(resolved);
-            if (resolved === 'interested') {
-                setStatusFilter('Interested');
-            } else if (resolved === 'conversions') {
-                setStatusFilter('Converted');
-            } else {
-                setStatusFilter('All');
-            }
+            setStatusFilter('All');
         }
         if (location.state?.fromDate !== undefined) {
             setFromDate(location.state.fromDate);
@@ -1138,10 +1132,12 @@ const LeadList = ({ user, isMyCreated }) => {
             if (!l || !l.LeadID || seenLeadIds.has(l.LeadID)) return false;
             seenLeadIds.add(l.LeadID);
 
-            if (!hasStatus) {
-                if (categoryFilter === 'conversions' && !isConvertedStatus(l.Status)) return false;
-                if (categoryFilter === 'interested' && !isInterestedStatus(l.Status)) return false;
-                if (categoryFilter === 'pending' && !isPendingStatus(l.Status)) return false;
+            if (categoryFilter === 'conversions') {
+                if (!isConvertedStatus(l.Status)) return false;
+            } else if (categoryFilter === 'interested') {
+                if (!isInterestedStatus(l.Status)) return false;
+            } else if (categoryFilter === 'pending') {
+                if (!isPendingStatus(l.Status)) return false;
             }
 
             if (hasSearch) {
@@ -1206,13 +1202,15 @@ const LeadList = ({ user, isMyCreated }) => {
                 }
             }
 
-            if (isNAFilter) {
-                if (hasValidPhone(l.Phone)) return false;
-            } else if (hasStatus) {
-                const canonicalStatus = isCE ? getCanonicalStatusCE(l.Status) : getCanonicalStatus(l.Status);
-                const rawStatusTrimmed = (l.Status || '').trim().toLowerCase();
-                const matchesStatus = (canonicalStatus && canonicalStatus.toLowerCase() === statusLower) || (rawStatusTrimmed === statusLower);
-                if (!matchesStatus) return false;
+            if (categoryFilter === 'all') {
+                if (isNAFilter) {
+                    if (hasValidPhone(l.Phone)) return false;
+                } else if (hasStatus) {
+                    const canonicalStatus = isCE ? getCanonicalStatusCE(l.Status) : getCanonicalStatus(l.Status);
+                    const rawStatusTrimmed = (l.Status || '').trim().toLowerCase();
+                    const matchesStatus = (canonicalStatus && canonicalStatus.toLowerCase() === statusLower) || (rawStatusTrimmed === statusLower);
+                    if (!matchesStatus) return false;
+                }
             }
 
             return true;
@@ -1399,7 +1397,7 @@ const LeadList = ({ user, isMyCreated }) => {
                             type="button"
                             onClick={() => {
                                 setCategoryFilter('conversions');
-                                setStatusFilter('Converted');
+                                setStatusFilter('All');
                                 setSearchParams(prev => {
                                     const next = new URLSearchParams(prev);
                                     next.set('category', 'conversions');
@@ -1426,7 +1424,7 @@ const LeadList = ({ user, isMyCreated }) => {
                             type="button"
                             onClick={() => {
                                 setCategoryFilter('interested');
-                                setStatusFilter('Interested');
+                                setStatusFilter('All');
                                 setSearchParams(prev => {
                                     const next = new URLSearchParams(prev);
                                     next.set('category', 'interested');
@@ -1495,9 +1493,12 @@ const LeadList = ({ user, isMyCreated }) => {
                         <select
                             className="input-field"
                             style={{ width: '100%', boxSizing: 'border-box', cursor: 'pointer', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}
-                            value={isAllStatus ? 'All' : statusFilter}
+                            value={categoryFilter !== 'all' ? `category_${categoryFilter}` : (isAllStatus ? 'All' : statusFilter)}
                             onChange={e => handleStatusChange(e.target.value)}
                         >
+                            {categoryFilter !== 'all' && (
+                                <option value={`category_${categoryFilter}`} style={{ display: 'none' }}>All Statuses</option>
+                            )}
                             {(() => {
                                 const rawStatuses = leads.map(l => l.Status).filter(Boolean);
                                 // Case-insensitive deduplication: ensures only one entry per status regardless of lower or upper char
