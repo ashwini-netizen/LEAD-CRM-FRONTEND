@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader, RefreshCw, Eye, Search, Calendar, Clock, UserPlus, Phone, ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Loader, RefreshCw, Eye, Search, Calendar, Clock, UserPlus, Phone, ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from 'lucide-react';
 import UserHeader from '../components/UserHeader';
 import { stripEmojis } from '../utils/stringUtils';
 import { formatCleanTime } from '../utils/notificationSync';
@@ -28,6 +28,46 @@ const statusColors = {
     'not available': { bg: 'rgba(100,116,139,0.12)', color: '#64748b' },
     'Quotation': { bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
     'Quotation Needed': { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
+};
+
+const getLeadDateYMD = (dateVal) => {
+    if (!dateVal) return '';
+    if (typeof dateVal === 'string') {
+        const trimmed = dateVal.trim();
+        const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+            const y = match[1], m = match[2], d = match[3];
+            if (trimmed.length === 10 || trimmed.includes('T00:00:00')) {
+                return `${y}-${m}-${d}`;
+            }
+        }
+    }
+    try {
+        const d = new Date(dateVal);
+        if (!isNaN(d.getTime())) {
+            return new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).format(d);
+        }
+    } catch {}
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const formatFollowupDate = (dateVal) => {
+    if (!dateVal) return 'N/A';
+    const ymd = getLeadDateYMD(dateVal);
+    if (!ymd) return 'N/A';
+    const parts = ymd.split('-');
+    if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return 'N/A';
 };
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
@@ -121,15 +161,8 @@ const LeadGenFollowupLeads = ({ user }) => {
 
         let matchesDate = true;
         if (dateFilter) {
-            if (l.UpdatedAt) {
-                const updateDateObj = new Date(l.UpdatedAt);
-                const offset = updateDateObj.getTimezoneOffset();
-                const localDateObj = new Date(updateDateObj.getTime() - (offset * 60 * 1000));
-                const localDateStr = localDateObj.toISOString().split('T')[0];
-                matchesDate = localDateStr === dateFilter;
-            } else {
-                matchesDate = false;
-            }
+            const followupDateStr = getLeadDateYMD(l.FollowupDate);
+            matchesDate = followupDateStr === dateFilter;
         }
 
         return matchesSearch && matchesDate;
@@ -197,15 +230,43 @@ const LeadGenFollowupLeads = ({ user }) => {
                             autoComplete="off"
                         />
                     </div>
-                    <div style={{ position: 'relative', minWidth: '200px' }}>
-                        <Calendar size={16} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
-                        <input
-                            type="date"
-                            className="input-field"
-                            style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '44px', cursor: 'pointer', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}
-                            value={dateFilter}
-                            onChange={e => setDateFilter(e.target.value)}
-                        />
+                    <div style={{ position: 'relative', minWidth: '200px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ position: 'relative', flex: 1 }}>
+                            <Calendar size={16} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+                            <input
+                                type="date"
+                                className="input-field"
+                                style={{ width: '100%', boxSizing: 'border-box', paddingLeft: '44px', cursor: 'pointer', background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}
+                                value={dateFilter}
+                                onChange={e => setDateFilter(e.target.value)}
+                            />
+                        </div>
+                        {dateFilter && (
+                            <button
+                                type="button"
+                                onClick={() => setDateFilter('')}
+                                style={{
+                                    background: '#f1f5f9',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    padding: '9px 12px',
+                                    fontSize: '0.82rem',
+                                    fontWeight: '700',
+                                    color: '#64748b',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    whiteSpace: 'nowrap',
+                                    transition: 'all 0.15s ease'
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#1e293b'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
+                                title="Clear date filter"
+                            >
+                                <X size={14} /> Clear
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -224,7 +285,9 @@ const LeadGenFollowupLeads = ({ user }) => {
                         </div>
                     ) : filtered.length === 0 ? (
                         <div style={{ padding: '80px', textAlign: 'center' }}>
-                            <p style={{ color: '#94a3b8' }}>No initial follow-up leads found.</p>
+                            <p style={{ color: '#94a3b8' }}>
+                                {dateFilter ? `No follow-up leads found for ${dateFilter.split('-').reverse().join('/')}.` : 'No initial follow-up leads found.'}
+                            </p>
                         </div>
                     ) : (
                         <table className="lead-gen-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', userSelect: isDragging ? 'none' : 'auto' }}>
@@ -265,7 +328,7 @@ const LeadGenFollowupLeads = ({ user }) => {
                                         <td className="col-date" style={{ color: '#1e293b', fontWeight: '700' }}>
                                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                                                 <Calendar size={14} color="#10b981" />
-                                                {lead.FollowupDate ? new Date(lead.FollowupDate).toLocaleDateString('en-GB') : 'N/A'}
+                                                {formatFollowupDate(lead.FollowupDate)}
                                             </div>
                                         </td>
                                         <td className="col-time" style={{ color: '#1e293b', fontWeight: '700' }}>
