@@ -2429,6 +2429,48 @@ const LeadList = ({ user, isMyCreated }) => {
                                                         })}
                                                         title="View Details"
                                                     />
+                                                    {isTL && (
+                                                        <Edit
+                                                            size={17}
+                                                            style={{ cursor: 'pointer', color: '#f59e0b' }}
+                                                            onClick={() => {
+                                                                const isMeetingType = [
+                                                                    'Interested',
+                                                                    'Meeting Follow-up',
+                                                                    'Meeting Followup',
+                                                                    'meetingFollowup',
+                                                                    'Meeting Attended',
+                                                                    'Meeting Done',
+                                                                    'Meeting Scheduled',
+                                                                    'Interested – Follow-up Required',
+                                                                    'Requirement Identified',
+                                                                    'Technical Discussion Required',
+                                                                    'Commercial Discussion / Negotiation',
+                                                                    'Quotation',
+                                                                    'Quotation Needed',
+                                                                    'Quotation Done',
+                                                                    'Paid',
+                                                                    'Due Payment',
+                                                                    'Completed',
+                                                                    'Conversion / Deal Closed',
+                                                                    'Converted',
+                                                                    'Deal Closed'
+                                                                ].includes(lead.Status) || !!lead.MeetingFollowupDate || !!lead.MeetingDate;
+
+                                                                const targetPath = isMeetingType
+                                                                    ? `/leads/manage/${lead.LeadID}`
+                                                                    : `/leads/call-manage/${lead.LeadID}`;
+
+                                                                navigate(targetPath, {
+                                                                    state: {
+                                                                        from: isMyCreated ? '/leads/my-created' : '/leads',
+                                                                        label: isMyCreated ? 'My Created Leads' : 'Leads'
+                                                                    }
+                                                                });
+                                                            }}
+                                                            title="Edit Lead"
+                                                        />
+                                                    )}
                                                     {user?.role === 'Admin' && (
                                                         <FileText
                                                             size={17}

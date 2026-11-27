@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Loader, AlertCircle, Phone, Mail, Building, Save, Clock, Calendar, ArrowLeft, Edit, X } from 'lucide-react';
+import { Loader, AlertCircle, Phone, Mail, Building, Save, Clock, Calendar, ArrowLeft, Edit, X, User, MapPin } from 'lucide-react';
 import UserHeader from '../components/UserHeader';
-import { cleanPhoneNumber, validatePhoneNumber } from '../utils/stringUtils';
+import { cleanPhoneNumber, validatePhoneNumber, stripEmojis } from '../utils/stringUtils';
 import { formatCleanTime } from '../utils/notificationSync';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://monogamy-reforest-boaster.ngrok-free.dev';
@@ -108,11 +108,13 @@ const CallFollowupManage = ({ user }) => {
 
     // Client Edit State
     const [isEditingClient, setIsEditingClient] = useState(false);
+    const [editFullName, setEditFullName] = useState('');
     const [editPhone, setEditPhone] = useState('');
     const [editEmail, setEditEmail] = useState('');
     const [editCompany, setEditCompany] = useState('');
     const [editSpecificCompany, setEditSpecificCompany] = useState('');
     const [editAlternatePhone, setEditAlternatePhone] = useState('');
+    const [editAddress, setEditAddress] = useState('');
     const [updatingClient, setUpdatingClient] = useState(false);
 
     useEffect(() => {
@@ -275,8 +277,9 @@ const CallFollowupManage = ({ user }) => {
     };
 
     const handleSaveClient = async () => {
-        if (!editPhone || !editEmail || !editCompany) {
-            return alert('Please fill all required fields (Primary Phone, Email, Company Type).');
+        const finalName = editFullName && editFullName.trim() ? editFullName.trim() : (lead.FullName || '');
+        if (!finalName || !editPhone || !editEmail || !editCompany) {
+            return alert('Please fill all required fields (Full Name, Primary Phone, Email, Company Type).');
         }
 
         const primaryPhoneValidation = validatePhoneNumber(editPhone, 'Primary Phone');
@@ -322,14 +325,14 @@ const CallFollowupManage = ({ user }) => {
         setUpdatingClient(true);
         try {
             const payload = {
-                fullName: lead.FullName,
+                fullName: finalName,
                 phone: cleanedPhone,
                 alternatePhone: cleanedAltPhone || null,
                 email: cleanedEmail,
                 companyName: editCompany.trim(),
                 companyType: editCompany.trim(),
                 specificCompanyName: editSpecificCompany ? editSpecificCompany.trim() : null,
-                address: lead.Address || ''
+                address: editAddress !== undefined && editAddress !== null ? editAddress.trim() : (lead.Address || '')
             };
 
             const res = await fetch(`${API_URL}/api/leads/${id}`, {
@@ -353,12 +356,14 @@ const CallFollowupManage = ({ user }) => {
             // Update local state immediately
             setLead(prev => ({
                 ...prev,
+                FullName: finalName,
                 Phone: cleanedPhone,
                 AlternatePhone: cleanedAltPhone || '',
                 Email: cleanedEmail,
                 CompanyName: editCompany.trim(),
                 CompanyType: editCompany.trim(),
-                SpecificCompanyName: editSpecificCompany ? editSpecificCompany.trim() : ''
+                SpecificCompanyName: editSpecificCompany ? editSpecificCompany.trim() : '',
+                Address: editAddress !== undefined && editAddress !== null ? editAddress.trim() : prev.Address
             }));
 
             setIsEditingClient(false);
@@ -511,11 +516,13 @@ const CallFollowupManage = ({ user }) => {
                                 <button
                                     type="button"
                                     onClick={() => {
+                                        setEditFullName(lead.FullName || '');
                                         setEditPhone(cleanPhoneNumber(lead.Phone) || lead.Phone || '');
                                         setEditAlternatePhone(cleanPhoneNumber(lead.AlternatePhone) || lead.AlternatePhone || '');
                                         setEditEmail(lead.Email || '');
                                         setEditCompany(lead.CompanyName || lead.CompanyType || '');
                                         setEditSpecificCompany(lead.SpecificCompanyName || '');
+                                        setEditAddress(lead.Address || '');
                                         setIsEditingClient(true);
                                     }}
                                     style={{
@@ -538,6 +545,23 @@ const CallFollowupManage = ({ user }) => {
 
                         {isEditingClient ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div>
+                                    <div style={labelStyle}><User size={14} style={{ marginRight: '5px' }} /> Full Name *</div>
+                                    <input
+                                        type="text"
+                                        name="crm_edit_client_fullname"
+                                        className="input-field"
+                                        value={editFullName}
+                                        onChange={e => setEditFullName(stripEmojis(e.target.value))}
+                                        placeholder="Client Full Name"
+                                        readOnly
+                                        onFocus={makeEditable}
+                                        onMouseDown={makeEditable}
+                                        onTouchStart={makeEditable}
+                                        autoComplete="off"
+                                        required
+                                    />
+                                </div>
                                 <div>
                                     <div style={labelStyle}><Phone size={14} style={{ marginRight: '5px' }} /> Primary Phone *</div>
                                     <input
@@ -643,6 +667,22 @@ const CallFollowupManage = ({ user }) => {
                                         data-lpignore="true"
                                     />
                                 </div>
+                                <div>
+                                    <div style={labelStyle}><MapPin size={14} style={{ marginRight: '5px' }} /> Address</div>
+                                    <textarea
+                                        name="crm_edit_client_address"
+                                        className="input-field"
+                                        rows="2"
+                                        value={editAddress}
+                                        onChange={e => setEditAddress(stripEmojis(e.target.value))}
+                                        placeholder="Client Address"
+                                        readOnly
+                                        onFocus={makeEditable}
+                                        onMouseDown={makeEditable}
+                                        onTouchStart={makeEditable}
+                                        autoComplete="off"
+                                    />
+                                </div>
                                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                                     <button
                                         type="button"
@@ -705,6 +745,12 @@ const CallFollowupManage = ({ user }) => {
                                     <div style={infoRow}>
                                         <Building size={16} style={{ color: '#6366f1', flexShrink: 0 }} />
                                         <span><strong style={{ color: '#475569' }}>Specific Company Name:</strong> {lead.SpecificCompanyName}</span>
+                                    </div>
+                                )}
+                                {lead.Address && (
+                                    <div style={infoRow}>
+                                        <MapPin size={16} style={{ color: '#6366f1', flexShrink: 0 }} />
+                                        <span><strong style={{ color: '#475569' }}>Address:</strong> {lead.Address}</span>
                                     </div>
                                 )}
                                 <div style={{ padding: '15px', background: '#f8fafc', borderRadius: '12px', marginTop: '10px' }}>
